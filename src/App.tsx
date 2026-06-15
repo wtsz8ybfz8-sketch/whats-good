@@ -96,7 +96,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error fetching recipes:', err);
-      setError('Connection disrupted. We were unable to safely retrieve the requested real recipe metrics.');
+      setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +131,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('Error fetching random recipe:', err);
-      setError('Connection disrupted. The serendipity wildcard pipeline was unable to resolve a recipe.');
+      setError('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -169,7 +169,7 @@ export default function App() {
                   : 'text-[#6E6A64] hover:text-[#1A1A1A]'
               }`}
             >
-              Mood Interface
+              Find a Recipe
             </button>
             <button
               onClick={() => handleTabSwitch('random')}
@@ -179,7 +179,7 @@ export default function App() {
                   : 'text-[#6E6A64] hover:text-[#1A1A1A]'
               }`}
             >
-              Serendipity Engine
+              Surprise Me
             </button>
             <button
               onClick={() => handleTabSwitch('saved')}
@@ -238,7 +238,7 @@ export default function App() {
             isLoading ? (
               <LoadingState />
             ) : error ? (
-              <ErrorState title="Matrix Resolution Failed" message={error} onRetry={() => handleTriggerMatch()} />
+              <ErrorState title="Something went wrong" message={error} onRetry={() => handleTriggerMatch()} />
             ) : recipes.length > 0 ? (
               <RecipeView
                 recipes={recipes}
@@ -271,11 +271,11 @@ export default function App() {
             // SERENDIPITY ENGINE CANVAS
             isLoading ? (
               <LoadingState
-                title="Formulating Aromatic Wildcard Match"
-                subtitle="Bypassing choice paradox routines... Isolating volatile compounds for metabolic optimization."
+                title="Finding something good..."
+                subtitle="Let fate decide."
               />
             ) : error ? (
-              <ErrorState title="Serendipity Failure" message={error} onRetry={handleRandomWildcard} />
+              <ErrorState title="That didn't work" message={error} onRetry={handleRandomWildcard} />
             ) : recipes.length > 0 && selectedRecipe ? (
               <RecipeView
                 recipes={recipes}
@@ -293,16 +293,16 @@ export default function App() {
                   <Dices className="w-6 h-6 text-[#FAF2F0]" />
                 </div>
                 <h2 className="font-serif text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 leading-tight">
-                  Bypass the Paradox<br />of Culinary Choice
+                  Not sure what you want?
                 </h2>
                 <p className="text-[#6E6A64] text-sm leading-relaxed max-w-[440px] mx-auto mb-8">
-                  Bypassing structural decision loops entirely. Instantly triggers a randomized wildcard selection tailored seamlessly against your flavor metrics.
+                  Let us just pick something for you. No filters, no overthinking — just good food.
                 </p>
                 <button
                   onClick={handleRandomWildcard}
                   className="bg-white text-[#1A1A1A] hover:bg-[#FAF2F0] active:scale-95 transition-all px-8 py-4 rounded-xl font-serif text-base font-semibold shadow-md cursor-pointer inline-flex items-center gap-2"
                 >
-                  <Sparkles className="w-4 h-4 text-[#7C2D12]" /> Roll Kitchen Dice
+                  <Sparkles className="w-4 h-4 text-[#7C2D12]" /> Surprise me
                 </button>
               </div>
             )

@@ -59,7 +59,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
               className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64] hover:text-[#1A1A1A] transition-colors bg-none border-none cursor-pointer"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
-              {isSavedMode ? `Back to Saved (${recipes.length})` : `Back to Match Selection (${recipes.length} found)`}
+              {isSavedMode ? `Back to Saved (${recipes.length})` : `Back to results (${recipes.length})`}
             </button>
           ) : <span />}
 
@@ -96,7 +96,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
             </h2>
             {r.tags && r.tags.length > 0 && (
               <p className="text-xs sm:text-sm text-[#6E6A64] font-sans mt-3 italic">
-                A classic aromatic dish representing {r.tags.slice(0, 4).join(', ')}.
+                A classic dish with {r.tags.slice(0, 4).join(', ')}.
               </p>
             )}
           </div>
@@ -144,7 +144,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
             <span className="text-2xl mt-0.5 select-none" role="img" aria-label="medical badge">🩺</span>
             <div className="flex-1">
               <strong className="block text-sm font-bold text-[#1A1A1A] mb-1">
-                Clinical Motility Insight
+                Good to know
               </strong>
               <p className="text-xs sm:text-sm text-[#3d4a3f] leading-relaxed">
                 {r.gutTip}
@@ -157,10 +157,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
             {/* Ingredients Side */}
             <div className="md:col-span-5 flex flex-col gap-4">
               <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#1A1A1A] pb-2 border-b border-black/[0.08]">
-                Pantry Matrix
+                Ingredients
               </h3>
               <p className="text-xs text-[#6E6A64] font-mono uppercase tracking-wider">
-                Click items to collect & cross out
+                Tap to check off as you go
               </p>
               <ul className="flex flex-col divide-y divide-[#f3f1ed]">
                 {r.ingredients.map((ing, idx) => {
@@ -195,7 +195,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
             {/* Steps Side */}
             <div className="md:col-span-7 flex flex-col gap-4">
               <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#1A1A1A] pb-2 border-b border-black/[0.08]">
-                Preparation Sequence
+                How to make it
               </h3>
               <div className="flex flex-col gap-6">
                 {r.steps.map((step, idx) => (
@@ -255,14 +255,14 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
                   onClick={onRegenerate}
                   className="px-6 py-3.5 bg-transparent border border-[#7C2D12] text-[#7C2D12] hover:bg-[#7C2D12] hover:text-white rounded-xl font-sans text-sm font-bold transition-all cursor-pointer"
                 >
-                  {isRandomMode ? 'Roll Kitchen Dice Again' : 'Formulate Alternative Menu'}
+                  {isRandomMode ? 'Surprise me again' : 'Find different recipes'}
                 </button>
                 {recipes.length > 1 && (
                   <button
                     onClick={() => onSelectRecipe(null)}
                     className="px-6 py-3.5 bg-none border-none text-[#5b7993] hover:text-[#1A1A1A] font-sans text-sm font-bold transition-all cursor-pointer"
                   >
-                    Choose from alternative matches ({recipes.length - 1} more)
+                    See other matches ({recipes.length - 1} more)
                   </button>
                 )}
               </>
@@ -278,13 +278,13 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
     <div className="max-w-[1000px] mx-auto w-full px-2 sm:px-4 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
       <div className="flex flex-col gap-2 mb-8 sm:mb-12">
         <span className="font-mono text-[10px] uppercase tracking-[2px] text-[#7C2D12] font-bold">
-          The Seasonal Menu Matches
+          Here's what we found
         </span>
         <h2 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#1A1A1A]">
-          We found {recipes.length} tailored selections
+          We found {recipes.length} recipes for you
         </h2>
         <p className="text-[#6E6A64] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
-          These real recipes closely match your customized gastro-coordinates. Select any option to view the detailed pantry ingredients matrix and cooking layout.
+          Tap any recipe to see the full ingredients and steps.
         </p>
       </div>
 
@@ -351,13 +351,13 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
       <div className="mt-12 text-center pt-8 border-t border-black/[0.08]">
         <p className="text-xs text-[#6E6A64] font-sans mb-4">
-          Not seeing the ideal flavor coordinates you wanted today?
+          Not quite right?
         </p>
         <button
           onClick={onRegenerate}
           className="inline-flex items-center gap-2 px-6 py-3 bg-[#1A1A1A] text-white hover:bg-[#7C2D12] rounded-xl font-sans text-xs font-bold transition-all cursor-pointer"
         >
-          <Compass className="w-4 h-4" /> Try Fresh Wildcard Search
+          <Compass className="w-4 h-4" /> Try something different
         </button>
       </div>
     </div>

@@ -93,9 +93,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="bg-white border-r border-[#e6e4e0] p-6 lg:p-10 flex flex-col gap-6 lg:gap-8 overflow-y-auto lg:h-[calc(100vh-70px)] sticky top-[70px]">
       <div>
-        <span className="font-mono text-[11px] uppercase tracking-[2px] text-[#6E6A64] block mb-2">
-          Personalized Gastronomy
-        </span>
         <h1 className="font-serif text-3xl lg:text-4xl font-extrabold leading-[1.15] text-[#1A1A1A]">
           What are you<br />
           <span className="italic font-normal text-[#7C2D12]">feeling today?</span>
@@ -105,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Direct Search Option */}
       <div className="flex flex-col gap-2">
         <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] flex items-center gap-2">
-          Search Recipe Name
+          Search by dish or ingredient
         </span>
         <div className="relative">
           <input
@@ -130,14 +127,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Or Coordinates Section */}
       <div className="flex items-center gap-4 py-2 font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64]">
         <span className="h-[1px] flex-1 bg-[#e6e4e0]" />
-        <span>OR CHOOSE COORDINATES</span>
+        <span>OR TELL US YOUR MOOD</span>
         <span className="h-[1px] flex-1 bg-[#e6e4e0]" />
       </div>
 
       {/* Your Current Vibe */}
       <div className="flex flex-col gap-3">
         <span className="font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64]">
-          Your Current Vibe
+          How are you feeling?
         </span>
         <div className="flex flex-wrap gap-2">
           {vibes.map((v) => {
@@ -162,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Cuisine Coordinates */}
       <div className="flex flex-col gap-3">
         <span className="font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64]">
-          Cuisine Coordinates
+          What are you craving?
         </span>
         <div className="relative">
           <select
@@ -182,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Kitchen Energy Configuration */}
       <div className="flex flex-col gap-3">
         <span className="font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64]">
-          Kitchen Energy Configuration
+          How much time do you have?
         </span>
         <div className="grid grid-cols-3 bg-[#f0ede9] p-1 rounded-xl">
           {effortLevels.map((e) => {
@@ -225,9 +222,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Analyzing...
           </span>
         ) : localSearch.trim() ? (
-          'Search Real Recipe Matrix →'
+          'Search →'
         ) : (
-          'Analyze Coordinates & Match Menu →'
+          'Find my recipes →'
         )}
       </button>
     </aside>
