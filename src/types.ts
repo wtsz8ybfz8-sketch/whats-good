@@ -41,4 +41,4 @@ export interface Dimensions {
   searchQuery: string;
 }
 
-export type ActiveTab = 'mood' | 'random';
+export type ActiveTab = 'mood' | 'random' | 'saved';

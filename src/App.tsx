@@ -6,14 +6,16 @@
 import { useState } from 'react';
 import { Dimensions, ActiveTab, ParsedRecipe, Meal } from './types';
 import { fetchMealsByCoordinates, parseMealToRecipe } from './recipeUtils';
+import { useSavedRecipes } from './useSavedRecipes';
 import { Sidebar } from './components/Sidebar';
 import { RecipeView } from './components/RecipeView';
 import { LoadingState, ErrorState, EmptyState } from './components/StatusStates';
 import { HealthProfile, useHealthProfile } from './components/HealthProfile';
-import { Sparkles, Dices } from 'lucide-react';
+import { Sparkles, Dices, Bookmark } from 'lucide-react';
 
 export default function App() {
-  const { profile, setProfile, clearProfile, pillLabel } = useHealthProfile();
+  const { condition, dietary, setProfile, clearProfile, pillLabel } = useHealthProfile();
+  const { savedRecipes, saveRecipe, unsaveRecipe, isSaved } = useSavedRecipes();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('mood');
   const [dimensions, setDimensions] = useState<Dimensions>({
@@ -137,7 +139,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col relative bg-[#FAF9F6] text-[#1A1A1A] antialiased">
-      {profile === null && <HealthProfile onSelect={setProfile} />}
+      {condition === null && <HealthProfile onSave={setProfile} />}
 
       {/* Global Header */}
       <header className="h-[70px] bg-[#FAF9F6]/85 backdrop-blur-md flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/[0.08] select-none">
@@ -179,6 +181,24 @@ export default function App() {
             >
               Serendipity Engine
             </button>
+            <button
+              onClick={() => handleTabSwitch('saved')}
+              className={`px-4 sm:px-[18px] py-1.5 rounded-full font-sans text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                activeTab === 'saved'
+                  ? 'bg-[#1A1A1A] text-white shadow-sm'
+                  : 'text-[#6E6A64] hover:text-[#1A1A1A]'
+              }`}
+            >
+              <Bookmark className="w-3 h-3" />
+              Saved
+              {savedRecipes.length > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none ${
+                  activeTab === 'saved' ? 'bg-white/20 text-white' : 'bg-[#7C2D12]/10 text-[#7C2D12]'
+                }`}>
+                  {savedRecipes.length}
+                </span>
+              )}
+            </button>
           </nav>
 
           {pillLabel && (
@@ -200,7 +220,7 @@ export default function App() {
         {/* Sidebar Dashboard Left Panel */}
         <div
           className={`transition-all duration-300 ${
-            activeTab === 'random' ? 'opacity-30 pointer-events-none' : 'opacity-100'
+            activeTab !== 'mood' ? 'opacity-30 pointer-events-none' : 'opacity-100'
           }`}
         >
           <Sidebar
@@ -226,6 +246,9 @@ export default function App() {
                 onSelectRecipe={setSelectedRecipe}
                 onRegenerate={() => handleTriggerMatch()}
                 isRandomMode={false}
+                isSaved={isSaved}
+                onSave={saveRecipe}
+                onUnsave={unsaveRecipe}
               />
             ) : dimensions.searchQuery ? (
               <div className="max-w-[450px] mx-auto text-center py-16">
@@ -244,7 +267,7 @@ export default function App() {
             ) : (
               <EmptyState onSearchRandom={() => { handleTabSwitch('random'); }} />
             )
-          ) : (
+          ) : activeTab === 'random' ? (
             // SERENDIPITY ENGINE CANVAS
             isLoading ? (
               <LoadingState
@@ -260,6 +283,9 @@ export default function App() {
                 onSelectRecipe={setSelectedRecipe}
                 onRegenerate={handleRandomWildcard}
                 isRandomMode={true}
+                isSaved={isSaved}
+                onSave={saveRecipe}
+                onUnsave={unsaveRecipe}
               />
             ) : (
               <div className="max-w-[620px] mx-auto text-center py-12 sm:py-20 px-8 bg-[#1A1A1A] text-white rounded-2xl shadow-[0_20px_50px_rgba(124,45,18,0.15)] my-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] border border-black/[0.08]">
@@ -277,6 +303,39 @@ export default function App() {
                   className="bg-white text-[#1A1A1A] hover:bg-[#FAF2F0] active:scale-95 transition-all px-8 py-4 rounded-xl font-serif text-base font-semibold shadow-md cursor-pointer inline-flex items-center gap-2"
                 >
                   <Sparkles className="w-4 h-4 text-[#7C2D12]" /> Roll Kitchen Dice
+                </button>
+              </div>
+            )
+          ) : (
+            // SAVED RECIPES CANVAS
+            savedRecipes.length > 0 || selectedRecipe ? (
+              <RecipeView
+                recipes={savedRecipes}
+                selectedRecipe={selectedRecipe}
+                onSelectRecipe={setSelectedRecipe}
+                onRegenerate={() => {}}
+                isRandomMode={false}
+                isSaved={isSaved}
+                onSave={saveRecipe}
+                onUnsave={(id) => { unsaveRecipe(id); setSelectedRecipe(null); }}
+                isSavedMode={true}
+              />
+            ) : (
+              <div className="max-w-[460px] mx-auto text-center py-16 sm:py-24 px-4 flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+                <div className="w-14 h-14 rounded-full bg-[#F2F1EE] flex items-center justify-center mb-6">
+                  <Bookmark className="w-6 h-6 text-[#6E6A64]" />
+                </div>
+                <h3 className="font-serif text-xl sm:text-2xl font-extrabold text-[#1A1A1A] mb-3">
+                  Nothing saved yet
+                </h3>
+                <p className="text-sm text-[#6E6A64] leading-relaxed max-w-[320px]">
+                  Find something good and bookmark it — your saved recipes will appear here.
+                </p>
+                <button
+                  onClick={() => handleTabSwitch('mood')}
+                  className="mt-8 px-6 py-3 bg-[#7C2D12] hover:bg-[#5E220E] text-white text-xs font-bold rounded-xl cursor-pointer transition-all"
+                >
+                  Find Something Good
                 </button>
               </div>
             )

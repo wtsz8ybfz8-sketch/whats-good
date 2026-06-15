@@ -54,29 +54,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 export async function fetchMealsByCoordinates(vibe: string | null, regional: string | null): Promise<Meal[]> {
   let areaResults: FilterMeal[] = [];
   if (regional) {
-    switch (regional) {
-      case 'Italian':
-        areaResults = await fetchByArea('Italian');
-        break;
-      case 'Middle Eastern':
-        areaResults = await fetchByArea('Moroccan');
-        break;
-      case 'Pan-Asian': {
-        const [japanese, chinese, thai] = await Promise.all([
-          fetchByArea('Japanese'),
-          fetchByArea('Chinese'),
-          fetchByArea('Thai'),
-        ]);
-        areaResults = [...japanese, ...chinese, ...thai];
-        break;
-      }
-      case 'South African':
-        areaResults = await fetchByArea('South African');
-        break;
-      case 'Latin American':
-        areaResults = await fetchByArea('Mexican');
-        break;
-    }
+    areaResults = await fetchByArea(regional);
   }
 
   let categoryResults: FilterMeal[] = [];

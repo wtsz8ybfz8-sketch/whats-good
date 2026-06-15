@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Dimensions } from '../types';
-import { Search } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 
 interface SidebarProps {
   dimensions: Dimensions;
@@ -40,12 +40,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const cuisines = [
-    { label: 'Italian', icon: '🍝', value: 'Italian' },
-    { label: 'Middle Eastern', icon: '🫔', value: 'Middle Eastern' },
-    { label: 'Pan-Asian', icon: '🍜', value: 'Pan-Asian' },
-    { label: 'S. African', icon: '🌍', value: 'South African' },
-    { label: 'Latin American', icon: '🌮', value: 'Latin American' },
-    { label: 'Surprise Me', icon: '🎲', value: 'surprise me' },
+    'American', 'British', 'Chinese', 'Croatian', 'Dutch',
+    'Egyptian', 'Filipino', 'French', 'Greek', 'Indian',
+    'Irish', 'Italian', 'Jamaican', 'Japanese', 'Malaysian',
+    'Moroccan', 'Polish', 'Portuguese', 'Russian', 'South African',
+    'Spanish', 'Thai', 'Tunisian', 'Turkish', 'Vietnamese',
   ];
 
   const effortLevels = [
@@ -61,11 +60,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  const handleSelectCuisine = (val: string) => {
-    onChange({
-      ...dimensions,
-      regional: dimensions.regional === val ? null : val, // toggle
-    });
+  const handleSelectCuisine = (val: string | null) => {
+    onChange({ ...dimensions, regional: val });
   };
 
   const handleSelectEffort = (val: string) => {
@@ -168,24 +164,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <span className="font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64]">
           Cuisine Coordinates
         </span>
-        <div className="grid grid-cols-2 gap-2">
-          {cuisines.map((c) => {
-            const isSelected = dimensions.regional === c.value;
-            return (
-              <button
-                key={c.value}
-                onClick={() => handleSelectCuisine(c.value)}
-                className={`p-3 rounded-xl border flex items-center gap-2.5 transition-all cursor-pointer text-left ${
-                  isSelected
-                    ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white'
-                    : 'bg-[#FAF9F6] border-[#e6e4e0] text-[#1A1A1A] hover:border-[#7C2D12] hover:bg-[#FAF2F0]'
-                }`}
-              >
-                <span className="text-base font-medium">{c.icon}</span>
-                <span className="text-xs font-bold font-sans">{c.label}</span>
-              </button>
-            );
-          })}
+        <div className="relative">
+          <select
+            value={dimensions.regional ?? ''}
+            onChange={(e) => handleSelectCuisine(e.target.value || null)}
+            className="w-full appearance-none bg-[#FAF9F6] border border-[#e6e4e0] rounded-xl py-3 pl-4 pr-9 font-sans text-sm text-[#1A1A1A] focus:outline-none focus:border-[#7C2D12] transition-colors cursor-pointer"
+          >
+            <option value="">Any cuisine</option>
+            {cuisines.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-3.5 w-4 h-4 text-[#6E6A64]" />
         </div>
       </div>
 

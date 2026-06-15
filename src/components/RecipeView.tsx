@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ParsedRecipe } from '../types';
-import { Clock, Users, Flame, ChevronLeft, Check, Compass, ExternalLink } from 'lucide-react';
+import { Clock, Users, Flame, ChevronLeft, Check, Compass, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
 
 interface RecipeViewProps {
   recipes: ParsedRecipe[];
@@ -13,6 +13,10 @@ interface RecipeViewProps {
   onSelectRecipe: (recipe: ParsedRecipe | null) => void;
   onRegenerate: () => void;
   isRandomMode: boolean;
+  isSaved: (id: string) => boolean;
+  onSave: (recipe: ParsedRecipe) => void;
+  onUnsave: (id: string) => void;
+  isSavedMode?: boolean;
 }
 
 export const RecipeView: React.FC<RecipeViewProps> = ({
@@ -21,6 +25,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
   onSelectRecipe,
   onRegenerate,
   isRandomMode,
+  isSaved,
+  onSave,
+  onUnsave,
+  isSavedMode = false,
 }) => {
   // Local state to keep track of checked ingredients for checklist interaction
   const [completedIngredients, setCompletedIngredients] = useState<Record<string, boolean>>({});
@@ -43,16 +51,32 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
     const r = selectedRecipe;
     return (
       <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] px-2 sm:px-4 py-4">
-        {/* Navigation back header if we have other recipes in list */}
-        {recipes.length > 1 && (
+        {/* Top bar: back nav + save button */}
+        <div className="flex items-center justify-between mb-6">
+          {recipes.length > 1 ? (
+            <button
+              onClick={() => onSelectRecipe(null)}
+              className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64] hover:text-[#1A1A1A] transition-colors bg-none border-none cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              {isSavedMode ? `Back to Saved (${recipes.length})` : `Back to Match Selection (${recipes.length} found)`}
+            </button>
+          ) : <span />}
+
           <button
-            onClick={() => onSelectRecipe(null)}
-            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64] hover:text-[#1A1A1A] mb-6 transition-colors bg-none border-none cursor-pointer"
+            onClick={() => isSaved(r.id) ? onUnsave(r.id) : onSave(r)}
+            className={`flex items-center gap-1.5 font-sans text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+              isSaved(r.id)
+                ? 'bg-[#7C2D12] border-[#7C2D12] text-white'
+                : 'bg-white border-[#e6e4e0] text-[#6E6A64] hover:border-[#7C2D12] hover:text-[#7C2D12]'
+            }`}
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            Back to Match Selection ({recipes.length} found)
+            {isSaved(r.id)
+              ? <><BookmarkCheck className="w-3.5 h-3.5" /> Saved</>
+              : <><Bookmark className="w-3.5 h-3.5" /> Save Recipe</>
+            }
           </button>
-        )}
+        </div>
 
         <div className="flex flex-col gap-6 sm:gap-8">
           {/* Badge row */}
@@ -217,20 +241,31 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
           )}
 
           {/* Alternative action buttons */}
-          <div className="pt-8 border-t border-black/[0.08] flex items-center justify-start gap-4">
-            <button
-              onClick={onRegenerate}
-              className="px-6 py-3.5 bg-transparent border border-[#7C2D12] text-[#7C2D12] hover:bg-[#7C2D12] hover:text-white rounded-xl font-sans text-sm font-bold transition-all cursor-pointer"
-            >
-              {isRandomMode ? 'Roll Kitchen Dice Again' : 'Formulate Alternative Menu'}
-            </button>
-            {recipes.length > 1 && (
+          <div className="pt-8 border-t border-black/[0.08] flex items-center justify-start gap-4 flex-wrap">
+            {isSavedMode ? (
               <button
-                onClick={() => onSelectRecipe(null)}
-                className="px-6 py-3.5 bg-none border-none text-[#5b7993] hover:text-[#1A1A1A] font-sans text-sm font-bold transition-all cursor-pointer"
+                onClick={() => { onUnsave(r.id); onSelectRecipe(null); }}
+                className="px-6 py-3.5 bg-transparent border border-[#e6e4e0] text-[#6E6A64] hover:border-red-300 hover:text-red-600 rounded-xl font-sans text-sm font-bold transition-all cursor-pointer"
               >
-                Choose from alternative matches ({recipes.length - 1} more)
+                Remove from Saved
               </button>
+            ) : (
+              <>
+                <button
+                  onClick={onRegenerate}
+                  className="px-6 py-3.5 bg-transparent border border-[#7C2D12] text-[#7C2D12] hover:bg-[#7C2D12] hover:text-white rounded-xl font-sans text-sm font-bold transition-all cursor-pointer"
+                >
+                  {isRandomMode ? 'Roll Kitchen Dice Again' : 'Formulate Alternative Menu'}
+                </button>
+                {recipes.length > 1 && (
+                  <button
+                    onClick={() => onSelectRecipe(null)}
+                    className="px-6 py-3.5 bg-none border-none text-[#5b7993] hover:text-[#1A1A1A] font-sans text-sm font-bold transition-all cursor-pointer"
+                  >
+                    Choose from alternative matches ({recipes.length - 1} more)
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -273,6 +308,20 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
                   {r.category}
                 </span>
               </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); isSaved(r.id) ? onUnsave(r.id) : onSave(r); }}
+                className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all cursor-pointer ${
+                  isSaved(r.id)
+                    ? 'bg-[#7C2D12] text-white'
+                    : 'bg-white/95 backdrop-blur-sm text-[#6E6A64] hover:text-[#7C2D12]'
+                }`}
+                aria-label={isSaved(r.id) ? 'Remove from saved' : 'Save recipe'}
+              >
+                {isSaved(r.id)
+                  ? <BookmarkCheck className="w-3.5 h-3.5" />
+                  : <Bookmark className="w-3.5 h-3.5" />
+                }
+              </button>
             </div>
 
             {/* Core copy */}
