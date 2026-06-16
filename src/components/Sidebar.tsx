@@ -210,17 +210,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  How are you feeling?
  </span>
- <div className="flex flex-wrap gap-2">
+ <div className="flex flex-nowrap overflow-x-auto gap-2 pb-1 -mx-1 px-1 no-scrollbar">
  {vibes.map((v) => {
  const isSelected = dimensions.vibe === v.value;
  return (
  <button
  key={v.value}
  onClick={() => handleSelectVibe(v.value)}
- className={`px-3.5 py-2.5 rounded-2xl font-sans text-xs font-semibold border transition-all cursor-pointer flex items-center gap-2 shadow-sm ${
+ className={`flex-none px-3.5 py-2.5 rounded-full font-sans text-xs font-semibold border transition-all duration-200 ease-out cursor-pointer flex items-center gap-2 shadow-sm whitespace-nowrap ${
  isSelected
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
- :'bg-white dark:bg-[#1a1a1a] border-black dark:border-[#444] text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20'
+ :'bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20'
  }`}
  >
  <VibeIcon name={v.iconName} className={`w-3.5 h-3.5 ${isSelected ?'text-white' :'text-[#7C2D12] dark:text-[#fca5a5]'}`} />
@@ -351,28 +351,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  </>
 )}
 
- {/* Action Button */}
- <button
- onClick={onTriggerMatch}
- disabled={!isFormValid || isLoading}
- className={`w-full py-4 mt-auto rounded-2xl font-serif text-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md ${
- isFormValid
- ?'bg-[#7C2D12] text-white hover:bg-[#5E220E] hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)]'
- :'bg-[#e6e4e0] text-[#a2a8a8] cursor-not-allowed shadow-none'
- }`}
- >
- {isLoading ? (
- <span className="flex items-center justify-center gap-2">
- <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
- Analyzing...
- </span>
-) : (
- <>
- <span>{dimensions.searchQuery.trim() ?'Search' :'Find my recipes'}</span>
- <ChevronRight className="w-5 h-5" />
- </>
-)}
- </button>
+ {/* Action button intentionally removed — rendered as fixed bottom CTA in App.tsx */}
  </aside>
 );
 };

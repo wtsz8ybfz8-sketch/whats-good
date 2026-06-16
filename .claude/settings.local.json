@@ -10,7 +10,10 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(rm \"/Users/lunikaphillip/Documents/whats-good claude project/.git/index.lock\")",
-      "Bash(git commit -m 'Add HANDOVER.md — session summary and next steps *)"
+      "Bash(git commit -m 'Add HANDOVER.md — session summary and next steps *)",
+      "Bash(node -e ' *)",
+      "Bash(tee /tmp/wg-build.txt)",
+      "Bash(git commit *)"
     ]
   }
 }
