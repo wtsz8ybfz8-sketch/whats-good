@@ -5,99 +5,73 @@
 
 import { Meal, ParsedRecipe } from './types';
 
-interface FilterMeal {
-  idMeal: string;
-  strMeal: string;
-  strMealThumb: string;
-}
+/**
+ * Maps the coordinates (Vibe + Regional Cuisine) to real search terms for TheMealDB
+ */
+export function mapCoordinatesToQueries(vibe: string | null, regional: string | null): string[] {
+  const queries: string[] = [];
 
-async function fetchByArea(area: string): Promise<FilterMeal[]> {
-  try {
-    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?a=${encodeURIComponent(area)}`);
-    const data = await res.json();
-    return (data.meals as FilterMeal[]) || [];
-  } catch {
-    return [];
-  }
-}
-
-async function fetchByCategory(category: string): Promise<FilterMeal[]> {
-  try {
-    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?c=${encodeURIComponent(category)}`);
-    const data = await res.json();
-    return (data.meals as FilterMeal[]) || [];
-  } catch {
-    return [];
-  }
-}
-
-async function lookupMealById(id: string): Promise<Meal | null> {
-  try {
-    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${id}`);
-    const data = await res.json();
-    const meals = data.meals as Meal[];
-    return meals && meals.length > 0 ? meals[0] : null;
-  } catch {
-    return null;
-  }
-}
-
-function shuffleArray<T>(arr: T[]): T[] {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-
-export async function fetchMealsByCoordinates(vibe: string | null, regional: string | null): Promise<Meal[]> {
-  let areaResults: FilterMeal[] = [];
+  // Regional mapping
   if (regional) {
-    areaResults = await fetchByArea(regional);
-  }
-
-  let categoryResults: FilterMeal[] = [];
-  if (vibe) {
-    let categories: string[] = [];
-    switch (vibe) {
-      case 'tired & cosy':            categories = ['Soup']; break;
-      case 'need comfort food':       categories = ['Pasta']; break;
-      case 'feeling adventurous':     categories = ['Seafood']; break;
-      case 'treating myself':         categories = ['Beef']; break;
-      case 'something fresh & light': categories = ['Seafood', 'Vegetarian']; break;
-      case 'stressed, need quick and easy': categories = ['Chicken']; break;
-      case 'craving something bold & spicy': categories = ['Lamb']; break;
-      case 'lazy Sunday energy':      categories = ['Chicken']; break;
-      case 'feeling fancy':           categories = ['Seafood']; break;
+    switch (regional) {
+      case 'Italian':
+        queries.push('pasta', 'tomato', 'risotto', 'basil');
+        break;
+      case 'Middle Eastern':
+        queries.push('couscous', 'lamb', 'lentil', 'kebap', 'chickpea');
+        break;
+      case 'Pan-Asian':
+        queries.push('rice', 'noodle', 'stir', 'teriyaki', 'curry', 'ginger');
+        break;
+      case 'South African':
+        queries.push('stew', 'beef', 'curry', 'bobotie');
+        break;
+      case 'Latin American':
+        queries.push('taco', 'chili', 'lime', 'tortilla', 'fajitas');
+        break;
+      case 'surprise me':
+      default:
+        queries.push('chicken', 'salmon', 'beef', 'pie', 'soup', 'salad');
+        break;
     }
-    const fetched = await Promise.all(categories.map(c => fetchByCategory(c)));
-    categoryResults = fetched.flat();
   }
 
-  let pool: FilterMeal[];
-  if (regional && vibe && areaResults.length > 0 && categoryResults.length > 0) {
-    const areaIds = new Set(areaResults.map(m => m.idMeal));
-    const intersection = categoryResults.filter(m => areaIds.has(m.idMeal));
-    pool = intersection.length >= 3 ? intersection : areaResults;
-  } else if (areaResults.length > 0) {
-    pool = areaResults;
-  } else if (categoryResults.length > 0) {
-    pool = categoryResults;
-  } else {
-    pool = await fetchByCategory('Chicken');
+  // Vibe mapping (adds fallback searches if regional queries return nothing)
+  if (vibe) {
+    switch (vibe) {
+      case 'tired & cosy':
+        queries.push('soup', 'stew', 'potato');
+        break;
+      case 'need comfort food':
+        queries.push('cheese', 'pie', 'lasagna');
+        break;
+      case 'feeling adventurous':
+        queries.push('curry', 'spicy', 'seafood');
+        break;
+      case 'treating myself':
+        queries.push('steak', 'chocolate', 'cake', 'tart');
+        break;
+      case 'something fresh & light':
+        queries.push('salad', 'lemon', 'fish', 'avocado');
+        break;
+      case 'stressed, need quick and easy':
+        queries.push('egg', 'noodle', 'quick');
+        break;
+      case 'craving something bold & spicy':
+        queries.push('chili', 'curry', 'spicy');
+        break;
+      case 'lazy Sunday energy':
+        queries.push('roast', 'chicken', 'pancake', 'bake');
+        break;
+      case 'feeling fancy':
+        queries.push('salmon', 'duck', 'risotto');
+        break;
+    }
   }
 
-  const seenIds = new Set<string>();
-  const deduped = pool.filter(m => {
-    if (!m.idMeal || seenIds.has(m.idMeal)) return false;
-    seenIds.add(m.idMeal);
-    return true;
-  });
-
-  const top9 = shuffleArray(deduped).slice(0, 9);
-  const fullMeals = await Promise.all(top9.map(m => lookupMealById(m.idMeal)));
-  return fullMeals.filter((m): m is Meal => m !== null);
+  // Deduplicate and fallback
+  const unique = Array.from(new Set(queries));
+  return unique.length > 0 ? unique : ['chicken'];
 }
 
 /**
@@ -170,30 +144,27 @@ export function parseMealToRecipe(meal: Meal, requestedCapacity?: string | null)
   }
 
   // 4. Generate dynamic gut tip based on typical ingredients
-  const DISCLAIMER = '⚕️ General wellness info only — not medical advice. Talk to a dietitian for guidance specific to you.';
-
+  let gutTip = 'A balanced, whole-ingredient meal that supports optimal digestive pacing and micro-nutrient absorption without heavy culinary emulsifier lipids.';
+  
+  const lowerInstructions = (meal.strInstructions || '').toLowerCase();
   const lowerIngredients = ingredients.map(i => i.toLowerCase()).join(' ');
 
-  let gutTip: string;
-
   if (lowerIngredients.includes('ginger')) {
-    gutTip = `Ginger has well-documented anti-nausea properties and may support digestion. ${DISCLAIMER}`;
-  } else if (lowerIngredients.includes('oat') || lowerIngredients.includes('porridge')) {
-    gutTip = `Oats contain soluble fibre (beta-glucan), which supports digestion and keeps you fuller for longer. ${DISCLAIMER}`;
+    gutTip = 'Fresh ginger root active components possess powerful natural prokinetic properties that dramatically optimize upper digestive tract clearing and soothe gut mucosa.';
+  } else if (lowerIngredients.includes('rice') || lowerIngredients.includes('jasmine')) {
+    gutTip = 'Utilizing highly digestible polished starches like jasmine rice provides rapid caloric absorption channels, minimizing bloating profiles by avoiding taxing fibrous outer hulls.';
+  } else if (lowerIngredients.includes('pasta') || lowerIngredients.includes('noodle') || lowerIngredients.includes('spaghetti')) {
+    gutTip = 'Boiling regional pasta varieties al dente keeps starch matrices structurally cohesive, creating slow-release carbohydrates that avoid spike loops and support continuous tract energy.';
+  } else if (lowerIngredients.includes('mint') || lowerIngredients.includes('peppermint')) {
+    gutTip = 'Inclusion of mint leaves releases natural menthol oils which soothe local tissue boundaries, acting as a functional tool to relax cramping or stomach bloating loops.';
   } else if (lowerIngredients.includes('lemon') || lowerIngredients.includes('lime') || lowerIngredients.includes('citrus')) {
-    gutTip = `Lemon and lime are good sources of vitamin C and add brightness to a dish without extra calories. ${DISCLAIMER}`;
-  } else if (lowerIngredients.includes('turmeric')) {
-    gutTip = `Turmeric contains curcumin, which has anti-inflammatory properties; pairing it with black pepper improves absorption. ${DISCLAIMER}`;
-  } else if (lowerIngredients.includes('spinach') || lowerIngredients.includes('kale')) {
-    gutTip = `Leafy greens like spinach and kale provide iron, folate, and fibre; light cooking can improve mineral absorption. ${DISCLAIMER}`;
-  } else if (lowerIngredients.includes('salmon') || lowerIngredients.includes('mackerel')) {
-    gutTip = `Oily fish like salmon and mackerel are rich in omega-3 fatty acids, linked to heart health and reduced inflammation. ${DISCLAIMER}`;
-  } else if (lowerIngredients.includes('chickpea') || lowerIngredients.includes('lentil') || lowerIngredients.includes('bean')) {
-    gutTip = `Legumes are a source of plant protein and fibre; their slow digestion helps maintain steady energy levels. ${DISCLAIMER}`;
-  } else if (lowerIngredients.includes('garlic') || lowerIngredients.includes('onion')) {
-    gutTip = `Garlic and onion contain prebiotic fibres that feed beneficial gut bacteria. ${DISCLAIMER}`;
-  } else {
-    gutTip = `This dish uses ${ingredients.length} whole ingredients. Cooking from scratch means less sodium and no hidden additives compared to packaged alternatives. ${DISCLAIMER}`;
+    gutTip = 'Inbuilt pure citrus citric acids aid primary stomach enzyme cycles, improving broad protein digestion rates while keeping stomach acidity profiles nicely regulated.';
+  } else if (lowerIngredients.includes('turmeric') || lowerIngredients.includes('curry') || lowerIngredients.includes('cumin')) {
+    gutTip = 'Warm anti-inflammatory spice blends containing curcumin stimulate metabolic heat while supporting liver detoxification steps and relaxed gastrointestinal flow.';
+  } else if (lowerIngredients.includes('coconut milk') || lowerIngredients.includes('coconut amino')) {
+    gutTip = 'Medium-chain fats present in organic coconut liquids offer instant fuel source availability, bypassing complex processing cycles in the gall bladder for easy assimilation.';
+  } else if (lowerIngredients.includes('oat') || lowerIngredients.includes('porridge')) {
+    gutTip = 'Soluble beta-glucan fibers form a protective gel barrier along GI pathways, slowing nutrient uptake gently while lubricating active motility loops.';
   }
 
   // 5. Parse tags

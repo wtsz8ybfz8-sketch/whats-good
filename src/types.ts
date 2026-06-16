@@ -34,11 +34,14 @@ export interface ParsedRecipe {
   gutTip: string;
 }
 
+export type LocationMode = 'dineout' | 'gourmet';
+
 export interface Dimensions {
   vibe: string | null;
   regional: string | null;
   capacity: string | null;
   searchQuery: string;
+  locationMode: LocationMode;
 }
 
-export type ActiveTab = 'mood' | 'random' | 'saved';
+export type ActiveTab = 'mood' | 'random' | 'saved-recipes' | 'saved-eateries';
