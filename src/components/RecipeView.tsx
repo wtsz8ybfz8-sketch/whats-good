@@ -769,7 +769,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div
  key={r.id}
  onClick={() => onSelectRecipe(r)}
- className="bg-white dark:bg-[#1a1a1a] rounded-3xl border border-black dark:border-[#444] overflow-hidden hover:shadow-[0_16px_40px_rgba(124,45,18,0.09)] cursor-pointer group flex flex-col h-full transition-all duration-300 relative bg-gradient-to-b from-white dark:from-[#1a1a1a] to-[#FAF9F6]/40 to-[#FAF9F6]/$1 dark:to-[#111111]/$1"
+ className="bg-white dark:bg-[#1a1a1a] rounded-3xl border border-black/10 dark:border-white/10 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative"
  >
  {/* Image Banner */}
  <div className="w-full h-52 sm:h-60 bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
@@ -784,8 +784,8 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  
  {/* Status Badges */}
  <div className="absolute top-4 left-4 flex flex-wrap gap-1.5 z-10">
- <span className="bg-emerald-600/90 text-white font-mono text-[8px] font-black uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full shadow-md backdrop-blur-md">
- Partner Deal
+ <span className="bg-amber-600/90 text-white font-mono text-[8px] font-black uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full shadow-md backdrop-blur-md">
+ Featured
  </span>
  <span className="bg-white dark:bg-[#1a1a1a] backdrop-blur-md text-[#7C2D12] dark:text-[#fca5a5] text-[9px] font-bold px-2.5 py-1.5 rounded-full shadow-md">
  {rawEatery.cuisine}
@@ -819,7 +819,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
 
  {/* Core Copy */}
- <div className="p-5 flex flex-col flex-1">
+ <div className="p-6 flex flex-col flex-1">
  <div className="flex items-center justify-between text-[10px] font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] uppercase tracking-wider mb-1">
  <span className="line-clamp-1 max-w-[60%]">{rawEatery.cuisine}</span>
  <span className="text-[#7C2D12] dark:text-[#fca5a5] flex items-center gap-1 shrink-0">
@@ -857,7 +857,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div
  key={r.id}
  onClick={() => onSelectRecipe(r)}
- className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-black dark:border-[#444] overflow-hidden hover:shadow-[0_14px_35px_rgba(124,45,18,0.08)] cursor-pointer group flex flex-col h-full transition-all duration-300 relative"
+ className="bg-white dark:bg-[#1a1a1a] rounded-3xl border border-black/10 dark:border-white/10 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative"
  >
  {/* Image banner */}
  <div className="w-full h-52 sm:h-60 bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
@@ -895,7 +895,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
 
  {/* Core copy */}
- <div className="p-5 flex flex-col flex-1 gap-2.5">
+ <div className="p-6 flex flex-col flex-1 gap-2.5">
  <span className="font-mono text-[10px] text-[#6E6A64] dark:text-[#a3a3a3] uppercase tracking-wider block">
  {r.area} Cuisine
  </span>

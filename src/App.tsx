@@ -8,9 +8,11 @@ import { Dimensions, ActiveTab, ParsedRecipe, Meal } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
 import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
+import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
-import { Sparkles, Dices, Heart, Trash2, ArrowRight, Search, Compass, MapPin, Navigation } from'lucide-react';
+import { Sparkles, Dices, Heart, Trash2, Search, MapPin, Navigation, ChevronRight } from'lucide-react';
 import { SOUTH_AFRICAN_EATERIES } from'./campusData';
+import { fetchCapeTownEateries } from'./placesService';
 
 export const EATERY_IMAGES: Record<string, string> = {
 'eat-kloof-house':'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=800&q=80',
@@ -164,28 +166,50 @@ export default function App() {
  try {
  const activeMode = customMode || dimensions.locationMode;
  if (activeMode ==='dineout') {
- const tempRecipes: ParsedRecipe[] = [];
- SOUTH_AFRICAN_EATERIES.forEach((eatery) => {
- // Price filter (stored in capacity) - bypass if a specific customQuery is provided
+ const searchQuery = (customQuery !== undefined ? customQuery : dimensions.searchQuery).trim().toLowerCase();
  const priceFilter = customQuery ? null : dimensions.capacity;
+
+ // Build a Places API search string from available filters
+ const placesSearchTerms = [
+ customQuery !== undefined ? customQuery : dimensions.searchQuery.trim(),
+ customQuery === undefined ? dimensions.regional : null,
+ customQuery === undefined ? dimensions.vibe : null,
+ ].filter(Boolean).join(' ');
+
+ // Try Places API first; silently fall back to hardcoded list on failure
+ let eateryList: typeof SOUTH_AFRICAN_EATERIES = SOUTH_AFRICAN_EATERIES;
+ let usingPlacesApi = false;
+ try {
+ const placesResults = await fetchCapeTownEateries(placesSearchTerms || 'restaurant');
+ if (placesResults.length > 0) {
+ eateryList = placesResults as typeof SOUTH_AFRICAN_EATERIES;
+ usingPlacesApi = true;
+ }
+ } catch {
+ // Keep hardcoded list
+ }
+
+ const tempRecipes: ParsedRecipe[] = [];
+ eateryList.forEach((eatery) => {
+ // Price filter applies to both Places and hardcoded results
  if (priceFilter && eatery.priceSymbol !== priceFilter) return;
 
- // Cuisine Focus filter - bypass if customQuery is provided
+ // Cuisine, vibe, and text filters only apply to hardcoded list
+ // (Places API already scoped the results via the search query)
+ if (!usingPlacesApi) {
  const cuisineFilter = customQuery ? null : dimensions.regional;
  if (cuisineFilter && eatery.cuisine.toLowerCase().indexOf(cuisineFilter.toLowerCase()) === -1) return;
 
- // Vibe Filter - bypass if customQuery is provided
  const vibeFilter = customQuery ? null : dimensions.vibe;
  if (vibeFilter && eatery.vibeMatch !== vibeFilter) return;
 
- // Search query filter
- const query = (customQuery !== undefined ? customQuery : dimensions.searchQuery).trim().toLowerCase();
- if (query) {
- const nameMatch = eatery.name.toLowerCase().includes(query);
- const addrMatch = eatery.address.toLowerCase().includes(query);
- const signatureMatch = eatery.signatureOrder.toLowerCase().includes(query);
- const cuisineMatch = eatery.cuisine.toLowerCase().includes(query);
+ if (searchQuery) {
+ const nameMatch = eatery.name.toLowerCase().includes(searchQuery);
+ const addrMatch = eatery.address.toLowerCase().includes(searchQuery);
+ const signatureMatch = eatery.signatureOrder.toLowerCase().includes(searchQuery);
+ const cuisineMatch = eatery.cuisine.toLowerCase().includes(searchQuery);
  if (!nameMatch && !addrMatch && !signatureMatch && !cuisineMatch) return;
+ }
  }
 
  // Real distance computation if coordinates are available
@@ -197,8 +221,8 @@ export default function App() {
  distanceStr = `${dist.toFixed(1)} km away`;
  }
 
- // Image URL heuristics
- const imgUrl = EATERY_IMAGES[eatery.id] ||'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
+ // Image URL: prefer Places API photo, then static map, then fallback
+ const imgUrl = eatery.photoUrl || EATERY_IMAGES[eatery.id] ||'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
 
  tempRecipes.push({
  id: eatery.id,
@@ -478,30 +502,10 @@ export default function App() {
  const tabOrder: ActiveTab[] = ['mood','random','saved-recipes','saved-eateries'];
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
 
- if (selectedRecipe) {
- return (
- <div className="min-h-screen bg-[#FAF9F6] dark:bg-[#111111] text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
- <main className="p-6 sm:p-10 lg:p-16 flex flex-col justify-start overflow-y-auto min-h-screen bg-[#FAF9F6] dark:bg-[#111111] relative overflow-x-hidden max-w-7xl mx-auto">
- <RecipeView
- recipes={recipes.length > 0 ? recipes : savedRecipes}
- selectedRecipe={selectedRecipe}
- onSelectRecipe={setSelectedRecipe}
- onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
- isRandomMode={activeTab ==='random'}
- savedIds={savedIds}
- onToggleSave={handleToggleSave}
- isSavedTab={activeTab ==='saved-recipes' || activeTab ==='saved-eateries'}
- onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
- />
- </main>
- </div>
-);
- }
-
  return (
  <div className="min-h-screen flex flex-col relative bg-[#FAF9F6] dark:bg-[#111111] text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
  {/* Global Header */}
- <header className="h-[70px] bg-[#FAF9F6] dark:bg-[#111111] backdrop-blur-md flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black dark:border-[#444] select-none">
+ <header className="h-[60px] bg-white/70 dark:bg-black/70 backdrop-blur-xl flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none">
  {/* Logo */}
  <div 
  className="flex items-center gap-2.5 cursor-pointer group hover:opacity-80 transition-opacity" 
@@ -545,7 +549,7 @@ export default function App() {
  <nav className="flex bg-[#F2F1EE] dark:bg-[#222222] p-1 rounded-full sm:gap-0.5 whitespace-nowrap overflow-x-auto no-scrollbar max-w-[50vw]">
  <button
  onClick={() => handleTabSwitch('mood')}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-xs font-bold transition-all cursor-pointer ${
+ className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='mood'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -555,7 +559,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('random')}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-xs font-bold transition-all cursor-pointer ${
+ className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -565,7 +569,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+ className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
  activeTab ==='saved-recipes'
  ?'bg-blue-900 text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -576,7 +580,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-eateries')}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+ className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
  activeTab ==='saved-eateries'
  ?'bg-[#7C2D12] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -590,7 +594,7 @@ export default function App() {
  </header>
 
  {/* Main Layout Grid wrapper */}
- <div className="flex-1 pt-[70px] flex flex-col relative w-full items-center">
+ <div className="flex-1 pt-[60px] flex flex-col relative w-full items-center">
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div 
  className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto ${
@@ -617,8 +621,33 @@ export default function App() {
 )}
 
  {/* Right detailed journal screen content pane */}
- <main className="p-6 sm:p-10 lg:p-16 flex flex-col justify-start overflow-y-auto min-h-[calc(100vh-70px)] w-full max-w-7xl mx-auto relative overflow-x-hidden">
+ <main className="p-6 sm:p-10 lg:p-16 flex flex-col justify-start overflow-y-auto min-h-[calc(100vh-60px)] w-full max-w-7xl mx-auto relative overflow-x-hidden">
 
+ {selectedRecipe ? (
+ selectedRecipe.id.startsWith('eat-') ? (
+ <EateryView
+ recipes={recipes.length > 0 ? recipes : savedRecipes}
+ selectedRecipe={selectedRecipe}
+ onSelectRecipe={setSelectedRecipe}
+ onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
+ savedIds={savedIds}
+ onToggleSave={handleToggleSave}
+ isSavedTab={activeTab ==='saved-recipes' || activeTab ==='saved-eateries'}
+ />
+) : (
+ <RecipeView
+ recipes={recipes.length > 0 ? recipes : savedRecipes}
+ selectedRecipe={selectedRecipe}
+ onSelectRecipe={setSelectedRecipe}
+ onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
+ isRandomMode={activeTab ==='random'}
+ savedIds={savedIds}
+ onToggleSave={handleToggleSave}
+ isSavedTab={activeTab ==='saved-recipes' || activeTab ==='saved-eateries'}
+ onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
+ />
+)
+) : (
  <div
  key={activeTab}
  className={`w-full flex-1 flex flex-col justify-start ${
@@ -797,8 +826,37 @@ export default function App() {
  </div>
 )}
  </div>
+ )}
+ {/* Footer disclaimer */}
+ <footer className="mt-12 pb-24 text-center">
+ <p className="text-[10px] text-[#a2a8a8] dark:text-[#555] font-sans leading-relaxed max-w-xs mx-auto">
+ Restaurant info is for reference only. Deals and details may vary — always confirm with the venue directly.
+ </p>
+ </footer>
  </main>
  </div>
+
+ {/* Fixed Bottom CTA — mood tab, no results shown */}
+ {activeTab ==='mood' && !selectedRecipe && recipes.length === 0 && !isLoading && (
+ <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-6 pt-3 backdrop-blur-xl bg-white/80 dark:bg-black/80 border-t border-black/5 flex justify-center">
+ <button
+ onClick={() => handleTriggerMatch()}
+ className="w-full max-w-md py-4 rounded-2xl font-serif text-lg font-bold transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[#7C2D12] text-white hover:bg-[#5E220E] hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-95"
+ >
+ {isLoading ? (
+ <span className="flex items-center justify-center gap-2">
+ <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+ Searching...
+ </span>
+) : (
+ <>
+ <span>{dimensions.searchQuery.trim() ?'Search' :'Find my recipes'}</span>
+ <ChevronRight className="w-5 h-5" />
+ </>
+)}
+ </button>
+ </div>
+)}
 
  {/* Persistent Geolocation FAB / Quick Toggle Indicator */}
  <div 
