@@ -10,7 +10,7 @@ import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
-import { Sparkles, Dices, Heart, Trash2, Search, MapPin, Navigation, ChevronRight } from'lucide-react';
+import { Sparkles, Dices, Heart, Trash2, Search, MapPin, Navigation, ChevronRight, Sun, Moon } from'lucide-react';
 import { SOUTH_AFRICAN_EATERIES } from'./campusData';
 import { fetchCapeTownEateries } from'./placesService';
 
@@ -96,6 +96,22 @@ export default function App() {
  { timeout: 6000 }
 );
  };
+
+ const [isDark, setIsDark] = useState<boolean>(() => {
+ try {
+ const stored = localStorage.getItem('whats_good_dark_mode');
+ const dark = stored !== null ? stored === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+ document.documentElement.classList.toggle('dark', dark);
+ return dark;
+ } catch {
+ return false;
+ }
+ });
+
+ useEffect(() => {
+ document.documentElement.classList.toggle('dark', isDark);
+ localStorage.setItem('whats_good_dark_mode', String(isDark));
+ }, [isDark]);
 
  // Initialize saved recipes from localStorage
  const [savedRecipes, setSavedRecipes] = useState<ParsedRecipe[]>(() => {
@@ -503,9 +519,9 @@ export default function App() {
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
 
  return (
- <div className="min-h-screen flex flex-col relative bg-[#FAF9F6] dark:bg-[#111111] text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
+ <div className="min-h-screen flex flex-col relative text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
  {/* Global Header */}
- <header className="h-[60px] bg-white/70 dark:bg-black/70 backdrop-blur-xl flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none">
+ <header className="h-[60px] glass flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none !rounded-none">
  {/* Logo */}
  <div 
  className="flex items-center gap-2.5 cursor-pointer group hover:opacity-80 transition-opacity" 
@@ -546,7 +562,15 @@ export default function App() {
  <span>{locState ==='granted' ?'GPS Active' : locState ==='requesting' ?'GPS...' :'Sort Nearby'}</span>
  </button>
 
- <nav className="flex bg-[#F2F1EE] dark:bg-[#222222] p-1 rounded-full sm:gap-0.5 whitespace-nowrap overflow-x-auto no-scrollbar max-w-[50vw]">
+ <button
+ onClick={() => setIsDark((d) => !d)}
+ className="flex w-8 h-8 items-center justify-center rounded-full glass text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0"
+ aria-label={isDark ?'Switch to light mode' :'Switch to dark mode'}
+ >
+ {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+ </button>
+
+ <nav className="flex glass-subtle p-1 rounded-full sm:gap-0.5 whitespace-nowrap overflow-x-auto no-scrollbar max-w-[50vw]">
  <button
  onClick={() => handleTabSwitch('mood')}
  className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
@@ -601,7 +625,7 @@ export default function App() {
  activeTab ==='mood' && recipes.length === 0 ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none hover:max-h-[1500px] hover:opacity-100 hover:pointer-events-auto hover:mt-6'
  }`}
  >
- <div className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] rounded-3xl shadow-sm p-2 mb-6">
+ <div className="glass rounded-3xl p-2 mb-6">
  <Sidebar
  dimensions={dimensions}
  onChange={setDimensions}
@@ -614,7 +638,7 @@ export default function App() {
  {/* Hover area to trigger filters */}
  {activeTab ==='mood' && recipes.length > 0 && (
  <div className="w-full h-8 flex justify-center -mt-4 z-40 relative group cursor-pointer" onClick={() => setRecipes([])}>
- <div className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] shadow-sm rounded-full px-4 py-1 flex items-center gap-2 group-hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20 group-hover:border-[#F5D1C9] dark:border-[#7C2D12]/40 transition-all transform -translate-y-2 group-hover:translate-y-0">
+ <div className="glass-subtle rounded-full px-4 py-1 flex items-center gap-2 transition-all transform -translate-y-2 group-hover:translate-y-0 group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
  <span className="text-[10px] uppercase font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] group-hover:text-[#7C2D12] dark:text-[#fca5a5]">Hover to Adjust Filters</span>
  </div>
  </div>
@@ -672,7 +696,7 @@ export default function App() {
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
  />
 ) : dimensions.searchQuery ? (
- <div className="max-w-[450px] mx-auto text-center py-16 px-8 bg-white dark:bg-[#1a1a1a] backdrop-blur-md rounded-3xl border border-black dark:border-[#444]">
+ <div className="max-w-[450px] mx-auto text-center py-16 px-8 glass rounded-3xl">
  <div className="w-12 h-12 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mx-auto mb-4">
  <Search className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
@@ -755,7 +779,7 @@ export default function App() {
  </div>
 
  {(activeTab ==='saved-recipes' ? savedRecipes.filter(r => !r.id.startsWith('eat')) : savedRecipes.filter(r => r.id.startsWith('eat'))).length === 0 ? (
- <div className="text-center py-16 sm:py-24 px-4 flex flex-col items-center justify-center border border-dashed border-black dark:border-[#444] bg-white dark:bg-[#1a1a1a] rounded-2xl">
+ <div className="text-center py-16 sm:py-24 px-4 flex flex-col items-center justify-center glass rounded-2xl border-dashed">
  <div className="w-14 h-14 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center mb-6 border border-[#F5D1C9] dark:border-[#7C2D12]/40">
  <Heart className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
@@ -778,7 +802,7 @@ export default function App() {
  <div
  key={r.id}
  onClick={() => setSelectedRecipe(r)}
- className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] hover:border-black dark:border-[#444] hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] cursor-pointer rounded-2xl p-4 flex items-center gap-4 group transition-all duration-300 transform hover:-translate-y-0.5"
+ className="glass cursor-pointer rounded-2xl p-4 flex items-center gap-4 group transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(26,15,10,0.12)]"
  >
  {/* Thumbnail image */}
  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[#F2F1EE] dark:bg-[#222222] flex-shrink-0 border border-black dark:border-[#444]">
@@ -838,7 +862,7 @@ export default function App() {
 
  {/* Fixed Bottom CTA — mood tab, no results shown */}
  {activeTab ==='mood' && !selectedRecipe && recipes.length === 0 && !isLoading && (
- <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-6 pt-3 backdrop-blur-xl bg-white/80 dark:bg-black/80 border-t border-black/5 flex justify-center">
+ <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-6 pt-3 glass border-t border-black/5 flex justify-center !rounded-none">
  <button
  onClick={() => handleTriggerMatch()}
  className="w-full max-w-md py-4 rounded-2xl font-serif text-lg font-bold transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[#7C2D12] text-white hover:bg-[#5E220E] hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-95"
@@ -866,14 +890,14 @@ export default function App() {
  <button
  onClick={requestUserLocation}
  disabled={locState ==='requesting'}
- className={`flex items-center gap-2.5 px-4.5 py-3 rounded-full shadow-[0_12px_30px_rgba(0,0,0,0.12)] border text-xs font-bold transition-all duration-300 cursor-pointer select-none active:scale-95 ${
+ className={`flex items-center gap-2.5 px-4.5 py-3 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer select-none active:scale-95 ${
  locState ==='granted'
- ?'bg-white dark:bg-[#1a1a1a] border-black dark:border-[#444] hover:border-emerald-500 text-emerald-800'
+ ?'glass shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:border-emerald-500 text-emerald-800'
  : locState ==='requesting'
- ?'bg-white dark:bg-[#1a1a1a] border-black dark:border-[#444] text-[#6E6A64] dark:text-[#a3a3a3]'
+ ?'glass shadow-[0_12px_30px_rgba(0,0,0,0.12)] text-[#6E6A64] dark:text-[#a3a3a3]'
  : locState ==='denied'
- ?'bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border-red-200/50 hover:border-red-300 text-red-800'
- :'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] hover:bg-neutral-800 text-white'
+ ?'glass-subtle shadow-[0_12px_30px_rgba(0,0,0,0.12)] border border-red-200/50 hover:border-red-300 text-red-800'
+ :'bg-[#1A1A1A] dark:bg-[#2a2a2a] border border-[#1A1A1A] shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:bg-neutral-800 text-white'
  }`}
  >
  {locState ==='granted' ? (

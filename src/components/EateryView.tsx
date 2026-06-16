@@ -80,7 +80,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold font-sans transition-all cursor-pointer shadow-sm ${
               isSaved
                 ? 'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E] hover:border-[#5E220E]'
-                : 'bg-white dark:bg-[#1a1a1a] text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20'
+                : 'glass text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:border-[#7C2D12]/60'
             }`}
           >
             <Heart className={`w-3.5 h-3.5 transition-transform ${isSaved ? 'fill-current scale-110' : ''}`} />
@@ -113,7 +113,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </div>
 
         {/* Contact actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl border border-black dark:border-[#444] shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 glass p-3 rounded-2xl">
           <a
             href={directionsUrl}
             target="_blank"
@@ -125,7 +125,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           </a>
           <a
             href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
-            className="flex items-center justify-center gap-2 py-3 px-4 bg-[#FAF9F6] dark:bg-[#111111] hover:bg-[#f0f0f0] dark:hover:bg-[#222222] text-black dark:text-[#f5f5f5] border border-black dark:border-[#444] text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95 text-center"
+            className="flex items-center justify-center gap-2 py-3 px-4 glass-subtle text-black dark:text-[#f5f5f5] text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95 text-center"
           >
             <Phone className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5]" />
             {rawEatery.phone}
@@ -134,7 +134,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
             href={rawEatery.externalLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 py-3 px-4 bg-[#FAF9F6] dark:bg-[#111111] hover:bg-[#f0f0f0] dark:hover:bg-[#222222] text-[#5b7993] border border-black dark:border-[#444] text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95 text-center"
+            className="flex items-center justify-center gap-2 py-3 px-4 glass-subtle text-[#5b7993] text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95 text-center"
           >
             <ExternalLink className="w-4 h-4" />
             Official Website
@@ -142,7 +142,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </div>
 
         {/* Visit details */}
-        <div className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] p-5 rounded-2xl shadow-sm flex flex-col gap-3">
+        <div className="glass p-5 rounded-2xl flex flex-col gap-3">
           <h4 className="font-serif text-sm font-bold text-[#1A1A1A] dark:text-[#f5f5f5] pb-2 border-b border-black dark:border-[#444]">
             Visit Details
           </h4>
@@ -185,7 +185,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </div>
 
         {/* Featured deal */}
-        <div className="bg-gradient-to-r from-[#FFF9F7] to-[#FAF2F0] dark:from-[#1a1a1a] dark:to-[#1a1a1a] border border-[#F5D1C9] dark:border-[#7C2D12]/40 rounded-3xl p-6 sm:p-8 flex flex-col justify-start relative shadow-[0_8px_30px_rgba(124,45,18,0.03)] border-dashed">
+        <div className="glass rounded-3xl p-6 sm:p-8 flex flex-col justify-start relative border-dashed border-[#F5D1C9] dark:border-[#7C2D12]/40">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
             <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#7C2D12] dark:text-[#fca5a5] font-semibold">
@@ -199,7 +199,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
             Show this screen at the venue before payment to claim your exclusive deal.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-            <div className="flex-1 bg-white dark:bg-[#111111] border border-[#F5D1C9] dark:border-[#7C2D12]/40 rounded-xl px-4 py-3.5 text-center font-sans font-bold text-sm text-[#7C2D12] dark:text-[#fca5a5] select-all shadow-inner border-dashed">
+            <div className="flex-1 glass-subtle rounded-xl px-4 py-3.5 text-center font-sans font-bold text-sm text-[#7C2D12] dark:text-[#fca5a5] select-all shadow-inner border-dashed border-[#F5D1C9] dark:border-[#7C2D12]/40">
               {rawEatery.voucherOffer}
             </div>
             <button
@@ -212,7 +212,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </div>
 
         {/* Good to know */}
-        <div className="bg-[#FFFDFB] dark:bg-[#1a1a1a] border border-[#F5D1C9] dark:border-[#7C2D12]/40 rounded-[2rem] p-6 sm:p-8 shadow-sm">
+        <div className="glass rounded-[2rem] p-6 sm:p-8 border-[#F5D1C9] dark:border-[#7C2D12]/40">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center flex-shrink-0">
               <Activity className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
