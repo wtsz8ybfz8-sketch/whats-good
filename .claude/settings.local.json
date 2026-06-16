@@ -5,7 +5,12 @@
       "Bash(npm install *)",
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(rm \"/Users/lunikaphillip/Documents/whats-good claude project/.git/index.lock\")",
+      "Bash(git commit -m 'Add HANDOVER.md — session summary and next steps *)"
     ]
   }
 }

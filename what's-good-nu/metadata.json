@@ -1,0 +1,6 @@
+{
+  "name": "What's Good NU",
+  "description": "Premium native iOS-inspired food intuition and curation engine matching culinary coordinates without decision fatigue.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
