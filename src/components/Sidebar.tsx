@@ -143,12 +143,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium block">
  Curation Context
  </span>
- <div className="grid grid-cols-2 bg-black dark:bg-[#222222] p-1 rounded-2xl select-none">
+ <div className="grid grid-cols-2 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl select-none">
  <button
  onClick={() => handleLocationModeSwitch('dineout')}
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='dineout'
- ?'bg-white dark:bg-[#1a1a1a] shadow-[0_4px_16px_rgba(0,0,0,0.06)] text-[#7C2D12] dark:text-[#fca5a5]'
+ ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
  }`}
  >
@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  onClick={() => handleLocationModeSwitch('gourmet')}
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='gourmet'
- ?'bg-white dark:bg-[#1a1a1a] shadow-[0_4px_16px_rgba(0,0,0,0.06)] text-[#7C2D12] dark:text-[#fca5a5]'
+ ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
  }`}
  >
@@ -184,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  ?"Search by dish or ingredient (ie: curry, beef)..."
  :"Search South African dishes or eateries..."
  }
- className="w-full bg-white dark:bg-[#1a1a1a] border border-[#e6e4e0] dark:border-white/10 rounded-2xl py-3 pl-10 pr-12 font-sans text-sm text-[#1A1A1A] dark:text-[#f5f5f5] focus:outline-none focus:border-[#7C2D12] focus:ring-1 focus:ring-[#7C2D12] placeholder:text-[#a2a8a8] transition-all shadow-sm"
+ className="w-full bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl py-3 pl-10 pr-12 font-sans text-sm text-[#1A1A1A] dark:text-[#f5f5f5] focus:outline-none focus:border-[#7C2D12] focus:ring-1 focus:ring-[#7C2D12] placeholder:text-[#a2a8a8] transition-all"
  />
  <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[#6E6A64] dark:text-[#a3a3a3]" />
  {dimensions.searchQuery && (
@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`flex-none px-3.5 py-2.5 rounded-full font-sans text-xs font-semibold border transition-all duration-200 ease-out cursor-pointer flex items-center gap-2 shadow-sm whitespace-nowrap ${
  isSelected
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
- :'bg-white dark:bg-[#1a1a1a] border-black/10 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20'
+ :'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-white/80 dark:hover:bg-[#7C2D12]/20'
  }`}
  >
  <VibeIcon name={v.iconName} className={`w-3.5 h-3.5 ${isSelected ?'text-white' :'text-[#7C2D12] dark:text-[#fca5a5]'}`} />
@@ -239,7 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  Eatery Price Budget
  </span>
- <div className="grid grid-cols-5 bg-black dark:bg-[#222222] p-1 rounded-2xl">
+ <div className="grid grid-cols-5 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl">
  {eatPriceFilters.map((p, idx) => {
  const isSelected = dimensions.capacity === p.value;
  return (
@@ -248,7 +248,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  onClick={() => onChange({ ...dimensions, capacity: p.value })}
  className={`py-2 px-0.5 rounded-xl transition-all cursor-pointer text-center text-[10px] font-bold font-sans ${
  isSelected
- ?'bg-white dark:bg-[#1a1a1a] shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-[#7C2D12] dark:text-[#fca5a5]'
+ ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
  }`}
  >
@@ -274,10 +274,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`p-3.5 rounded-2xl border flex items-center gap-2.5 transition-all cursor-pointer text-left shadow-sm ${
  isSelected
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
- :'bg-white dark:bg-[#1a1a1a] border-black dark:border-[#444] text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20'
+ :'glass-subtle border-white/20 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] dark:hover:border-[#7C2D12]/50'
  }`}
  >
- <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isSelected ?'bg-white dark:bg-[#1a1a1a]' :'bg-[#FAF2F0] dark:bg-[#7C2D12]/20'}`}>
+ <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isSelected ?'bg-white/20' :'bg-white/30 dark:bg-[#7C2D12]/20'}`}>
  <CuisineIcon name={c.iconName} className={isSelected ?'text-white' :'text-[#7C2D12] dark:text-[#fca5a5]'} />
  </div>
  <span className="text-xs font-bold font-sans">{c.label}</span>
@@ -306,10 +306,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`p-3.5 rounded-2xl border flex items-center gap-2.5 transition-all cursor-pointer text-left shadow-sm ${
  isSelected
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
- :'bg-white dark:bg-[#1a1a1a] border-black dark:border-[#444] text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20'
+ :'glass-subtle border-white/20 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] dark:hover:border-[#7C2D12]/50'
  }`}
  >
- <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isSelected ?'bg-white dark:bg-[#1a1a1a]' :'bg-[#FAF2F0] dark:bg-[#7C2D12]/20'}`}>
+ <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isSelected ?'bg-white/20' :'bg-white/30 dark:bg-[#7C2D12]/20'}`}>
  <CuisineIcon name={c.iconName} className={isSelected ?'text-white' :'text-[#7C2D12] dark:text-[#fca5a5]'} />
  </div>
  <span className="text-xs font-bold font-sans">{c.label}</span>
@@ -324,7 +324,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  How much time do you have?
  </span>
- <div className="grid grid-cols-3 bg-black dark:bg-[#222222] p-1 rounded-2xl">
+ <div className="grid grid-cols-3 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl">
  {effortLevels.map((e) => {
  const isSelected = dimensions.capacity === e.value;
  return (
@@ -333,7 +333,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  onClick={() => handleSelectEffort(e.value)}
  className={`flex flex-col py-2 px-1 rounded-xl transition-all cursor-pointer text-center ${
  isSelected
- ?'bg-white dark:bg-[#1a1a1a] shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-[#7C2D12] dark:text-[#fca5a5]'
+ ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
  }`}
  >

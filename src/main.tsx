@@ -1,5 +1,6 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import {APIProvider} from '@vis.gl/react-google-maps';
 
 // Defensive patch to prevent third-party scripts from crashing when trying to assign to window.fetch
 if (typeof window !== 'undefined') {
@@ -24,6 +25,8 @@ import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
+      <App />
+    </APIProvider>
   </StrictMode>,
 );

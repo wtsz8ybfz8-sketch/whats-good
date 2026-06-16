@@ -16,7 +16,7 @@ export const LoadingState: React.FC<LoadingProps> = ({
  subtitle ="This won't take long.",
 }) => {
  return (
- <div className="max-w-[450px] mx-auto text-center py-16 sm:py-24 px-8 bg-white/40 dark:bg-[#1a1a1a]/40 backdrop-blur-md border border-white/60 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-[450px] mx-auto text-center py-16 sm:py-24 px-8 glass rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="relative mb-8">
  <div className="w-16 h-16 border-4 border-[#FAF2F0] border-t-[#7C2D12] rounded-full animate-spin" />
  <div className="absolute inset-0 flex items-center justify-center">
@@ -45,7 +45,7 @@ export const ErrorState: React.FC<ErrorProps> = ({
  onRetry,
 }) => {
  return (
- <div className="max-w-[420px] mx-auto text-center py-16 sm:py-24 px-8 bg-white/40 dark:bg-[#1a1a1a]/40 backdrop-blur-md border border-white/60 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-[420px] mx-auto text-center py-16 sm:py-24 px-8 glass rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6 border border-red-100">
  <AlertCircle className="w-6 h-6" />
  </div>
@@ -71,7 +71,7 @@ interface EmptyProps {
 
 export const EmptyState: React.FC<EmptyProps> = ({ onSearchRandom }) => {
  return (
- <div className="max-w-[500px] mx-auto text-center py-16 sm:py-24 px-8 bg-white/50 dark:bg-[#1a1a1a]/50 backdrop-blur-md border border-white/60 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.02)] flex flex-col items-center justify-center animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-[500px] mx-auto text-center py-16 sm:py-24 px-8 glass rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="w-14 h-14 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mb-6">
  <Compass className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>

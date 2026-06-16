@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from'react';
 import { ParsedRecipe } from'../types';
-import { Clock, Users, Flame, ChevronLeft, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, Activity, MapPin, Star, Phone, Navigation, Sparkles, AlertCircle } from'lucide-react';
+import { Clock, Flame, ChevronLeft, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, Activity, MapPin, Star } from'lucide-react';
 
 interface RecipeViewProps {
  recipes: ParsedRecipe[];
@@ -100,254 +100,6 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  }));
  };
 
- // If a specific recipe is selected, show its glorious detailed page
- if (selectedRecipe) {
- const r = selectedRecipe;
- const isRestaurant = r.id.startsWith('eat');
- const rawEatery = (r as any).rawEatery;
-
- if (isRestaurant && rawEatery) {
- const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawEatery.name +'' + rawEatery.address)}`;
- return (
- <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] px-2 sm:px-4 py-4">
- {/* Navigation back header if we have other recipes in list */}
- <button
- onClick={() => onSelectRecipe(null)}
- className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer text-left"
- >
- <ChevronLeft className="w-3.5 h-3.5" />
- {isSavedTab ? (
- <span>Back to Saved Locations ({recipes.length} saved)</span>
-) : (
- <span>Back to results ({recipes.length} found)</span>
-)}
- </button>
-
- <div className="flex flex-col gap-6 sm:gap-8">
- {/* Badge row & Save Action */}
- <div className="flex flex-wrap items-center justify-between gap-4">
- <div className="flex flex-wrap gap-2 items-center">
- <span className="font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5]">
- {rawEatery.cuisine}
- </span>
- <span className="font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-[#FFFBEB] dark:bg-[#D97706]/20 text-[#D97706] flex items-center gap-1">
- <Star className="w-3 h-3 fill-current text-amber-500" /> {rawEatery.rating}
- </span>
- <span className="font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-black dark:bg-[#222222] text-white font-extrabold">
- {rawEatery.priceSymbol} Tier
- </span>
- </div>
-
- <button
- onClick={() => onToggleSave(r)}
- className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold font-sans transition-all cursor-pointer shadow-sm ${
- savedIds.includes(r.id)
- ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E] hover:border-[#5E220E]'
- :'bg-white dark:bg-[#1a1a1a] text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20'
- }`}
- >
- <Heart className={`w-3.5 h-3.5 transition-transform ${savedIds.includes(r.id) ?'fill-current scale-110' :''}`} />
- {savedIds.includes(r.id) ?'Saved' :'Save Establishment'}
- </button>
- </div>
-
- {/* Heading */}
- <div>
- <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-[#1A1A1A] dark:text-[#f5f5f5]">
- {rawEatery.name}
- </h2>
- <div className="flex flex-wrap items-center text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] font-sans mt-3 gap-2">
- <MapPin className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5]" />
- <span>{rawEatery.address}</span>
- <span className="opacity-40">•</span>
- <span className="font-mono font-bold text-[#7C2D12] dark:text-[#fca5a5]">{r.tags[1]}</span>
- </div>
- </div>
-
- {/* Hero Image */}
- <div className="w-full h-64 sm:h-96 rounded-3xl overflow-hidden border border-black dark:border-[#444] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06),0_12px_40px_rgba(0,0,0,0.05)] relative group bg-[#F2F1EE] dark:bg-[#222222]">
- <img
- src={r.image}
- alt={rawEatery.name}
- referrerPolicy="no-referrer"
- className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
- />
- {/* Premium aesthetic overlay */}
- <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 mix-blend-multiply transition-opacity duration-500 group-hover:opacity-40" />
- </div>
-
- {/* Google Maps and Contact Actions Block */}
- <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white dark:bg-[#1a1a1a] p-3 rounded-2xl border border-black dark:border-[#444] shadow-sm">
- <a
- href={gmapsUrl}
- target="_blank"
- rel="noopener noreferrer"
- className="flex items-center justify-center gap-2 py-3 px-4 bg-[#7C2D12] hover:bg-[#5E220E] text-white text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95 text-center shadow-sm"
- >
- <Navigation className="w-4 h-4" />
- Open in Google Maps
- </a>
- <a
- href={`tel:${rawEatery.phone.replace(/\s+/g,'')}`}
- className="flex items-center justify-center gap-2 py-3 px-4 bg-[#FAF9F6] dark:bg-[#111111] hover:bg-black dark:bg-[#222222] text-black dark:text-[#f5f5f5] border border-black dark:border-[#444] text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95 text-center"
- >
- <Phone className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5]" />
- Call Eatery: {rawEatery.phone}
- </a>
- <a
- href={rawEatery.externalLink}
- target="_blank"
- rel="noopener noreferrer"
- className="flex items-center justify-center gap-2 py-3 px-4 bg-[#FAF9F6] dark:bg-[#111111] hover:bg-black dark:bg-[#222222] text-[#5b7993] border border-black dark:border-[#444] text-xs font-semibold rounded-xl transition-all cursor-pointer active:scale-95 text-center"
- >
- <ExternalLink className="w-4 h-4" />
- Visit Official Site
- </a>
- </div>
-
- {/* Exclusive App Deal Container */}
- <div className="bg-gradient-to-r from-[#FFF9F7] to-[#FAF2F0] border border-[#F5D1C9] dark:border-[#7C2D12]/40 rounded-3xl p-6 sm:p-8 flex flex-col justify-start relative shadow-[0_8px_30px_rgba(124,45,18,0.03)] border-dashed">
- <div className="flex items-center gap-2 mb-2">
- <Sparkles className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#7C2D12] dark:text-[#fca5a5] font-semibold">
- Sourced Partner Deal
- </span>
- </div>
- <h3 className="font-serif text-xl sm:text-2xl font-extrabold text-[#1A1A1A] dark:text-[#f5f5f5] mb-3">
- Claim VIP Voucher Offer
- </h3>
- <p className="text-xs sm:text-sm text-[#3c3830] leading-relaxed mb-6">
- Redeem this exclusive What\'s Good deal on-site. Inform your waitron of the private voucher code below before payment.
- </p>
-
- <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
- <div className="flex-1 bg-white dark:bg-[#1a1a1a] border border-[#F5D1C9] dark:border-[#7C2D12]/40 rounded-xl px-4 py-3.5 text-center font-sans font-bold text-sm sm:text-base text-[#7C2D12] dark:text-[#fca5a5] select-all shadow-inner border-dashed">
- {rawEatery.voucherOffer}
- </div>
- <button
- onClick={() => triggerToast(`Voucher activated! Show this screen at the venue to claim: ${rawEatery.voucherOffer}`)}
- className="px-6 py-3.5 bg-black dark:bg-[#222222] hover:bg-[#7C2D12] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer active:scale-95 whitespace-nowrap"
- >
- Verify Partner Offer
- </button>
- </div>
- </div>
-
- {/* Custom Interactive Chef Plate and Nutrition Benefits layout */}
- <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 mt-4">
- <div className="md:col-span-7 flex flex-col gap-5">
- <div className="pb-3 border-b-2 border-amber-500/20 flex items-center gap-2.5">
- <Flame className="w-6 h-6 text-amber-500" />
- <h3 className="font-serif text-xl sm:text-2xl font-black text-[#1A1A1A] dark:text-[#f5f5f5] tracking-tight">
- Chef\'s Curated Recommendation
- </h3>
- </div>
-
- <div className="bg-gradient-to-br from-[#1A1A1A] to-[#2C2C2C] border-none p-7 sm:p-8 rounded-[2rem] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] flex flex-col gap-6 relative overflow-hidden group">
- <div className="absolute -right-16 -top-16 opacity-5 mix-blend-overlay rotate-12 transition-transform duration-700 group-hover:rotate-45">
- <Flame className="w-64 h-64 text-white" />
- </div>
- <div className="relative z-10">
- <span className="font-mono text-[10px] uppercase tracking-[2px] text-amber-400 font-bold mb-2 block">Signature Selection Plate</span>
- <h4 className="font-serif text-2xl sm:text-3xl font-extrabold text-white leading-tight mt-1 mb-3">
- {rawEatery.signatureOrder}
- </h4>
- <p className="text-sm sm:text-base text-gray-300 leading-relaxed font-sans max-w-[90%]">
- {rawEatery.signatureDescription}
- </p>
- </div>
-
- <div className="pt-5 border-t border-white/10 relative z-10">
- <span className="font-mono text-[9px] uppercase tracking-[1.5px] text-gray-400 block mb-3">Core Ingredients Spotlight</span>
- <div className="flex flex-wrap gap-2">
- {rawEatery.signatureIngredients.map((ing: string, idx: number) => (
- <span key={idx} className="bg-white dark:bg-[#1a1a1a] backdrop-blur-md border border-white/5 rounded-xl px-3 py-1.5 text-xs text-white font-sans font-medium tracking-wide">
- {ing}
- </span>
-))}
- </div>
- </div>
- </div>
- </div>
-
- <div className="md:col-span-5 flex flex-col gap-5">
- <div className="pb-3 border-b-2 border-[#7C2D12]/20 flex items-center gap-2.5">
- <Activity className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
- <h3 className="font-serif text-xl sm:text-2xl font-black text-[#1A1A1A] dark:text-[#f5f5f5] tracking-tight">
- Wellness Insight
- </h3>
- </div>
-
- <div className="bg-[#FFFDFB] border border-[#F5D1C9] dark:border-[#7C2D12]/40 rounded-[2rem] p-6 sm:p-8 shadow-sm flex flex-col justify-center h-full">
- <div className="flex items-start gap-4 mb-4">
- <div className="w-12 h-12 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center flex-shrink-0">
- <Heart className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
- </div>
- <div>
- <strong className="block text-xs font-black text-[#7C2D12] dark:text-[#fca5a5] uppercase tracking-[1px] mb-1">
- Digestive Harmony Benefit
- </strong>
- <p className="text-sm text-[#4A4741] leading-relaxed font-sans">
- {rawEatery.digestiveNote}
- </p>
- </div>
- </div>
- </div>
-
- {/* Logistics */}
- <div className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] p-5 rounded-2xl shadow-sm flex flex-col gap-3">
- <h4 className="font-serif text-sm font-bold text-[#1A1A1A] dark:text-[#f5f5f5] pb-2 border-b border-black dark:border-[#444]">
- Physical Establishment Details
- </h4>
- <div className="flex items-center justify-between text-xs font-mono py-1">
- <span className="text-[#6E6A64] dark:text-[#a3a3a3]">Estimated Wait</span>
- <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.estimatedWait}</span>
- </div>
- <div className="flex items-center justify-between text-xs font-mono py-1">
- <span className="text-[#6E6A64] dark:text-[#a3a3a3]">Proximity Distance</span>
- <span className="font-bold text-[#7C2D12] dark:text-[#fca5a5]">{r.tags[1]}</span>
- </div>
- <div className="flex items-center justify-between text-xs font-mono py-1">
- <span className="text-[#6E6A64] dark:text-[#a3a3a3]">Contact Helpline</span>
- <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.phone}</span>
- </div>
- <button
- onClick={() => triggerToast(`Secured pre-vetted table booking. Slotted for current coordinates successfully!`)}
- className="w-full mt-2 py-2.5 bg-black dark:bg-[#222222] hover:bg-[#7C2D12] text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
- >
- Instant Seating Spot
- </button>
- </div>
- </div>
- </div>
-
- {/* Alternate recommendations panel */}
- <div className="pt-8 border-t border-black dark:border-[#444] flex items-center justify-between">
- <button
- onClick={() => onSelectRecipe(null)}
- className="px-5 py-3 bg-transparent border border-black dark:border-[#444] text-black dark:text-[#f5f5f5] hover:bg-[#FAF9F6] dark:bg-[#111111] hover:border-black dark:border-[#444] rounded-xl font-sans text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
- >
- Back to List
- </button>
- <button
- onClick={onRegenerate}
- className="px-5 py-3 bg-transparent border border-[#7C2D12] text-[#7C2D12] dark:text-[#fca5a5] hover:bg-[#7C2D12] hover:text-white rounded-xl font-sans text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
- >
- Find other dine outs
- </button>
- </div>
- </div>
-
- {toastMsg && (
- <div className="fixed bottom-6 right-6 z-50 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-white/10 max-w-sm">
- <div className="w-2.5 h-2.5 rounded-full bg-[#7C2D12] animate-pulse flex-shrink-0" />
- <span>{toastMsg}</span>
- </div>
-)}
- </div>
-);
- }
- }
 
  // If a specific recipe is selected, show its glorious detailed page
  if (selectedRecipe) {
@@ -386,7 +138,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold font-sans transition-all cursor-pointer shadow-sm ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E] hover:border-[#5E220E]'
- :'bg-white dark:bg-[#1a1a1a] text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20'
+ :'glass text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:border-[#7C2D12]/60'
  }`}
  >
  <Heart className={`w-3.5 h-3.5 transition-transform ${savedIds.includes(r.id) ?'fill-current scale-110' :''}`} />
@@ -536,7 +288,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="flex flex-col gap-6 pt-4">
  {r.steps.map((step, idx) => (
  <div key={idx} className="flex gap-4 group/step">
- <div className="font-mono text-xs font-bold w-7 h-7 rounded-full border border-[#e6e4e0] dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-[#1A1A1A] dark:text-[#f5f5f5] flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5 transition-colors group-hover/step:border-[#7C2D12] group-hover/step:text-[#7C2D12] dark:text-[#fca5a5]">
+ <div className="font-mono text-xs font-bold w-7 h-7 rounded-full border border-black/10 dark:border-white/15 bg-white/70 dark:bg-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5 transition-colors group-hover/step:border-[#7C2D12] group-hover/step:text-[#7C2D12] dark:group-hover/step:text-[#fca5a5]">
  {idx + 1}
  </div>
  <p className="font-sans text-sm sm:text-[15px] leading-relaxed text-[#1A1A1A] dark:text-[#f5f5f5] pt-0.5">
@@ -585,7 +337,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {r.id.startsWith('eat') ? (
  <>
  {/* Cape Town Eatery Actions */}
- <div className="bg-white dark:bg-[#1a1a1a] border border-[#F5D1C9] dark:border-[#7C2D12]/40 p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_12px_32px_rgba(124,45,18,0.04)] group transition-all duration-300">
+ <div className="glass p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_16px_40px_rgba(124,45,18,0.12)] group transition-all duration-300 border-[#F5D1C9] dark:border-[#7C2D12]/40">
  <div>
  <div className="w-10 h-10 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center mb-4 text-[#7C2D12] dark:text-[#fca5a5]">
  <ShoppingBag className="w-5 h-5" />
@@ -603,9 +355,9 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </button>
  </div>
 
- <div className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_12px_32px_rgba(0,0,0,0.03)] group transition-all duration-300">
+ <div className="glass p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_16px_40px_rgba(0,0,0,0.15)] group transition-all duration-300">
  <div>
- <div className="w-10 h-10 rounded-2xl bg-[#FAF9F6] dark:bg-[#111111] border border-black dark:border-[#444] flex items-center justify-center mb-4 text-[#7C2D12] dark:text-[#fca5a5]">
+ <div className="w-10 h-10 rounded-2xl bg-white/30 dark:bg-white/10 border border-white/20 dark:border-white/10 flex items-center justify-center mb-4 text-[#7C2D12] dark:text-[#fca5a5]">
  <Store className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
  <h4 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-1.5">Reserve Table Nearby</h4>
@@ -624,7 +376,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 ) : (
  <>
  {/* Grocery Delivery Integration */}
- <div className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] p-6 sm:p-8 rounded-[2rem] shadow-sm flex flex-col gap-5 hover:shadow-md transition-shadow">
+ <div className="glass p-6 sm:p-8 rounded-[2rem] flex flex-col gap-5 transition-shadow">
  <div>
  <h4 className="font-serif text-2xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-2 flex items-center gap-2">
  <ShoppingBag className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
@@ -673,7 +425,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  window.open('https://www.pnp.co.za/search?q=' + q,'_blank');
  triggerToast(`Opening PnP Asap! with ${r.ingredients.length} items...`);
  }}
- className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-[#1264A3]/10 bg-[#FAF9F6] dark:bg-[#111111] hover:bg-[#1264A3]/5 hover:border-[#1264A3]/30 transition-all cursor-pointer group active:scale-95"
+ className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-[#1264A3]/10 glass-subtle hover:border-[#1264A3]/30 transition-all cursor-pointer group active:scale-95"
  >
  <div className="flex gap-1 mb-3 transform group-hover:-translate-y-1 transition-transform">
  <span className="bg-[#1264A3] text-white font-extrabold text-sm px-2.5 py-1 rounded-l-md">PnP</span>
@@ -684,9 +436,9 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
  </div>
 
- <div className="bg-white dark:bg-[#1a1a1a] border border-black dark:border-[#444] p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_12px_32px_rgba(0,0,0,0.03)] group transition-all duration-300">
+ <div className="glass p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_16px_40px_rgba(0,0,0,0.15)] group transition-all duration-300">
  <div>
- <div className="w-10 h-10 rounded-2xl bg-[#FAF9F6] dark:bg-[#111111] border border-black dark:border-[#444] flex items-center justify-center mb-4 text-[#5b7993]">
+ <div className="w-10 h-10 rounded-2xl bg-white/30 dark:bg-white/10 border border-white/20 dark:border-white/10 flex items-center justify-center mb-4 text-[#5b7993]">
  <Store className="w-5 h-5" />
  </div>
  <h4 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-1.5">Dine Out Nearby</h4>
@@ -754,7 +506,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </h2>
  <p className="text-[#6E6A64] dark:text-[#a3a3a3] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
  {recipes.some((r) => r.id.startsWith('eat'))
- ?'Tap any eatery to unlock exclusive local voucher deals, GPS routing, call helplines, and chef-recommended signature plates.'
+ ?'Tap any eatery for directions, contact details, wait times, and the current featured deal.'
  :'Tap any recipe to see the full ingredients and step-by-step home cooking checklist.'}
  </p>
  </div>
@@ -765,89 +517,52 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  const rawEatery = (r as any).rawEatery;
 
  if (isRestaurant && rawEatery) {
+ // Minimal restaurant card — name, cuisine, rating, price tier, distance only.
+ // No food photos, no signature dishes, no plate copy.
  return (
  <div
  key={r.id}
  onClick={() => onSelectRecipe(r)}
- className="bg-white dark:bg-[#1a1a1a] rounded-3xl border border-black/10 dark:border-white/10 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative"
+ className="glass rounded-2xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative"
  >
- {/* Image Banner */}
- <div className="w-full h-52 sm:h-60 bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
- <img
- src={r.image}
- alt={r.name}
- referrerPolicy="no-referrer"
- className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
- />
- {/* Premium gradient overlay for text legibility and depth */}
- <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-80 mix-blend-multiply pointer-events-none transition-opacity duration-300 group-hover:opacity-60" />
- 
- {/* Status Badges */}
- <div className="absolute top-4 left-4 flex flex-wrap gap-1.5 z-10">
- <span className="bg-amber-600/90 text-white font-mono text-[8px] font-black uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full shadow-md backdrop-blur-md">
- Featured
- </span>
- <span className="bg-white dark:bg-[#1a1a1a] backdrop-blur-md text-[#7C2D12] dark:text-[#fca5a5] text-[9px] font-bold px-2.5 py-1.5 rounded-full shadow-md">
- {rawEatery.cuisine}
- </span>
- </div>
- {/* Star Rating & Price */}
- <div className="absolute bottom-4 left-4 bg-black dark:bg-[#222222] backdrop-blur-lg border border-white/10 px-3 py-1.5 rounded-full text-white font-mono text-[10px] font-bold flex items-center gap-1.5 z-10 shadow-lg">
- <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 drop-shadow-md" />
- <span className="tracking-widest">{rawEatery.rating}</span>
- <span className="opacity-40 font-light px-0.5">|</span>
- <span className="text-amber-300 tracking-wider">{rawEatery.priceSymbol}</span>
- </div>
  {/* Save button */}
- <div className="absolute top-3 right-3 z-10">
  <button
  type="button"
  onClick={(e) => {
  e.stopPropagation();
  onToggleSave(r);
  }}
- className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm border transition-all ${
+ className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
  savedIds.includes(r.id)
- ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E]'
- :'bg-white dark:bg-[#1a1a1a] text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:bg-white dark:bg-[#1a1a1a] hover:scale-110'
+ ?'bg-[#7C2D12] text-white'
+ :'text-[#9E9A94] dark:text-[#666] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] hover:bg-black/5 dark:hover:bg-white/5'
  }`}
- title={savedIds.includes(r.id) ?'Remove Favorite' :'Save Favorite'}
+ title={savedIds.includes(r.id) ?'Remove from saved' :'Save eatery'}
  >
  <Heart className={`w-4 h-4 ${savedIds.includes(r.id) ?'fill-current' :''}`} />
  </button>
- </div>
- </div>
 
- {/* Core Copy */}
- <div className="p-6 flex flex-col flex-1">
- <div className="flex items-center justify-between text-[10px] font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] uppercase tracking-wider mb-1">
- <span className="line-clamp-1 max-w-[60%]">{rawEatery.cuisine}</span>
- <span className="text-[#7C2D12] dark:text-[#fca5a5] flex items-center gap-1 shrink-0">
- <MapPin className="w-3 h-3" /> {r.tags[1]}
+ {/* Cuisine tag */}
+ <span className="inline-flex self-start font-mono text-[9px] font-bold uppercase tracking-[1.5px] px-2.5 py-1 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] mb-4 max-w-[70%] truncate">
+ {rawEatery.cuisine}
  </span>
- </div>
- <h3 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] group-hover:text-[#7C2D12] dark:text-[#fca5a5] transition-colors leading-snug line-clamp-1 mb-1">
+
+ {/* Name */}
+ <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug mb-4 pr-8">
  {rawEatery.name}
  </h3>
- <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] line-clamp-2 leading-relaxed mb-4">
- <span className="font-extrabold text-[#7C2D12] dark:text-[#fca5a5] font-sans">Plate: </span>
- {rawEatery.signatureOrder} — {rawEatery.signatureDescription}
- </p>
 
- {/* Active Offer Promo Strip */}
- <div className="mt-auto bg-[#FFF9F7] dark:bg-[#7C2D12]/10 border border-[#F5D1C9] dark:border-[#7C2D12]/40 p-2.5 rounded-xl mb-4 text-[11px] font-sans text-center text-[#7C2D12] dark:text-[#fca5a5] font-semibold flex items-center justify-center gap-1.5 shadow-sm border-dashed">
- <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse flex-shrink-0" />
- <span className="line-clamp-1 truncate">{rawEatery.voucherOffer}</span>
- </div>
-
- <div className="pt-3 border-t border-[#f3f1ed] flex items-center justify-between text-[#6E6A64] dark:text-[#a3a3a3]">
- <span className="text-[10px] sm:text-[11px] font-mono flex items-center gap-1.5 whitespace-nowrap">
- <Clock className="w-3.5 h-3.5 text-[#7C2D12] dark:text-[#fca5a5]" /> Wait: {rawEatery.estimatedWait}
+ {/* Rating · price · distance */}
+ <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-mono text-[#6E6A64] dark:text-[#a3a3a3]">
+ <span className="flex items-center gap-1 text-[#1A1A1A] dark:text-[#f5f5f5] font-bold">
+ <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {rawEatery.rating}
  </span>
- <span className="text-[10px] sm:text-[11px] text-[#7C2D12] dark:text-[#fca5a5] font-sans font-extrabold group-hover:underline flex items-center gap-1 shrink-0">
- View details & deal →
+ <span className="opacity-30">·</span>
+ <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.priceSymbol}</span>
+ <span className="opacity-30">·</span>
+ <span className="flex items-center gap-1 text-[#7C2D12] dark:text-[#fca5a5] font-bold">
+ <MapPin className="w-3 h-3" /> {r.tags[1]}
  </span>
- </div>
  </div>
  </div>
 );
@@ -857,7 +572,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div
  key={r.id}
  onClick={() => onSelectRecipe(r)}
- className="bg-white dark:bg-[#1a1a1a] rounded-3xl border border-black/10 dark:border-white/10 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.10)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative"
+ className="glass rounded-3xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative"
  >
  {/* Image banner */}
  <div className="w-full h-52 sm:h-60 bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
@@ -871,7 +586,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-60 mix-blend-multiply pointer-events-none transition-opacity duration-300 group-hover:opacity-40" />
  
  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
- <span className="bg-white dark:bg-[#1a1a1a] backdrop-blur-md shadow-md text-[9px] font-black uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
+ <span className="bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-[9px] font-black uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
  {r.category}
  </span>
  </div>
@@ -885,7 +600,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm border transition-all ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E]'
- :'bg-white dark:bg-[#1a1a1a] text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:bg-white dark:bg-[#1a1a1a] hover:scale-110'
+ :'bg-white/80 dark:bg-black/50 backdrop-blur-md text-[#7C2D12] dark:text-[#fca5a5] border-white/40 dark:border-white/20 hover:scale-110'
  }`}
  title={savedIds.includes(r.id) ?'Remove Recipe' :'Save Recipe'}
  >
