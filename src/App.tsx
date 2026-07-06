@@ -76,7 +76,7 @@ function createEateryResult(
  name: eatery.name,
  category: eatery.cuisine,
  area:`${city}, ZA`,
- instructions: `${eatery.signatureDescription}\n\nDining Notes: Located at ${eatery.address}. Proximity distance from you is ${distanceStr}.`,
+ instructions: `${eatery.signatureDescription}\n\nLocated at ${eatery.address} — ${distanceStr}.`,
  image: imgUrl,
  tags: [
  eatery.vibeMatch,
@@ -350,7 +350,7 @@ export default function App() {
  }
  } catch (err) {
  console.error('Error fetching recipes:', err);
- setError('Connection disrupted. We were unable to safely retrieve the requested real recipe metrics.');
+ setError('Something went wrong while fetching results. Check your connection and try again.');
  } finally {
  setIsLoading(false);
  }
@@ -476,8 +476,8 @@ export default function App() {
  ],
  ingredients: randomEatery.signatureIngredients,
  steps: [
- `Determine spatial coordinates towards ${randomEatery.address} (${distanceStr}).`,
- `Dine premium with delicious choice: ${randomEatery.signatureOrder}`
+ `Head to ${randomEatery.address} (${distanceStr}).`,
+ `Try the recommended order: ${randomEatery.signatureOrder}`
  ],
  prepTime: randomEatery.estimatedWait,
  cookTime: randomEatery.priceSymbol,

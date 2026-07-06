@@ -328,34 +328,13 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
 )}
 
- {/* NATIVE LOCAL NEIGHBORHOOD INTEGRATION */}
+ {/* Grocery delivery & dine-out follow-ups — recipes only */}
+ {!r.id.startsWith('eat') && (
  <div className="border-t border-black dark:border-[#444] pt-8 mt-4 select-none">
  <span className="font-mono text-[9px] uppercase tracking-[2px] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-4">
- Integrated Southern African Transits
+ Get it sorted
  </span>
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- {r.id.startsWith('eat') ? (
- <>
- {/* Cape Town Eatery Actions */}
- <div className="glass p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_16px_40px_rgba(0,0,0,0.15)] group transition-all duration-300">
- <div>
- <div className="w-10 h-10 rounded-2xl bg-white/30 dark:bg-white/10 border border-white/20 dark:border-white/10 flex items-center justify-center mb-4 text-[#7C2D12] dark:text-[#fca5a5]">
- <Store className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
- </div>
- <h4 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-1.5">Reserve Table Nearby</h4>
- <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-6">
- Coordinate real-time seating. Queries active table slots based on your current device coordinates and location.
- </p>
- </div>
- <button
- onClick={() => triggerToast(`Polling live table configurations at ${r.name}... Secure slots locked in for your location!`)}
- className="w-full py-3 bg-transparent border border-black dark:border-[#444] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:text-[#fca5a5] text-black dark:text-[#f5f5f5] text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95"
- >
- Instant Booking Slot
- </button>
- </div>
- </>
-) : (
  <>
  {/* Grocery Delivery Integration */}
  <div className="glass p-6 sm:p-8 rounded-[2rem] flex flex-col gap-5 transition-shadow">
@@ -433,7 +412,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  if (onFindCorrespondingRestaurants) {
  onFindCorrespondingRestaurants(r);
  } else {
- triggerToast(`Scanning Cape Town fine dining coordinates making traditional ${r.category} specialties...`);
+ triggerToast(`Looking for restaurants serving ${r.category} dishes...`);
  }
  }}
  className="w-full py-3 bg-transparent border border-black dark:border-[#444] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:text-[#fca5a5] text-black dark:text-[#f5f5f5] text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95"
@@ -442,9 +421,9 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </button>
  </div>
  </>
+ </div>
+ </div>
 )}
- </div>
- </div>
 
  {/* Alternative action buttons */}
  <div className="pt-8 border-t border-black dark:border-[#444] flex items-center justify-start gap-4">
