@@ -35,6 +35,9 @@ export interface ParsedRecipe {
 }
 
 export type LocationMode = 'dineout' | 'gourmet';
+export type City = 'Cape Town' | 'Joburg' | 'Durban' | 'Pretoria';
+
+export const CITIES: City[] = ['Cape Town', 'Joburg', 'Durban', 'Pretoria'];
 
 export interface Dimensions {
   vibe: string | null;

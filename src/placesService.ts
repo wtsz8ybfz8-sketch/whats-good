@@ -16,19 +16,37 @@ interface PlaceDisplayName {
   languageCode?: string;
 }
 
+interface PlaceOpeningHours {
+  openNow?: boolean;
+  weekdayDescriptions?: string[];
+}
+
 interface Place {
   id?: string;
   displayName?: PlaceDisplayName;
   formattedAddress?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
   rating?: number;
   priceLevel?: string;
   photos?: PlacePhoto[];
   nationalPhoneNumber?: string;
   websiteUri?: string;
+  regularOpeningHours?: PlaceOpeningHours;
 }
 
 interface PlacesSearchResponse {
   places?: Place[];
+}
+
+function getGooglePlacesKey(): string {
+  return (
+    (import.meta.env.VITE_GOOGLE_PLACES_KEY as string | undefined) ||
+    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ||
+    ''
+  );
 }
 
 function priceLevelToSymbol(level?: string): 'R' | 'RR' | 'RRR' | 'RRRR' {
@@ -49,7 +67,7 @@ function priceLevelToSymbol(level?: string): 'R' | 'RR' | 'RRR' | 'RRRR' {
 
 /** Returns a direct photo URL for a Google Places photo reference. */
 export function getPlacePhotoUrl(photoName: string): string {
-  const key = import.meta.env.VITE_GOOGLE_PLACES_KEY as string;
+  const key = getGooglePlacesKey();
   return `${PLACES_BASE}/${photoName}/media?maxWidthPx=800&key=${key}`;
 }
 
@@ -58,15 +76,18 @@ export function getPlacePhotoUrl(photoName: string): string {
  * Maps each result to SouthAfricanEatery format.
  * Returns an empty array on any failure so callers can silently fall back.
  */
-export async function fetchCapeTownEateries(query: string): Promise<SouthAfricanEatery[]> {
-  const key = import.meta.env.VITE_GOOGLE_PLACES_KEY as string;
+export async function fetchCapeTownEateries(
+  query: string,
+  city = 'Cape Town',
+): Promise<SouthAfricanEatery[]> {
+  const key = getGooglePlacesKey();
 
   if (!key) return [];
 
   try {
     const textQuery = query
-      ? `${query} restaurant Cape Town South Africa`
-      : 'restaurant Cape Town South Africa';
+      ? `${query} restaurant ${city} South Africa`
+      : `restaurant ${city} South Africa`;
 
     const response = await fetch(`${PLACES_BASE}/places:searchText`, {
       method: 'POST',
@@ -77,6 +98,7 @@ export async function fetchCapeTownEateries(query: string): Promise<SouthAfrican
           'places.id',
           'places.displayName',
           'places.formattedAddress',
+          'places.location',
           'places.rating',
           'places.priceLevel',
           'places.photos',
@@ -115,19 +137,18 @@ export async function fetchCapeTownEateries(query: string): Promise<SouthAfrican
         id: `eat-places-${place.id ?? index}`,
         name,
         address,
-        cuisine: 'Cape Town Restaurant',
+        cuisine: `${city} Restaurant`,
         vibeMatch: 'feeling adventurous',
-        fallbackDistance: 'Cape Town',
+        fallbackDistance: city,
         rating,
         priceSymbol,
-        voucherOffer: `Show this screen at ${name} for your What's Good featured visit`,
         signatureOrder: `House specialty at ${name}`,
         signatureDescription: `A featured dining experience at ${name}, located at ${address}.`,
         signatureIngredients: [],
-        digestiveNote: `${name} is a Cape Town restaurant. Always check current menus and allergens directly with the venue. ⚕️ General wellness info — not medical advice.`,
+        digestiveNote: `${name} is a Cape Town restaurant. Always check current menus and allergens directly with the venue. General wellness info — not medical advice.`,
         externalLink: website,
-        latitude: -33.9249,   // Cape Town city centre fallback
-        longitude: 18.4241,
+        latitude: place.location?.latitude ?? -33.9249,
+        longitude: place.location?.longitude ?? 18.4241,
         phone,
         estimatedWait: 'Check with venue',
         photoUrl,

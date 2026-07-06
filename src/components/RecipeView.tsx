@@ -337,24 +337,6 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {r.id.startsWith('eat') ? (
  <>
  {/* Cape Town Eatery Actions */}
- <div className="glass p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_16px_40px_rgba(124,45,18,0.12)] group transition-all duration-300 border-[#F5D1C9] dark:border-[#7C2D12]/40">
- <div>
- <div className="w-10 h-10 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center mb-4 text-[#7C2D12] dark:text-[#fca5a5]">
- <ShoppingBag className="w-5 h-5" />
- </div>
- <h4 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-1.5">Claim Partner Deal</h4>
- <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-6">
- Claim premium partner-curated specials and exclusive discounts negotiated off-list. Present this screen to your server at the host table.
- </p>
- </div>
- <button 
- onClick={() => triggerToast(`Partner voucher verified! CodeWG-PARTNER is active. Show this screen to your server.`)}
- className="w-full py-3 bg-[#1A1A1A] dark:bg-[#2a2a2a] hover:bg-[#7C2D12] text-white text-xs font-bold rounded-2xl transition-all cursor-pointer shadow-sm active:scale-95"
- >
- Redeem Partner Special
- </button>
- </div>
-
  <div className="glass p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_16px_40px_rgba(0,0,0,0.15)] group transition-all duration-300">
  <div>
  <div className="w-10 h-10 rounded-2xl bg-white/30 dark:bg-white/10 border border-white/20 dark:border-white/10 flex items-center justify-center mb-4 text-[#7C2D12] dark:text-[#fca5a5]">
@@ -506,7 +488,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </h2>
  <p className="text-[#6E6A64] dark:text-[#a3a3a3] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
  {recipes.some((r) => r.id.startsWith('eat'))
- ?'Tap any eatery for directions, contact details, wait times, and the current featured deal.'
+ ?'Tap any eatery for directions, contact details, and wait times.'
  :'Tap any recipe to see the full ingredients and step-by-step home cooking checklist.'}
  </p>
  </div>

@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>What's Good - Restaurant First Preview</title>
+    <style>
+      :root {
+        --ink: #17120f;
+        --muted: #6f6860;
+        --paper: #fbf7f1;
+        --line: rgba(23, 18, 15, 0.12);
+        --accent: #7c2d12;
+        --accent-soft: #faebe4;
+        --white: rgba(255, 255, 255, 0.76);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 12% 8%, rgba(246, 192, 154, 0.38), transparent 34%),
+          radial-gradient(circle at 86% 88%, rgba(124, 45, 18, 0.18), transparent 32%),
+          linear-gradient(145deg, #fbf7f1 0%, #f1e3d8 52%, #fbf8f2 100%);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.035;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 14px 28px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.52);
+        background: rgba(255, 255, 255, 0.62);
+        backdrop-filter: blur(24px) saturate(160%);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 25px;
+        font-weight: 800;
+      }
+
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        color: white;
+        background: var(--ink);
+        font: 800 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .brand em { color: var(--accent); font-weight: 400; }
+
+      nav {
+        display: flex;
+        gap: 6px;
+        padding: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.62);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.42);
+        overflow-x: auto;
+      }
+
+      nav button {
+        border: 0;
+        border-radius: 999px;
+        padding: 8px 14px;
+        color: var(--muted);
+        background: transparent;
+        font-weight: 800;
+        font-size: 12px;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+
+      nav button.active {
+        color: white;
+        background: var(--ink);
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 28px auto 80px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 0.94fr 1.06fr;
+        gap: 28px;
+        align-items: stretch;
+      }
+
+      .panel {
+        border: 1px solid rgba(255, 255, 255, 0.62);
+        border-radius: 28px;
+        background: var(--white);
+        box-shadow: 0 16px 46px rgba(65, 33, 18, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(26px) saturate(160%);
+      }
+
+      .controls { padding: 28px; }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--accent);
+        font: 800 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1, h2, h3 {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        letter-spacing: -0.02em;
+      }
+
+      h1 {
+        max-width: 520px;
+        font-size: clamp(42px, 6vw, 78px);
+        line-height: 0.94;
+      }
+
+      h1 em {
+        color: var(--accent);
+        font-weight: 400;
+      }
+
+      .subcopy {
+        max-width: 460px;
+        margin: 18px 0 26px;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
+      .section { margin-top: 24px; }
+
+      .label {
+        display: block;
+        margin-bottom: 10px;
+        color: var(--muted);
+        font: 800 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 10px 13px;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.52);
+        font-weight: 800;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .chip.active {
+        color: white;
+        background: var(--ink);
+      }
+
+      .slider-row {
+        display: grid;
+        grid-template-columns: 74px 1fr 80px;
+        gap: 14px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+
+      .featured {
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: 270px auto;
+      }
+
+      .photo {
+        position: relative;
+        background-image: linear-gradient(to top, rgba(0,0,0,0.44), transparent 56%), url("https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=1200&q=80");
+        background-size: cover;
+        background-position: center;
+      }
+
+      .photo span {
+        position: absolute;
+        left: 22px;
+        bottom: 20px;
+        color: white;
+        font: 800 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .match-body { padding: 28px; }
+
+      .match-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 8px 10px;
+        color: var(--accent);
+        background: var(--accent-soft);
+        font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h2 {
+        font-size: clamp(34px, 5vw, 58px);
+        line-height: 0.96;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin: 14px 0 18px;
+        color: var(--muted);
+        font: 800 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+      }
+
+      .quote {
+        margin: 0 0 24px;
+        color: #443c35;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+
+      .menu {
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+      }
+
+      .menu h3 {
+        margin-bottom: 12px;
+        font-size: 22px;
+      }
+
+      .menu-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 9px 0;
+        border-bottom: 1px solid rgba(23, 18, 15, 0.07);
+        font-size: 14px;
+      }
+
+      .menu-row strong { font-weight: 800; }
+      .menu-row span:last-child {
+        color: var(--accent);
+        font: 800 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .primary, .secondary {
+        border: 0;
+        border-radius: 14px;
+        padding: 13px 17px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .primary { color: white; background: var(--accent); }
+      .secondary {
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.62);
+        border: 1px solid var(--line);
+      }
+
+      .saved {
+        display: none;
+        padding: 34px;
+      }
+
+      .saved h2 { margin-bottom: 12px; }
+
+      .basket-note {
+        padding: 34px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      @media (max-width: 860px) {
+        header { align-items: flex-start; flex-direction: column; }
+        nav { width: 100%; }
+        .grid { grid-template-columns: 1fr; }
+        .featured { grid-template-rows: 230px auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand"><span class="brand-mark">W</span><span>What's <em>Good</em></span></div>
+      <nav aria-label="Main">
+        <button class="active" data-view="find">Find a Place</button>
+        <button data-view="stay">Stay In</button>
+        <button data-view="saved">Saved</button>
+        <button data-view="basket">Basket</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="find" class="grid">
+        <aside class="panel controls">
+          <p class="eyebrow">What's Good Cape Town</p>
+          <h1>Where are we <em>eating?</em></h1>
+          <p class="subcopy">Pick the city, cuisine, budget, distance, and mood. The app should answer the group decision fast, then let recipes live in Stay In.</p>
+
+          <div class="section">
+            <span class="label">City</span>
+            <div class="chips">
+              <button class="chip active">Cape Town</button>
+              <button class="chip">Joburg</button>
+              <button class="chip">Durban</button>
+              <button class="chip">Pretoria</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="label">Cuisine</span>
+            <div class="chips">
+              <button class="chip active">Italian</button>
+              <button class="chip">Asian</button>
+              <button class="chip">Steak</button>
+              <button class="chip">Seafood</button>
+              <button class="chip">Brunch</button>
+              <button class="chip">Drinks</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <span class="label">Budget</span>
+            <div class="slider-row"><span>R</span><input type="range" min="1" max="4" value="3" /><span>RRRR</span></div>
+          </div>
+
+          <div class="section">
+            <span class="label">Distance</span>
+            <div class="slider-row"><span>Near me</span><input type="range" min="1" max="5" value="2" /><span>Worth it</span></div>
+          </div>
+
+          <div class="section">
+            <span class="label">Mood</span>
+            <div class="slider-row"><span>Low-key</span><input type="range" min="1" max="5" value="4" /><span>Big night</span></div>
+          </div>
+        </aside>
+
+        <article class="panel featured">
+          <div class="photo"><span>Featured match</span></div>
+          <div class="match-body">
+            <div class="match-top">
+              <span class="pill">Best fit</span>
+              <span class="pill">Open detail</span>
+            </div>
+            <h2>Kloof Street House</h2>
+            <div class="meta"><span>Gardens</span><span>·</span><span>RRR</span><span>·</span><span>1.8 km</span></div>
+            <p class="quote">Good for cosy dinners, dates, and groups when nobody wants to make the final call.</p>
+            <div class="menu">
+              <h3>Menu highlights</h3>
+              <div class="menu-row"><strong>Burrata plate</strong><span>R145</span></div>
+              <div class="menu-row"><strong>Line fish</strong><span>R260</span></div>
+              <div class="menu-row"><strong>Dark chocolate tart</strong><span>R120</span></div>
+            </div>
+            <div class="actions">
+              <button class="primary">Book / Directions</button>
+              <button class="secondary">Save</button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="stay" class="panel saved">
+        <p class="eyebrow">Secondary mode</p>
+        <h2>Stay In</h2>
+        <p class="subcopy">Recipes live here: serving adjustment, ingredient checklist, then grocery basket. This stays useful without taking over the front door.</p>
+      </section>
+
+      <section id="saved" class="panel saved">
+        <p class="eyebrow">Shortlist</p>
+        <h2>Saved places</h2>
+        <p class="subcopy">Saved restaurants first. Saved recipes can sit underneath for nights in.</p>
+      </section>
+
+      <section id="basket" class="panel saved">
+        <p class="eyebrow">Coming next</p>
+        <h2>Basket</h2>
+        <p class="basket-note">The grocery basket should collect ingredients from Stay In recipes later. It should not be confused with saved restaurants.</p>
+      </section>
+    </main>
+
+    <script>
+      const navButtons = document.querySelectorAll("nav button");
+      const sections = document.querySelectorAll("main > section");
+      navButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          navButtons.forEach((b) => b.classList.remove("active"));
+          button.classList.add("active");
+          sections.forEach((section) => {
+            section.style.display = section.id === button.dataset.view ? (section.id === "find" ? "grid" : "block") : "none";
+          });
+        });
+      });
+      document.querySelectorAll(".chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          chip.parentElement.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+        });
+      });
+    </script>
+  </body>
+</html>

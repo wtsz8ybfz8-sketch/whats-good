@@ -1,5 +1,5 @@
 import React from'react';
-import { Dimensions, LocationMode } from'../types';
+import { CITIES, Dimensions, LocationMode, type City } from'../types';
 import { 
  Search, Moon, Heart, Compass, Sparkles, Leaf, 
  Clock, Flame, Sun, Crown, Globe, Utensils, Dices, ChevronRight,
@@ -8,6 +8,8 @@ import {
 
 interface SidebarProps {
  dimensions: Dimensions;
+ city: City;
+ onCityChange: (city: City) => void;
  onChange: (dims: Dimensions) => void;
  onTriggerMatch: () => void;
  isLoading: boolean;
@@ -38,6 +40,8 @@ const CuisineIcon = ({ name, className ="w-4 h-4" }: { name: string; className?:
 
 export const Sidebar: React.FC<SidebarProps> = ({
  dimensions,
+ city,
+ onCityChange,
  onChange,
  onTriggerMatch,
  isLoading,
@@ -133,15 +137,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <aside className="bg-transparent p-4 lg:p-8 flex flex-col gap-6 lg:gap-8 overflow-y-visible">
  <div>
  <h1 className="font-serif text-3xl lg:text-[38px] font-extrabold leading-[1.12] text-[#1A1A1A] dark:text-[#f5f5f5] tracking-tight">
- What are you<br />
- <span className="italic font-normal text-[#7C2D12] dark:text-[#fca5a5]">feeling today?</span>
+ Where are we<br />
+ <span className="italic font-normal text-[#7C2D12] dark:text-[#fca5a5]">eating?</span>
  </h1>
+ </div>
+
+ <div className="flex flex-col gap-2.5">
+ <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium block">
+ City
+ </span>
+ <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+ {CITIES.map((option) => {
+ const isSelected = city === option;
+ return (
+ <button
+ key={option}
+ type="button"
+ onClick={() => onCityChange(option)}
+ className={`px-3 py-2.5 rounded-xl text-[11px] font-sans font-bold transition-all cursor-pointer ${
+ isSelected
+ ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
+ :'glass-subtle text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] dark:hover:border-[#7C2D12]/50'
+ }`}
+ >
+ {option}
+ </button>
+);
+ })}
+ </div>
  </div>
 
  {/* CURATION CONTEXT SEGMENTED CONTROL (Apple HIG & Brutalist Mix) */}
  <div className="flex flex-col gap-2.5">
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium block">
- Curation Context
+ Plan
  </span>
  <div className="grid grid-cols-2 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl select-none">
  <button
@@ -153,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  }`}
  >
  <MapPin className={`w-4 h-4 mb-1 ${dimensions.locationMode ==='dineout' ?'text-[#7C2D12] dark:text-[#fca5a5]' :'text-[#6E6A64] dark:text-[#a3a3a3]'}`} />
- <span className="text-[10px] font-sans font-bold leading-tight">Dine Out</span>
+ <span className="text-[10px] font-sans font-bold leading-tight">Find a Place</span>
  </button>
  <button
  onClick={() => handleLocationModeSwitch('gourmet')}
@@ -164,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  }`}
  >
  <ChefHat className={`w-4 h-4 mb-1 ${dimensions.locationMode ==='gourmet' ?'text-[#7C2D12] dark:text-[#fca5a5]' :'text-[#6E6A64] dark:text-[#a3a3a3]'}`} />
- <span className="text-[10px] font-sans font-bold leading-tight">Home Gourmet</span>
+ <span className="text-[10px] font-sans font-bold leading-tight">Stay In</span>
  </button>
  </div>
  </div>
@@ -172,7 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  {/* Direct Search Option */}
  <div className="flex flex-col gap-2">
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] flex items-center gap-2">
- Search by dish or ingredient
+ {dimensions.locationMode ==='gourmet' ?'Search by dish or ingredient' :'Search restaurants, areas, or cravings'}
  </span>
  <div className="relative">
  <input
@@ -181,8 +210,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
  onChange={handleTextChange}
  placeholder={
  dimensions.locationMode ==='gourmet'
- ?"Search by dish or ingredient (ie: curry, beef)..."
- :"Search South African dishes or eateries..."
+ ?"Search by dish or ingredient, like curry or beef"
+ :"Italian, brunch, cocktails, steak, Sea Point..."
  }
  className="w-full bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl py-3 pl-10 pr-12 font-sans text-sm text-[#1A1A1A] dark:text-[#f5f5f5] focus:outline-none focus:border-[#7C2D12] focus:ring-1 focus:ring-[#7C2D12] placeholder:text-[#a2a8a8] transition-all"
  />
@@ -201,14 +230,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
  {/* Or Coordinates Section */}
  <div className="flex items-center gap-4 py-2 font-mono text-[9px] uppercase tracking-[2px] text-[#6E6A64] dark:text-[#a3a3a3] select-none">
  <span className="h-[1px] flex-1 bg-black dark:bg-[#222222]" />
- <span>OR TELL US YOUR MOOD</span>
+ <span>{dimensions.locationMode ==='gourmet' ?'OR TELL US YOUR MOOD' :'OR SET THE NIGHT'}</span>
  <span className="h-[1px] flex-1 bg-black dark:bg-[#222222]" />
  </div>
 
  {/* Your Current Vibe */}
  <div className="flex flex-col gap-3">
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
- How are you feeling?
+ Mood
  </span>
  <div className="flex flex-nowrap overflow-x-auto gap-2 pb-1 -mx-1 px-1 no-scrollbar">
  {vibes.map((v) => {
@@ -237,7 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  {/* Price Curation Filter for South African Rand Tiers */}
  <div className="flex flex-col gap-3">
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
- Eatery Price Budget
+ Budget
  </span>
  <div className="grid grid-cols-5 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl">
  {eatPriceFilters.map((p, idx) => {
@@ -262,7 +291,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  {/* Cuisine Coordinates for South African Eateries */}
  <div className="flex flex-col gap-3">
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
- What are you craving?
+ Cuisine
  </span>
  <div className="grid grid-cols-2 gap-2">
  {dineoutCuisines.map((c) => {
@@ -294,7 +323,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  {/* Cuisine Coordinates */}
  <div className="flex flex-col gap-3">
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
- What are you craving?
+ Cuisine
  </span>
  <div className="grid grid-cols-2 gap-2">
  {gourmetCuisines.map((c) => {

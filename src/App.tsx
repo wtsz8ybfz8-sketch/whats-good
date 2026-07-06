@@ -4,15 +4,16 @@
  */
 
 import { useState, useEffect } from'react';
-import { Dimensions, ActiveTab, ParsedRecipe, Meal } from'./types';
+import { Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
 import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, Navigation, ChevronRight, Sun, Moon } from'lucide-react';
-import { SOUTH_AFRICAN_EATERIES } from'./campusData';
+import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
 import { fetchCapeTownEateries } from'./placesService';
+import { useSavedRecipes } from'./useSavedRecipes';
 
 export const EATERY_IMAGES: Record<string, string> = {
 'eat-kloof-house':'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=800&q=80',
@@ -54,9 +55,66 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
  return R * c;
 }
 
+function createEateryResult(
+ eatery: SouthAfricanEatery,
+ city: City,
+ userCoords: { latitude: number; longitude: number } | null,
+): ParsedRecipe {
+ let distanceStr = eatery.fallbackDistance;
+ let distVal = 999999;
+
+ if (userCoords) {
+ const dist = getDistance(userCoords.latitude, userCoords.longitude, eatery.latitude, eatery.longitude);
+ distVal = dist;
+ distanceStr = `${dist.toFixed(1)} km away`;
+ }
+
+ const imgUrl = eatery.photoUrl || EATERY_IMAGES[eatery.id] ||'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
+
+ return {
+ id: eatery.id,
+ name: eatery.name,
+ category: eatery.cuisine,
+ area:`${city}, ZA`,
+ instructions: `${eatery.signatureDescription}\n\nDining Notes: Located at ${eatery.address}. Proximity distance from you is ${distanceStr}.`,
+ image: imgUrl,
+ tags: [
+ eatery.vibeMatch,
+ distanceStr,
+ eatery.priceSymbol,
+ 'Restaurant'
+ ],
+ ingredients: eatery.signatureIngredients,
+ steps: [
+ `Head to ${eatery.address} (${distanceStr}).`,
+ `Ask about today's menu highlights and availability.`,
+ `Order the recommended plate: ${eatery.signatureOrder}.`,
+ `Check ingredients against your preferences: ${eatery.signatureIngredients.join(',') ||'ask the venue for the current menu'}.`,
+ ],
+ prepTime: eatery.estimatedWait,
+ cookTime: eatery.priceSymbol,
+ serves:'Table booking',
+ gutTip: eatery.digestiveNote,
+ source: eatery.externalLink,
+ distanceVal: distVal,
+ rawEatery: eatery,
+ distanceStr,
+ } as ParsedRecipe & { distanceVal: number; rawEatery: SouthAfricanEatery; distanceStr: string };
+}
+
 export default function App() {
  const [activeTab, setActiveTab] = useState<ActiveTab>('mood');
  const [prevTab, setPrevTab] = useState<ActiveTab>('mood');
+ const [city, setCity] = useState<City>(() => {
+ try {
+ const stored = localStorage.getItem('whats_good_city');
+ return stored ==='Joburg' || stored ==='Durban' || stored ==='Pretoria' || stored ==='Cape Town'
+ ? stored
+ :'Cape Town';
+ } catch {
+ return 'Cape Town';
+ }
+ });
  const [dimensions, setDimensions] = useState<Dimensions>({
  vibe: null,
  regional: null,
@@ -69,6 +127,7 @@ export default function App() {
  const [selectedRecipe, setSelectedRecipe] = useState<ParsedRecipe | null>(null);
  const [isLoading, setIsLoading] = useState(false);
  const [error, setError] = useState<string | null>(null);
+ const [filtersOpen, setFiltersOpen] = useState(false);
 
  // Premium tactical geolocation tracking
  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -113,35 +172,19 @@ export default function App() {
  localStorage.setItem('whats_good_dark_mode', String(isDark));
  }, [isDark]);
 
- // Initialize saved recipes from localStorage
- const [savedRecipes, setSavedRecipes] = useState<ParsedRecipe[]>(() => {
- try {
- const stored = localStorage.getItem('whats_good_saved_v1');
- return stored ? JSON.parse(stored) : [];
- } catch {
- return [];
- }
- });
+ useEffect(() => {
+ localStorage.setItem('whats_good_city', city);
+ }, [city]);
 
+ const { savedRecipes, toggleSavedRecipe, clearSavedRecipes } = useSavedRecipes();
  const savedIds = savedRecipes.map((r) => r.id);
 
  const handleToggleSave = (recipe: ParsedRecipe) => {
- setSavedRecipes((prev) => {
- const isSaved = prev.some((r) => r.id === recipe.id);
- let updated;
- if (isSaved) {
- updated = prev.filter((r) => r.id !== recipe.id);
- } else {
- updated = [...prev, recipe];
- }
- localStorage.setItem('whats_good_saved_v1', JSON.stringify(updated));
- return updated;
- });
+ toggleSavedRecipe(recipe);
  };
 
  const handleClearAllSaved = () => {
- setSavedRecipes([]);
- localStorage.removeItem('whats_good_saved_v1');
+ clearSavedRecipes();
  };
 
  // Switch tabs and clean up states
@@ -170,7 +213,7 @@ export default function App() {
  if (activeTab ==='mood') {
  handleTriggerMatch();
  }
- }, [dimensions.locationMode, dimensions.vibe, dimensions.regional, dimensions.capacity, userCoords]);
+ }, [dimensions.locationMode, dimensions.vibe, dimensions.regional, dimensions.capacity, userCoords, city]);
 
  // Perform fetching from TheMealDB or local structures
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
@@ -192,11 +235,11 @@ export default function App() {
  customQuery === undefined ? dimensions.vibe : null,
  ].filter(Boolean).join(' ');
 
- // Try Places API first; silently fall back to hardcoded list on failure
- let eateryList: typeof SOUTH_AFRICAN_EATERIES = SOUTH_AFRICAN_EATERIES;
+ // Try Places API first; fall back to local Cape Town data when that is the selected city.
+ let eateryList: typeof SOUTH_AFRICAN_EATERIES = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES : [];
  let usingPlacesApi = false;
  try {
- const placesResults = await fetchCapeTownEateries(placesSearchTerms || 'restaurant');
+ const placesResults = await fetchCapeTownEateries(placesSearchTerms || 'restaurant', city);
  if (placesResults.length > 0) {
  eateryList = placesResults as typeof SOUTH_AFRICAN_EATERIES;
  usingPlacesApi = true;
@@ -228,48 +271,7 @@ export default function App() {
  }
  }
 
- // Real distance computation if coordinates are available
- let distanceStr = eatery.fallbackDistance;
- let distVal = 999999;
- if (userCoords) {
- const dist = getDistance(userCoords.latitude, userCoords.longitude, eatery.latitude, eatery.longitude);
- distVal = dist;
- distanceStr = `${dist.toFixed(1)} km away`;
- }
-
- // Image URL: prefer Places API photo, then static map, then fallback
- const imgUrl = eatery.photoUrl || EATERY_IMAGES[eatery.id] ||'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
-
- tempRecipes.push({
- id: eatery.id,
- name: eatery.name,
- category: eatery.cuisine,
- area:'Cape Town, ZA',
- instructions: `${eatery.signatureDescription}\n\nDining Notes: Located at ${eatery.address}. Proximity distance from you is ${distanceStr}. Double check active partner deals below!`,
- image: imgUrl,
- tags: [
- eatery.vibeMatch,
- distanceStr,
- eatery.priceSymbol,
-'Partner special'
- ],
- ingredients: eatery.signatureIngredients,
- steps: [
- `Determine spatial transit down to ${eatery.address} (${distanceStr}).`,
- `Present What's Good app deal on arrival: ${eatery.voucherOffer}`,
- `Savor our high-vibe recommended plate order: ${eatery.signatureOrder}.`,
- `Confirm ingredients align with digestive needs: ${eatery.signatureIngredients.join(',')}.`,
- `Lock in seating reservation or order dispatch below.`
- ],
- prepTime: eatery.estimatedWait,
- cookTime: eatery.priceSymbol,
- serves:'South African Serve',
- gutTip: eatery.digestiveNote,
- source: eatery.externalLink,
- distanceVal: distVal,
- rawEatery: eatery,
- distanceStr,
- } as any);
+ tempRecipes.push(createEateryResult(eatery, city, userCoords));
  });
 
  // Sort by key coordinate proximity if user location is allowed
@@ -474,7 +476,6 @@ export default function App() {
  ingredients: randomEatery.signatureIngredients,
  steps: [
  `Determine spatial coordinates towards ${randomEatery.address} (${distanceStr}).`,
- `Redeem exclusive deal Voucher: ${randomEatery.voucherOffer}`,
  `Dine premium with delicious choice: ${randomEatery.signatureOrder}`
  ],
  prepTime: randomEatery.estimatedWait,
@@ -517,6 +518,8 @@ export default function App() {
 
  const tabOrder: ActiveTab[] = ['mood','random','saved-recipes','saved-eateries'];
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
+ const featuredEatery = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES[0] : null;
+ const featuredResult = featuredEatery ? createEateryResult(featuredEatery, city, userCoords) : null;
 
  return (
  <div className="min-h-screen flex flex-col relative text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
@@ -539,7 +542,7 @@ export default function App() {
  </div>
  <div className="font-serif text-xl sm:text-[22px] font-extrabold tracking-tight flex items-center gap-1.5 select-none">
  <span>What's</span> <span className="text-[#7C2D12] dark:text-[#fca5a5] italic font-normal">Good</span>
- <span className="text-[10px] bg-black dark:bg-[#222222] text-white px-1.5 py-0.5 rounded-lg font-mono tracking-wider font-bold ml-1">Cape Town</span>
+ <span className="text-[10px] bg-black dark:bg-[#222222] text-white px-1.5 py-0.5 rounded-lg font-mono tracking-wider font-bold ml-1">{city}</span>
  </div>
  </div>
 
@@ -579,17 +582,20 @@ export default function App() {
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
  }`}
  >
- Find
+ Find a Place
  </button>
  <button
- onClick={() => handleTabSwitch('random')}
+ onClick={() => {
+ setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
+ handleTabSwitch('random');
+ }}
  className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
  }`}
  >
- Surprise Me
+ Stay In
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
@@ -600,7 +606,7 @@ export default function App() {
  }`}
  >
  <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-white fill-current' :'text-blue-900'}`} />
- <span>Recipes ({savedRecipes.filter((r) => !r.id.startsWith('eat')).length})</span>
+ <span>Saved ({savedRecipes.length})</span>
  </button>
  <button
  onClick={() => handleTabSwitch('saved-eateries')}
@@ -611,7 +617,7 @@ export default function App() {
  }`}
  >
  <Heart className={`w-3 h-3 ${activeTab ==='saved-eateries' ?'text-white fill-current' :'text-[#7C2D12] dark:text-[#fca5a5]'}`} />
- <span>Eateries ({savedRecipes.filter((r) => r.id.startsWith('eat')).length})</span>
+ <span>Basket</span>
  </button>
  </nav>
  </div>
@@ -620,28 +626,37 @@ export default function App() {
  {/* Main Layout Grid wrapper */}
  <div className="flex-1 pt-[60px] flex flex-col relative w-full items-center">
  {/* Sidebar as a drop-down/high-end legend filter section */}
- <div 
+ <div
  className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto ${
- activeTab ==='mood' && recipes.length === 0 ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none hover:max-h-[1500px] hover:opacity-100 hover:pointer-events-auto hover:mt-6'
+ (activeTab ==='mood' && recipes.length === 0) || filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >
  <div className="glass rounded-3xl p-2 mb-6">
  <Sidebar
  dimensions={dimensions}
+ city={city}
+ onCityChange={setCity}
  onChange={setDimensions}
- onTriggerMatch={() => handleTriggerMatch()}
+ onTriggerMatch={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  isLoading={isLoading && activeTab ==='mood'}
  />
  </div>
  </div>
 
- {/* Hover area to trigger filters */}
+ {/* Tap to reveal filters — always visible once results exist, works on touch */}
  {activeTab ==='mood' && recipes.length > 0 && (
- <div className="w-full h-8 flex justify-center -mt-4 z-40 relative group cursor-pointer" onClick={() => setRecipes([])}>
+ <button
+ type="button"
+ onClick={() => setFiltersOpen((v) => !v)}
+ aria-expanded={filtersOpen}
+ className="w-full h-8 flex justify-center -mt-4 z-40 relative group cursor-pointer"
+ >
  <div className="glass-subtle rounded-full px-4 py-1 flex items-center gap-2 transition-all transform -translate-y-2 group-hover:translate-y-0 group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
- <span className="text-[10px] uppercase font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] group-hover:text-[#7C2D12] dark:text-[#fca5a5]">Hover to Adjust Filters</span>
+ <span className="text-[10px] uppercase font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] group-hover:text-[#7C2D12] dark:text-[#fca5a5]">
+ {filtersOpen ? 'Hide Filters' : 'Adjust Filters'}
+ </span>
  </div>
- </div>
+ </button>
 )}
 
  {/* Right detailed journal screen content pane */}
@@ -681,7 +696,7 @@ export default function App() {
  {activeTab ==='mood' ? (
  // MOOD CORNER CANVAS
  isLoading ? (
- <LoadingState />
+ <LoadingState title="Finding a good table..." subtitle="Checking the city, budget, mood, and distance." />
 ) : error ? (
  <ErrorState title="Something went wrong" message={error} onRetry={() => handleTriggerMatch()} />
 ) : recipes.length > 0 ? (
@@ -700,26 +715,45 @@ export default function App() {
  <div className="w-12 h-12 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mx-auto mb-4">
  <Search className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
- <h3 className="font-serif text-xl font-bold mb-2 text-[#1A1A1A] dark:text-[#f5f5f5]">No Matching Recipes</h3>
+ <h3 className="font-serif text-xl font-bold mb-2 text-[#1A1A1A] dark:text-[#f5f5f5]">No matching places</h3>
  <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-6">
- We scanned the entire index for"{dimensions.searchQuery}" but returned zero active matches. Try searching simpler tags like"Pasta","Egg","Pie", or"Curry".
+ We checked {city} for "{dimensions.searchQuery}" but did not find a strong match. Try simpler searches like "Italian", "brunch", "seafood", or "drinks".
  </p>
  <button
- onClick={() => handleTriggerMatch('Chicken')}
+ onClick={() => handleTriggerMatch('Italian')}
  className="px-5 py-2.5 bg-[#7C2D12] hover:bg-[#5E220E] text-white text-xs font-bold rounded-2xl cursor-pointer shadow-sm transition-transform active:scale-95"
  >
- Try searching"Chicken"
+ Try searching "Italian"
  </button>
  </div>
 ) : (
- <EmptyState onSearchRandom={() => { handleTabSwitch('random'); }} />
+ <EmptyState
+ city={city}
+ featured={featuredEatery ? {
+ name: featuredEatery.name,
+ area: featuredEatery.address.split(',').slice(-2, -1)[0]?.trim() || city,
+ price: featuredEatery.priceSymbol,
+ distance: featuredResult?.tags[1] || featuredEatery.fallbackDistance,
+ vibe: 'Good for cosy dinners, dates, and groups when nobody wants to make the final call.',
+ menu: [featuredEatery.signatureOrder, ...featuredEatery.signatureIngredients.slice(0, 2)],
+ } : undefined}
+ onOpenFeatured={() => {
+ if (!featuredResult) return;
+ setRecipes([featuredResult]);
+ setSelectedRecipe(featuredResult);
+ }}
+ onSearchRandom={() => {
+ setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
+ handleTabSwitch('random');
+ }}
+ />
 )
 ) : activeTab ==='random' ? (
  // SERENDIPITY ENGINE CANVAS
  isLoading ? (
  <LoadingState
- title="Finding something good..."
- subtitle="Let fate decide."
+ title="Finding a night-in recipe..."
+ subtitle="Keeping this as the secondary mode."
  />
 ) : error ? (
  <ErrorState title="That didn't work" message={error} onRetry={handleRandomWildcard} />
@@ -740,16 +774,16 @@ export default function App() {
  <Dices className="w-6 h-6 text-[#FAF2F0]" />
  </div>
  <h2 className="font-serif text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 leading-tight">
- Not sure what you want?
+ Staying in tonight?
  </h2>
  <p className="text-[#6E6A64] dark:text-[#a3a3a3] text-sm leading-relaxed max-w-[440px] mx-auto mb-8">
- Let us just pick something for you. No filters, no overthinking — just good food.
+ Pick a recipe, scale the servings, and use ingredients as the base for a grocery basket later.
  </p>
  <button
  onClick={handleRandomWildcard}
  className="bg-white dark:bg-[#1a1a1a] text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20 active:scale-95 transition-all px-8 py-4 rounded-xl font-serif text-base font-semibold shadow-md cursor-pointer inline-flex items-center gap-2"
  >
- <Sparkles className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5]" /> Surprise me
+ <Sparkles className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5]" /> Find a recipe
  </button>
  </div>
 )
@@ -759,16 +793,18 @@ export default function App() {
  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black dark:border-[#444] pb-6 mb-8 gap-4">
  <div>
  <span className="font-mono text-[10px] uppercase tracking-[2px] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
- Pantry Archives
+ {activeTab ==='saved-recipes' ?'Your shortlist' :'Grocery basket'}
  </span>
  <h2 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#1A1A1A] dark:text-[#f5f5f5]">
- {activeTab ==='saved-recipes' ?'Saved Recipes' :'Saved Eateries'}
+ {activeTab ==='saved-recipes' ?'Saved Places & Recipes' :'Basket'}
  </h2>
  <p className="text-[#6E6A64] dark:text-[#a3a3a3] font-sans text-sm mt-1">
- A personalized selection of your saved {activeTab ==='saved-recipes' ?'dishes for home cooking' :'local restaurants'}.
+ {activeTab ==='saved-recipes'
+ ?'Restaurants first, recipes when you are staying in.'
+ :'Ingredients from Stay In recipes will collect here later.'}
  </p>
  </div>
- {(activeTab ==='saved-recipes' ? savedRecipes.filter(r => !r.id.startsWith('eat')) : savedRecipes.filter(r => r.id.startsWith('eat'))).length > 0 && (
+ {activeTab ==='saved-recipes' && savedRecipes.length > 0 && (
  <button
  onClick={handleClearAllSaved}
  className="px-4 py-2 border border-red-200 text-red-700 hover:bg-red-50 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer self-start sm:self-center"
@@ -778,27 +814,29 @@ export default function App() {
 )}
  </div>
 
- {(activeTab ==='saved-recipes' ? savedRecipes.filter(r => !r.id.startsWith('eat')) : savedRecipes.filter(r => r.id.startsWith('eat'))).length === 0 ? (
+ {(activeTab ==='saved-recipes' ? savedRecipes : []).length === 0 ? (
  <div className="text-center py-16 sm:py-24 px-4 flex flex-col items-center justify-center glass rounded-2xl border-dashed">
  <div className="w-14 h-14 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center mb-6 border border-[#F5D1C9] dark:border-[#7C2D12]/40">
  <Heart className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
  <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-2 leading-tight">
- Your Vault Awaits
+ {activeTab ==='saved-recipes' ?'Your shortlist is empty' :'Basket is coming next'}
  </h3>
  <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[360px] mb-8">
- You haven't saved any {activeTab ==='saved-recipes' ?'recipes' :'eateries'} yet.
+ {activeTab ==='saved-recipes'
+ ?"Save restaurants you want to try, plus recipes for nights in."
+ :"Once the grocery basket is wired, ingredients from Stay In recipes will appear here."}
  </p>
  <button
- onClick={() => handleTabSwitch('mood')}
+ onClick={() => activeTab ==='saved-recipes' ? handleTabSwitch('mood') : handleTabSwitch('random')}
  className="inline-flex items-center gap-2 px-6 py-3 bg-[#7C2D12] hover:bg-[#5E220E] text-white rounded-xl font-sans text-xs font-bold shadow-md transition-all cursor-pointer"
  >
- Explore Mood Interface
+ {activeTab ==='saved-recipes' ?'Find a Place' :'Go to Stay In'}
  </button>
  </div>
 ) : (
  <div className="flex flex-col gap-4">
- {(activeTab ==='saved-recipes' ? savedRecipes.filter(r => !r.id.startsWith('eat')) : savedRecipes.filter(r => r.id.startsWith('eat'))).map((r) => (
+ {(activeTab ==='saved-recipes' ? savedRecipes : []).map((r) => (
  <div
  key={r.id}
  onClick={() => setSelectedRecipe(r)}
@@ -854,7 +892,7 @@ export default function App() {
  {/* Footer disclaimer */}
  <footer className="mt-12 pb-24 text-center">
  <p className="text-[10px] text-[#a2a8a8] dark:text-[#555] font-sans leading-relaxed max-w-xs mx-auto">
- Restaurant info is for reference only. Deals and details may vary — always confirm with the venue directly.
+ Restaurant info is for reference only — always confirm details with the venue directly.
  </p>
  </footer>
  </main>
@@ -874,7 +912,7 @@ export default function App() {
  </span>
 ) : (
  <>
- <span>{dimensions.searchQuery.trim() ?'Search' :'Find my recipes'}</span>
+ <span>{dimensions.searchQuery.trim() ?'Search places' :'Find a place'}</span>
  <ChevronRight className="w-5 h-5" />
  </>
 )}

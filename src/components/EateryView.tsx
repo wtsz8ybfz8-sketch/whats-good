@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ParsedRecipe } from '../types';
-import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Sparkles, Activity, Clock, ExternalLink, ShoppingBag } from 'lucide-react';
+import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Activity, Clock, ExternalLink, ShoppingBag } from 'lucide-react';
 
 interface EateryViewProps {
   recipes: ParsedRecipe[];
@@ -26,15 +26,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
   onToggleSave,
   isSavedTab,
 }) => {
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (toastMsg) {
-      const t = setTimeout(() => setToastMsg(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toastMsg]);
-
   const r = selectedRecipe;
   const rawEatery = (r as any).rawEatery;
 
@@ -42,8 +33,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
   const directionsUrl = `https://maps.google.com/?q=${encodeURIComponent(rawEatery.address)}`;
   const isSaved = savedIds.includes(r.id);
-
-  const triggerToast = (msg: string) => setToastMsg(msg);
+  const priceAnchor = rawEatery.priceSymbol === 'R' ? 95 : rawEatery.priceSymbol === 'RR' ? 145 : rawEatery.priceSymbol === 'RRR' ? 230 : 420;
+  const menuSections = [
+    {
+      title: 'Menu highlights',
+      items: [
+        { name: rawEatery.signatureOrder, price: `R${priceAnchor}` },
+        { name: rawEatery.signatureIngredients[0] || 'Chef recommendation', price: `R${Math.max(70, priceAnchor - 55)}` },
+        { name: rawEatery.signatureIngredients[1] || 'Seasonal side', price: `R${Math.max(55, priceAnchor - 95)}` },
+      ],
+    },
+    {
+      title: 'Good for',
+      items: [
+        { name: rawEatery.vibeMatch, price: rawEatery.priceSymbol },
+        { name: rawEatery.estimatedWait, price: 'wait' },
+        { name: r.tags[1], price: 'distance' },
+      ],
+    },
+  ];
 
   return (
     <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
@@ -184,29 +192,33 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </div>
       </div>
 
-      {/* Featured Deal */}
-      <div className="px-6 sm:px-10 pt-10 pb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span className="font-mono text-[9px] uppercase tracking-[2.5px] text-[#7C2D12] dark:text-[#fca5a5]">Featured Deal</span>
+      {/* Menu Sections */}
+      <div className="px-6 sm:px-10 pb-10">
+        <p className="font-mono text-[9px] uppercase tracking-[2.5px] text-[#9E9A94] dark:text-[#555] mb-5">Menu</p>
+        <div className="grid md:grid-cols-2 gap-6">
+          {menuSections.map((section) => (
+            <section key={section.title} className="border-t border-black/10 dark:border-white/10 pt-4">
+              <h3 className="font-serif text-2xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4">
+                {section.title}
+              </h3>
+              <div className="space-y-3">
+                {section.items.map((item) => (
+                  <div key={`${section.title}-${item.name}`} className="flex items-start justify-between gap-5">
+                    <span className="text-sm font-sans font-semibold leading-snug text-[#1A1A1A] dark:text-[#f5f5f5]">
+                      {item.name}
+                    </span>
+                    <span className="font-mono text-[11px] font-bold text-[#7C2D12] dark:text-[#fca5a5] whitespace-nowrap">
+                      {item.price}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
-        <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-2">
-          Claim This Offer
-        </h3>
-        <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-7">
-          Show this screen at the venue before payment to claim your exclusive deal.
+        <p className="mt-5 text-[11px] text-[#9E9A94] dark:text-[#666] leading-relaxed">
+          Menu prices are app estimates until live venue menus are connected. Confirm with the restaurant before ordering.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-          <div className="flex-1 px-4 py-3.5 text-center font-mono font-bold text-sm text-[#7C2D12] dark:text-[#fca5a5] bg-[#FAF2F0] dark:bg-[#7C2D12]/10 rounded-md select-all">
-            {rawEatery.voucherOffer}
-          </div>
-          <button
-            onClick={() => triggerToast(`Show this screen at ${rawEatery.name} to claim your deal.`)}
-            className="px-6 py-3.5 bg-[#1A1A1A] dark:bg-[#f5f5f5] hover:bg-[#7C2D12] dark:hover:bg-[#7C2D12] text-white dark:text-[#1A1A1A] dark:hover:text-white text-[10px] font-mono font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer active:scale-95 whitespace-nowrap"
-          >
-            Activate Offer
-          </button>
-        </div>
       </div>
 
       {/* Good to Know — editorial left-border callout */}
@@ -269,13 +281,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
           Find other eateries
         </button>
       </div>
-
-      {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-white/10 max-w-sm">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#7C2D12] animate-pulse flex-shrink-0" />
-          <span>{toastMsg}</span>
-        </div>
-      )}
     </div>
   );
 };

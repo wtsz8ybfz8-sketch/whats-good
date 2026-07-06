@@ -7,10 +7,11 @@ import { useState } from 'react';
 import { ParsedRecipe } from './types';
 
 const STORAGE_KEY = 'whats-good-saved-recipes';
+const LEGACY_STORAGE_KEY = 'whats_good_saved_v1';
 
 function load(): ParsedRecipe[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     return raw ? (JSON.parse(raw) as ParsedRecipe[]) : [];
   } catch {
     return [];
@@ -36,5 +37,27 @@ export function useSavedRecipes() {
 
   const isSaved = (id: string) => savedRecipes.some((r) => r.id === id);
 
-  return { savedRecipes, saveRecipe, unsaveRecipe, isSaved };
+  const toggleSavedRecipe = (recipe: ParsedRecipe) => {
+    if (isSaved(recipe.id)) {
+      unsaveRecipe(recipe.id);
+      return;
+    }
+
+    saveRecipe(recipe);
+  };
+
+  const clearSavedRecipes = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    setSavedRecipes([]);
+  };
+
+  return {
+    savedRecipes,
+    saveRecipe,
+    unsaveRecipe,
+    isSaved,
+    toggleSavedRecipe,
+    clearSavedRecipes,
+  };
 }
