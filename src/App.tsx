@@ -568,11 +568,11 @@ export default function App() {
  onClick={requestUserLocation}
  className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono font-extrabold uppercase tracking-wider transition-all duration-300 cursor-pointer select-none active:scale-95 ${
  locState ==='granted'
- ?'bg-emerald-50/60 border-emerald-500/20 text-emerald-800'
+ ?'bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-500/20 text-emerald-800 dark:text-emerald-300'
  : locState ==='requesting'
- ?'bg-amber-50/60 border-amber-500/20 text-amber-800 animate-pulse'
+ ?'bg-amber-50/60 dark:bg-amber-950/40 border-amber-500/20 text-amber-800 dark:text-amber-300 animate-pulse'
  : locState ==='denied'
- ?'bg-red-50/60 border-red-500/20 text-red-800'
+ ?'bg-red-50/60 dark:bg-red-950/40 border-red-500/20 text-red-800 dark:text-red-300'
  :'bg-black dark:bg-[#222222] border-black dark:border-[#444] hover:bg-black dark:bg-[#222222] text-[#6E6A64] dark:text-[#a3a3a3]'
  }`}
  >
@@ -582,7 +582,7 @@ export default function App() {
 
  <button
  onClick={() => setIsDark((d) => !d)}
- className="flex w-8 h-8 items-center justify-center rounded-full glass text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0"
+ className="flex w-10 h-10 items-center justify-center rounded-full glass text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0"
  aria-label={isDark ?'Switch to light mode' :'Switch to dark mode'}
  >
  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -591,7 +591,7 @@ export default function App() {
  <nav className="flex glass-subtle p-1 rounded-full sm:gap-0.5 whitespace-nowrap overflow-x-auto no-scrollbar max-w-[50vw]">
  <button
  onClick={() => handleTabSwitch('mood')}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='mood'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -604,7 +604,7 @@ export default function App() {
  setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
  handleTabSwitch('random');
  }}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -614,7 +614,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
  activeTab ==='saved-recipes'
  ?'bg-blue-900 text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -625,7 +625,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-eateries')}
- className={`px-3 sm:px-[18px] py-1.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
  activeTab ==='saved-eateries'
  ?'bg-[#7C2D12] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
@@ -933,21 +933,23 @@ export default function App() {
  </div>
 )}
 
- {/* Persistent Geolocation FAB / Quick Toggle Indicator */}
- <div 
+ {/* Persistent Geolocation FAB / Quick Toggle Indicator — sits above the CTA bar when it's shown */}
+ <div
  id="location-quick-toggle"
- className="fixed bottom-6 right-6 z-[100] transition-all duration-300 transform hover:scale-[1.03]"
+ className={`fixed right-4 sm:right-6 z-[100] transition-all duration-300 transform hover:scale-[1.03] ${
+ activeTab ==='mood' && !selectedRecipe && filtersOpen && !isLoading ?'bottom-28' :'bottom-6'
+ }`}
  >
  <button
  onClick={requestUserLocation}
  disabled={locState ==='requesting'}
  className={`flex items-center gap-2.5 px-4.5 py-3 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer select-none active:scale-95 ${
  locState ==='granted'
- ?'glass shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:border-emerald-500 text-emerald-800'
+ ?'glass shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:border-emerald-500 text-emerald-800 dark:text-emerald-300'
  : locState ==='requesting'
  ?'glass shadow-[0_12px_30px_rgba(0,0,0,0.12)] text-[#6E6A64] dark:text-[#a3a3a3]'
  : locState ==='denied'
- ?'glass-subtle shadow-[0_12px_30px_rgba(0,0,0,0.12)] border border-red-200/50 hover:border-red-300 text-red-800'
+ ?'glass-subtle shadow-[0_12px_30px_rgba(0,0,0,0.12)] border border-red-200/50 dark:border-red-500/30 hover:border-red-300 text-red-800 dark:text-red-300'
  :'bg-[#1A1A1A] dark:bg-[#2a2a2a] border border-[#1A1A1A] shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:bg-neutral-800 text-white'
  }`}
  >

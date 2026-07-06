@@ -361,7 +361,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="bg-[#0ABFBC] text-white font-extrabold text-sm px-4 py-1.5 rounded-full mb-3 shadow-sm transform group-hover:-translate-y-1 transition-transform">
  Sixty60
  </div>
- <span className="font-sans text-xs font-bold text-[#1a5b5a]">Order via Checkers</span>
+ <span className="font-sans text-xs font-bold text-[#1a5b5a] dark:text-[#5eead4]">Order via Checkers</span>
  </button>
 
  {/* Woolies Dash */}
@@ -392,7 +392,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="bg-[#1264A3] text-white font-extrabold text-sm px-2.5 py-1 rounded-l-md">PnP</span>
  <span className="bg-[#E03A3E] text-white font-black text-sm px-2 py-1 rounded-r-md italic">asap!</span>
  </div>
- <span className="font-sans text-xs font-bold text-[#1264A3]">Order via PnP</span>
+ <span className="font-sans text-xs font-bold text-[#1264A3] dark:text-[#93c5fd]">Order via PnP</span>
  </button>
  </div>
  </div>

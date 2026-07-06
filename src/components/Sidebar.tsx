@@ -149,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='dineout'
  ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#b3aea8] hover:text-white'
  }`}
  >
  <MapPin className={`w-4 h-4 mb-1 ${dimensions.locationMode ==='dineout' ?'text-[#7C2D12] dark:text-[#fca5a5]' :'text-[#6E6A64] dark:text-[#a3a3a3]'}`} />
@@ -160,7 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='gourmet'
  ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#b3aea8] hover:text-white'
  }`}
  >
  <ChefHat className={`w-4 h-4 mb-1 ${dimensions.locationMode ==='gourmet' ?'text-[#7C2D12] dark:text-[#fca5a5]' :'text-[#6E6A64] dark:text-[#a3a3a3]'}`} />
@@ -217,7 +217,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <button
  key={v.value}
  onClick={() => handleSelectVibe(v.value)}
- className={`flex-none px-3.5 py-2.5 rounded-full font-sans text-xs font-semibold border transition-all duration-200 ease-out cursor-pointer flex items-center gap-2 shadow-sm whitespace-nowrap ${
+ className={`flex-none px-3.5 py-3 rounded-full font-sans text-xs font-semibold border transition-all duration-200 ease-out cursor-pointer flex items-center gap-2 shadow-sm whitespace-nowrap ${
  isSelected
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
  :'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-white/80 dark:hover:bg-[#7C2D12]/20'
@@ -246,10 +246,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <button
  key={idx}
  onClick={() => onChange({ ...dimensions, capacity: p.value })}
- className={`py-2 px-0.5 rounded-xl transition-all cursor-pointer text-center text-[10px] font-bold font-sans ${
+ className={`py-3.5 px-0.5 rounded-xl transition-all cursor-pointer text-center text-[10px] font-bold font-sans ${
  isSelected
  ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#b3aea8] hover:text-white'
  }`}
  >
  {p.value ||'All'}
@@ -334,7 +334,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`flex flex-col py-2 px-1 rounded-xl transition-all cursor-pointer text-center ${
  isSelected
  ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#b3aea8] hover:text-white'
  }`}
  >
  <span className="text-xs font-bold font-sans leading-tight block">
