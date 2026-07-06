@@ -35,9 +35,9 @@ export interface ParsedRecipe {
 }
 
 export type LocationMode = 'dineout' | 'gourmet';
-export type City = 'Cape Town' | 'Joburg' | 'Durban' | 'Pretoria';
-
-export const CITIES: City[] = ['Cape Town', 'Joburg', 'Durban', 'Pretoria'];
+// Auto-detected from the user's location (Google Places reverse geocode) — not a fixed list.
+// Falls back to 'Cape Town' when location is denied or detection fails.
+export type City = string;
 
 export interface Dimensions {
   vibe: string | null;

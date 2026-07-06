@@ -41,6 +41,10 @@ interface PlacesSearchResponse {
   places?: Place[];
 }
 
+interface NearbySearchResponse {
+  places?: { displayName?: PlaceDisplayName }[];
+}
+
 function getGooglePlacesKey(): string {
   return (
     (import.meta.env.VITE_GOOGLE_PLACES_KEY as string | undefined) ||
@@ -175,5 +179,47 @@ export async function fetchCapeTownEateries(
   } catch {
     // Silently fall back — never surface API errors to the user
     return [];
+  }
+}
+
+/**
+ * Reverse-geocodes coordinates to a city name using Google Places API (New) Nearby Search,
+ * scoped to type "locality". Same key, same API family as fetchCapeTownEateries — no new
+ * dependency, no new data source. Returns null on any failure so callers can fall back.
+ */
+export async function detectCityFromCoords(
+  latitude: number,
+  longitude: number,
+): Promise<string | null> {
+  const key = getGooglePlacesKey();
+  if (!key) return null;
+
+  try {
+    const response = await fetch(`${PLACES_BASE}/places:searchNearby`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask': 'places.displayName',
+      },
+      body: JSON.stringify({
+        includedTypes: ['locality'],
+        maxResultCount: 1,
+        rankPreference: 'DISTANCE',
+        locationRestriction: {
+          circle: {
+            center: { latitude, longitude },
+            radius: 25000,
+          },
+        },
+      }),
+    });
+
+    if (!response.ok) return null;
+
+    const data: NearbySearchResponse = await response.json();
+    return data.places?.[0]?.displayName?.text ?? null;
+  } catch {
+    return null;
   }
 }

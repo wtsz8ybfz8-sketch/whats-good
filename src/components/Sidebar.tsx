@@ -1,15 +1,13 @@
 import React from'react';
-import { CITIES, Dimensions, LocationMode, type City } from'../types';
+import { Dimensions, LocationMode } from'../types';
 import { 
  Search, Moon, Heart, Compass, Sparkles, Leaf, 
  Clock, Flame, Sun, Crown, Globe, Utensils, Dices, ChevronRight,
- MapPin, Store, ChefHat, Map
+ MapPin, ChefHat
 } from'lucide-react';
 
 interface SidebarProps {
  dimensions: Dimensions;
- city: City;
- onCityChange: (city: City) => void;
  onChange: (dims: Dimensions) => void;
  onTriggerMatch: () => void;
  isLoading: boolean;
@@ -40,8 +38,6 @@ const CuisineIcon = ({ name, className ="w-4 h-4" }: { name: string; className?:
 
 export const Sidebar: React.FC<SidebarProps> = ({
  dimensions,
- city,
- onCityChange,
  onChange,
  onTriggerMatch,
  isLoading,
@@ -140,31 +136,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
  Where are we<br />
  <span className="italic font-normal text-[#7C2D12] dark:text-[#fca5a5]">eating?</span>
  </h1>
- </div>
-
- <div className="flex flex-col gap-2.5">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium block">
- City
- </span>
- <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
- {CITIES.map((option) => {
- const isSelected = city === option;
- return (
- <button
- key={option}
- type="button"
- onClick={() => onCityChange(option)}
- className={`px-3 py-2.5 rounded-xl text-[11px] font-sans font-bold transition-all cursor-pointer ${
- isSelected
- ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'glass-subtle text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] dark:hover:border-[#7C2D12]/50'
- }`}
- >
- {option}
- </button>
-);
- })}
- </div>
  </div>
 
  {/* CURATION CONTEXT SEGMENTED CONTROL (Apple HIG & Brutalist Mix) */}

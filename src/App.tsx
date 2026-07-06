@@ -12,7 +12,7 @@ import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, Navigation, ChevronRight, Sun, Moon } from'lucide-react';
 import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
-import { fetchCapeTownEateries } from'./placesService';
+import { fetchCapeTownEateries, detectCityFromCoords } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
 
 export const EATERY_IMAGES: Record<string, string> = {
@@ -105,12 +105,12 @@ function createEateryResult(
 export default function App() {
  const [activeTab, setActiveTab] = useState<ActiveTab>('mood');
  const [prevTab, setPrevTab] = useState<ActiveTab>('mood');
+ // City is auto-detected from the user's location, never manually picked.
+ // Cached in localStorage so the header doesn't flash back to Cape Town on reload
+ // while a fresh detection runs in the background.
  const [city, setCity] = useState<City>(() => {
  try {
- const stored = localStorage.getItem('whats_good_city');
- return stored ==='Joburg' || stored ==='Durban' || stored ==='Pretoria' || stored ==='Cape Town'
- ? stored
- :'Cape Town';
+ return localStorage.getItem('whats_good_city') ||'Cape Town';
  } catch {
  return 'Cape Town';
  }
@@ -142,11 +142,18 @@ export default function App() {
  setLocState('requesting');
  navigator.geolocation.getCurrentPosition(
  (position) => {
- setUserCoords({
+ const coords = {
  latitude: position.coords.latitude,
  longitude: position.coords.longitude,
- });
+ };
+ setUserCoords(coords);
  setLocState('granted');
+
+ // Auto-detect the city from real coordinates — no manual picker.
+ // Falls back silently to whatever city is already set (cached or 'Cape Town').
+ detectCityFromCoords(coords.latitude, coords.longitude).then((detected) => {
+ if (detected) setCity(detected);
+ });
  },
  (err) => {
  console.warn("Client geolocation denied or timed out:", err);
@@ -175,6 +182,13 @@ export default function App() {
  useEffect(() => {
  localStorage.setItem('whats_good_city', city);
  }, [city]);
+
+ // Detect the user's real city automatically on first load — no manual picker.
+ // If they deny or the browser has no geolocation, we quietly keep the cached/default city.
+ useEffect(() => {
+ requestUserLocation();
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
 
  const { savedRecipes, toggleSavedRecipe, clearSavedRecipes } = useSavedRecipes();
  const savedIds = savedRecipes.map((r) => r.id);
@@ -635,8 +649,6 @@ export default function App() {
  <div className="glass rounded-3xl p-2 mb-6">
  <Sidebar
  dimensions={dimensions}
- city={city}
- onCityChange={setCity}
  onChange={setDimensions}
  onTriggerMatch={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  isLoading={isLoading && activeTab ==='mood'}
