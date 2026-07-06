@@ -127,7 +127,7 @@ export default function App() {
  const [selectedRecipe, setSelectedRecipe] = useState<ParsedRecipe | null>(null);
  const [isLoading, setIsLoading] = useState(false);
  const [error, setError] = useState<string | null>(null);
- const [filtersOpen, setFiltersOpen] = useState(false);
+ const [filtersOpen, setFiltersOpen] = useState(true);
 
  // Premium tactical geolocation tracking
  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -194,6 +194,7 @@ export default function App() {
  setRecipes([]);
  setSelectedRecipe(null);
  setError(null);
+ setFiltersOpen(tab ==='mood');
  };
 
  const resetHome = () => {
@@ -628,7 +629,7 @@ export default function App() {
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
  className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto ${
- (activeTab ==='mood' && recipes.length === 0) || filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
+ activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >
  <div className="glass rounded-3xl p-2 mb-6">
@@ -644,7 +645,7 @@ export default function App() {
  </div>
 
  {/* Tap to reveal filters — always visible once results exist, works on touch */}
- {activeTab ==='mood' && recipes.length > 0 && (
+ {activeTab ==='mood' && !selectedRecipe && (recipes.length > 0 || !filtersOpen) && (
  <button
  type="button"
  onClick={() => setFiltersOpen((v) => !v)}
@@ -898,11 +899,11 @@ export default function App() {
  </main>
  </div>
 
- {/* Fixed Bottom CTA — mood tab, no results shown */}
- {activeTab ==='mood' && !selectedRecipe && recipes.length === 0 && !isLoading && (
+ {/* Fixed Bottom CTA — mood tab, whenever filters are open */}
+ {activeTab ==='mood' && !selectedRecipe && filtersOpen && !isLoading && (
  <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-6 pt-3 glass border-t border-black/5 flex justify-center !rounded-none">
  <button
- onClick={() => handleTriggerMatch()}
+ onClick={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  className="w-full max-w-md py-4 rounded-2xl font-serif text-lg font-bold transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[#7C2D12] text-white hover:bg-[#5E220E] hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-95"
  >
  {isLoading ? (
