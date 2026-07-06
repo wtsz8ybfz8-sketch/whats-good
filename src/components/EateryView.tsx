@@ -166,6 +166,16 @@ export const EateryView: React.FC<EateryViewProps> = ({
       <div className="px-6 sm:px-10">
         <p className="font-mono text-[9px] uppercase tracking-[2.5px] text-[#9E9A94] dark:text-[#555] mb-5">Visit Details</p>
         <div className="flex flex-col">
+          {rawEatery.openNow !== undefined && (
+            <div className="flex items-center justify-between py-3.5 border-b border-[#F0EDE8] dark:border-[#1a1a1a]">
+              <span className="flex items-center gap-2 font-mono text-[11px] text-[#6E6A64] dark:text-[#a3a3a3]">
+                <Clock className="w-3.5 h-3.5" /> {rawEatery.openNow ? 'Open Now' : 'Closed Now'}
+              </span>
+              <span className={`font-mono text-[11px] font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[#9E9A94] dark:text-[#666]'}`}>
+                {rawEatery.hoursToday ?? (rawEatery.openNow ? 'Open' : 'Closed')}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-between py-3.5 border-b border-[#F0EDE8] dark:border-[#1a1a1a]">
             <span className="flex items-center gap-2 font-mono text-[11px] text-[#6E6A64] dark:text-[#a3a3a3]">
               <Clock className="w-3.5 h-3.5" /> Estimated Wait

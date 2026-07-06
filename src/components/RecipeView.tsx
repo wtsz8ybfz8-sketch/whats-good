@@ -534,7 +534,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {rawEatery.name}
  </h3>
 
- {/* Rating · price · distance */}
+ {/* Rating · price · distance · open now */}
  <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-mono text-[#6E6A64] dark:text-[#a3a3a3]">
  <span className="flex items-center gap-1 text-[#1A1A1A] dark:text-[#f5f5f5] font-bold">
  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {rawEatery.rating}
@@ -545,6 +545,14 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="flex items-center gap-1 text-[#7C2D12] dark:text-[#fca5a5] font-bold">
  <MapPin className="w-3 h-3" /> {r.tags[1]}
  </span>
+ {rawEatery.openNow !== undefined && (
+ <>
+ <span className="opacity-30">·</span>
+ <span className={`font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[#9E9A94] dark:text-[#666]'}`}>
+ {rawEatery.openNow ? 'Open now' : 'Closed'}
+ </span>
+ </>
+ )}
  </div>
  </div>
 );

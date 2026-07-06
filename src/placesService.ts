@@ -65,6 +65,20 @@ function priceLevelToSymbol(level?: string): 'R' | 'RR' | 'RRR' | 'RRRR' {
   }
 }
 
+/**
+ * Extracts today's opening-hours line from Places' weekdayDescriptions array.
+ * Google orders this Monday-first (index 0); JS Date.getDay() is Sunday-first (0).
+ */
+function todaysHours(hours?: PlaceOpeningHours): string | undefined {
+  const lines = hours?.weekdayDescriptions;
+  if (!lines || lines.length !== 7) return undefined;
+  const jsDay = new Date().getDay(); // 0 = Sunday
+  const mondayFirstIndex = (jsDay + 6) % 7;
+  const line = lines[mondayFirstIndex];
+  // Lines look like "Monday: 9:00 AM – 10:00 PM" — strip the day prefix.
+  return line?.replace(/^[A-Za-z]+:\s*/, '');
+}
+
 /** Returns a direct photo URL for a Google Places photo reference. */
 export function getPlacePhotoUrl(photoName: string): string {
   const key = getGooglePlacesKey();
@@ -132,6 +146,8 @@ export async function fetchCapeTownEateries(
       const photoUrl = place.photos?.[0]?.name
         ? getPlacePhotoUrl(place.photos[0].name)
         : undefined;
+      const openNow = place.regularOpeningHours?.openNow;
+      const hoursToday = todaysHours(place.regularOpeningHours);
 
       return {
         id: `eat-places-${place.id ?? index}`,
@@ -152,6 +168,8 @@ export async function fetchCapeTownEateries(
         phone,
         estimatedWait: 'Check with venue',
         photoUrl,
+        openNow,
+        hoursToday,
       };
     });
   } catch {
