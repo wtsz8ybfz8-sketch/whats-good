@@ -1,9 +1,10 @@
 import React from'react';
 import { Dimensions, LocationMode } from'../types';
-import { 
- Search, Moon, Heart, Compass, Sparkles, Leaf, 
+import {
+ Search, Moon, Heart, Compass, Sparkles, Leaf,
  Clock, Flame, Sun, Crown, Globe, Utensils, Dices,
- MapPin, ChefHat
+ MapPin, ChefHat, Fish, Wine, UtensilsCrossed, Coffee,
+ Sandwich, Soup, Pizza, Martini, CookingPot
 } from'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +33,16 @@ const CuisineIcon = ({ name, className ="w-4 h-4" }: { name: string; className?:
  switch (name) {
  case'Globe': return <Globe className={className} />;
  case'Dices': return <Dices className={className} />;
+ case'Fish': return <Fish className={className} />;
+ case'Flame': return <Flame className={className} />;
+ case'Wine': return <Wine className={className} />;
+ case'UtensilsCrossed': return <UtensilsCrossed className={className} />;
+ case'Coffee': return <Coffee className={className} />;
+ case'Sandwich': return <Sandwich className={className} />;
+ case'Soup': return <Soup className={className} />;
+ case'Pizza': return <Pizza className={className} />;
+ case'Martini': return <Martini className={className} />;
+ case'CookingPot': return <CookingPot className={className} />;
  default: return <Utensils className={className} />;
  }
 };
@@ -56,7 +67,7 @@ const GlassSlider: React.FC<{
  const idx = rawIdx === -1 ? 0 : rawIdx;
  const pct = stops.length > 1 ? (idx / (stops.length - 1)) * 100 : 0;
  return (
- <div className="bg-black/80 dark:bg-black/60 backdrop-blur-xl px-5 pt-4 pb-2 rounded-2xl select-none">
+ <div className="bg-black/[0.06] dark:bg-black/60 backdrop-blur-xl px-5 pt-4 pb-2 rounded-2xl select-none border border-black/5 dark:border-white/5">
  <input
  type="range"
  min={0}
@@ -76,14 +87,16 @@ const GlassSlider: React.FC<{
  type="button"
  onClick={() => onSelect(s.value)}
  className={`flex flex-col items-center gap-0.5 py-1.5 cursor-pointer transition-colors duration-200 ${
- i === idx ?'text-white' :'text-[#b3aea8] hover:text-white'
+ i === idx
+ ?'text-[#1A1A1A] dark:text-white'
+ :'text-[#8B857E] dark:text-[#b3aea8] hover:text-[#1A1A1A] dark:hover:text-white'
  }`}
  >
  <span className={`text-[10px] font-bold font-sans leading-tight transition-transform duration-200 ${i === idx ?'scale-110' :''}`}>
  {s.label}
  </span>
  {s.sub && (
- <span className={`text-[8px] font-mono leading-tight ${i === idx ?'text-[#f6a892]' :'opacity-60'}`}>
+ <span className={`text-[8px] font-mono leading-tight ${i === idx ?'text-[#7C2D12] dark:text-[#f6a892]' :'opacity-60'}`}>
  {s.sub}
  </span>
 )}
@@ -113,21 +126,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
  ];
 
  const gourmetCuisines = [
- { label:'Italian', iconName:'Utensils', value:'Italian' },
- { label:'Middle Eastern', iconName:'Utensils', value:'Middle Eastern' },
- { label:'Pan-Asian', iconName:'Utensils', value:'Pan-Asian' },
+ { label:'Italian', iconName:'Pizza', value:'Italian' },
+ { label:'Middle Eastern', iconName:'UtensilsCrossed', value:'Middle Eastern' },
+ { label:'Pan-Asian', iconName:'Soup', value:'Pan-Asian' },
  { label:'S. African', iconName:'Globe', value:'South African' },
- { label:'Latin American', iconName:'Utensils', value:'Latin American' },
+ { label:'Latin American', iconName:'Flame', value:'Latin American' },
  { label:'Surprise Me', iconName:'Dices', value:'surprise me' },
  ];
 
  const dineoutCuisines = [
- { label:'Seafood', iconName:'Utensils', value:'Seafood' },
- { label:'Flame Grill / Spicy', iconName:'Flame', value:'Grill' },
- { label:'Fine Brasserie', iconName:'Crown', value:'Brasserie' },
- { label:'Premium Tapas', iconName:'Sparkles', value:'Tapas' },
- { label:'Comfort Café', iconName:'Moon', value:'Comfort' },
- { label:'Artisan Burgers', iconName:'Utensils', value:'Burger' },
+ { label:'Seafood', iconName:'Fish', value:'Seafood' },
+ { label:'Flame Grill', iconName:'Flame', value:'Grill' },
+ { label:'Fine Dining', iconName:'Wine', value:'Fine dining' },
+ { label:'Tapas & Small Plates', iconName:'UtensilsCrossed', value:'Tapas' },
+ { label:'Café & Brunch', iconName:'Coffee', value:'Brunch' },
+ { label:'Burgers', iconName:'Sandwich', value:'Burger' },
+ { label:'Sushi & Pan-Asian', iconName:'Soup', value:'Sushi' },
+ { label:'Italian', iconName:'Pizza', value:'Italian' },
+ { label:'Curry & Spice', iconName:'CookingPot', value:'Curry' },
+ { label:'Cocktails & Bites', iconName:'Martini', value:'Cocktail bar' },
  ];
 
  const effortLevels = [
@@ -186,27 +203,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium block">
  Plan
  </span>
- <div className="grid grid-cols-2 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl select-none">
+ <div className="grid grid-cols-2 bg-black/[0.06] dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl select-none border border-black/5 dark:border-white/5">
  <button
  onClick={() => handleLocationModeSwitch('dineout')}
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='dineout'
- ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#b3aea8] hover:text-white'
+ ?'bg-white dark:bg-white/10 shadow-sm text-[#7C2D12] dark:text-[#fca5a5] border border-black/5 dark:border-white/10'
+ :'text-[#6E6A64] dark:text-[#b3aea8] hover:text-[#1A1A1A] dark:hover:text-white'
  }`}
  >
- <MapPin className={`w-4 h-4 mb-1 ${dimensions.locationMode ==='dineout' ?'text-[#7C2D12] dark:text-[#fca5a5]' :'text-[#6E6A64] dark:text-[#a3a3a3]'}`} />
+ <MapPin className="w-4 h-4 mb-1" />
  <span className="text-[10px] font-sans font-bold leading-tight">Find a Place</span>
  </button>
  <button
  onClick={() => handleLocationModeSwitch('gourmet')}
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='gourmet'
- ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#b3aea8] hover:text-white'
+ ?'bg-white dark:bg-white/10 shadow-sm text-[#7C2D12] dark:text-[#fca5a5] border border-black/5 dark:border-white/10'
+ :'text-[#6E6A64] dark:text-[#b3aea8] hover:text-[#1A1A1A] dark:hover:text-white'
  }`}
  >
- <ChefHat className={`w-4 h-4 mb-1 ${dimensions.locationMode ==='gourmet' ?'text-[#7C2D12] dark:text-[#fca5a5]' :'text-[#6E6A64] dark:text-[#a3a3a3]'}`} />
+ <ChefHat className="w-4 h-4 mb-1" />
  <span className="text-[10px] font-sans font-bold leading-tight">Stay In</span>
  </button>
  </div>
@@ -253,7 +270,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  Mood
  </span>
- <div className="flex flex-nowrap overflow-x-auto gap-2 pb-1 -mx-1 px-1 no-scrollbar">
+ <div className="flex flex-wrap gap-2">
  {vibes.map((v) => {
  const isSelected = dimensions.vibe === v.value;
  return (
@@ -301,7 +318,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  Cuisine
  </span>
- <div className="grid grid-cols-2 gap-2">
+ <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
  {dineoutCuisines.map((c) => {
  const isSelected = dimensions.regional === c.value;
  return (
@@ -333,7 +350,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  Cuisine
  </span>
- <div className="grid grid-cols-2 gap-2">
+ <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
  {gourmetCuisines.map((c) => {
  const isSelected = dimensions.regional === c.value;
  return (

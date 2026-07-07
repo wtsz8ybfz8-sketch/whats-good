@@ -138,6 +138,15 @@ html.dark .glass-subtle {
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+/* ─── Hidden scrollbars for horizontal chip rows ─────── */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── Glass Range Slider ─────────────────────────────── */
 .glass-range {
   -webkit-appearance: none;
@@ -147,16 +156,23 @@ html.dark .glass-subtle {
   background: transparent;
   cursor: pointer;
   touch-action: pan-y;
+  /* Theme-aware track colors — terracotta fill on a quiet rest track */
+  --range-fill: #7c2d12;
+  --range-rest: rgba(26, 26, 26, 0.12);
+}
+html.dark .glass-range {
+  --range-fill: #f07858;
+  --range-rest: rgba(255, 255, 255, 0.14);
 }
 .glass-range::-webkit-slider-runnable-track {
   height: 8px;
   border-radius: 9999px;
   background: linear-gradient(
     to right,
-    #f07858 0%,
-    #f07858 var(--fill, 0%),
-    rgba(255, 255, 255, 0.14) var(--fill, 0%),
-    rgba(255, 255, 255, 0.14) 100%
+    var(--range-fill) 0%,
+    var(--range-fill) var(--fill, 0%),
+    var(--range-rest) var(--fill, 0%),
+    var(--range-rest) 100%
   );
 }
 .glass-range::-webkit-slider-thumb {
@@ -166,7 +182,7 @@ html.dark .glass-subtle {
   border-radius: 9999px;
   margin-top: -9px;
   background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.25),
     0 6px 16px rgba(0, 0, 0, 0.35),
@@ -182,12 +198,12 @@ html.dark .glass-subtle {
 .glass-range::-moz-range-track {
   height: 8px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--range-rest);
 }
 .glass-range::-moz-range-progress {
   height: 8px;
   border-radius: 9999px;
-  background: #f07858;
+  background: var(--range-fill);
 }
 .glass-range::-moz-range-thumb {
   width: 26px;

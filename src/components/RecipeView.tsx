@@ -520,10 +520,14 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </span>
  <span className="opacity-30">·</span>
  <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.priceSymbol}</span>
+ {typeof r.tags[1] ==='string' && r.tags[1].includes('km') && (
+ <>
  <span className="opacity-30">·</span>
  <span className="flex items-center gap-1 text-[#7C2D12] dark:text-[#fca5a5] font-bold">
  <MapPin className="w-3 h-3" /> {r.tags[1]}
  </span>
+ </>
+)}
  {rawEatery.openNow !== undefined && (
  <>
  <span className="opacity-30">·</span>

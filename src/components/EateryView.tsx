@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { ParsedRecipe } from '../types';
-import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Activity, Clock, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink } from 'lucide-react';
 
 interface EateryViewProps {
   recipes: ParsedRecipe[];
@@ -33,31 +33,16 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
   const directionsUrl = `https://maps.google.com/?q=${encodeURIComponent(rawEatery.address)}`;
   const isSaved = savedIds.includes(r.id);
-  const priceAnchor = rawEatery.priceSymbol === 'R' ? 95 : rawEatery.priceSymbol === 'RR' ? 145 : rawEatery.priceSymbol === 'RRR' ? 230 : 420;
-  const menuSections = [
-    {
-      title: 'Menu highlights',
-      items: [
-        { name: rawEatery.signatureOrder, price: `R${priceAnchor}` },
-        { name: rawEatery.signatureIngredients[0] || 'Chef recommendation', price: `R${Math.max(70, priceAnchor - 55)}` },
-        { name: rawEatery.signatureIngredients[1] || 'Seasonal side', price: `R${Math.max(55, priceAnchor - 95)}` },
-      ],
-    },
-    {
-      title: 'Good for',
-      items: [
-        { name: rawEatery.vibeMatch, price: rawEatery.priceSymbol },
-        { name: rawEatery.estimatedWait, price: 'wait' },
-        { name: r.tags[1], price: 'distance' },
-      ],
-    },
-  ];
+  // Only show distance when it's a real measured value, not a city-name fallback
+  const distanceLabel = r.tags[1];
+  const hasRealDistance = typeof distanceLabel === 'string' && distanceLabel.includes('km');
+  const hasRealWait = rawEatery.estimatedWait && rawEatery.estimatedWait !== 'Check with venue';
 
   return (
     <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
 
-      {/* Hero — edge-to-edge, focal point */}
-      <div className="relative w-full h-[62vh] sm:h-[74vh] overflow-hidden group">
+      {/* Hero — true full-bleed: breaks out of the padded content column */}
+      <div className="relative left-1/2 -translate-x-1/2 w-screen -mt-6 sm:-mt-10 lg:-mt-16 h-[62vh] sm:h-[74vh] overflow-hidden group">
         <img
           src={r.image}
           alt={rawEatery.name}
@@ -104,8 +89,12 @@ export const EateryView: React.FC<EateryViewProps> = ({
             </span>
             <span className="text-white/25">·</span>
             <span>{rawEatery.priceSymbol}</span>
-            <span className="text-white/25">·</span>
-            <span>{r.tags[1]}</span>
+            {hasRealDistance && (
+              <>
+                <span className="text-white/25">·</span>
+                <span>{distanceLabel}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -163,7 +152,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
       <div className="mx-6 sm:mx-10 my-7 h-px bg-[#E8E4DF] dark:bg-[#1e1e1e]" />
 
       {/* Visit Details — pure typography, no container */}
-      <div className="px-6 sm:px-10">
+      <div className="px-6 sm:px-10 pb-10">
         <p className="font-mono text-[9px] uppercase tracking-[2.5px] text-[#9E9A94] dark:text-[#555] mb-5">Visit Details</p>
         <div className="flex flex-col">
           {rawEatery.openNow !== undefined && (
@@ -176,18 +165,22 @@ export const EateryView: React.FC<EateryViewProps> = ({
               </span>
             </div>
           )}
-          <div className="flex items-center justify-between py-3.5 border-b border-[#F0EDE8] dark:border-[#1a1a1a]">
-            <span className="flex items-center gap-2 font-mono text-[11px] text-[#6E6A64] dark:text-[#a3a3a3]">
-              <Clock className="w-3.5 h-3.5" /> Estimated Wait
-            </span>
-            <span className="font-mono text-[11px] font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.estimatedWait}</span>
-          </div>
-          <div className="flex items-center justify-between py-3.5 border-b border-[#F0EDE8] dark:border-[#1a1a1a]">
-            <span className="flex items-center gap-2 font-mono text-[11px] text-[#6E6A64] dark:text-[#a3a3a3]">
-              <MapPin className="w-3.5 h-3.5" /> Distance
-            </span>
-            <span className="font-mono text-[11px] font-bold text-[#7C2D12] dark:text-[#fca5a5]">{r.tags[1]}</span>
-          </div>
+          {hasRealWait && (
+            <div className="flex items-center justify-between py-3.5 border-b border-[#F0EDE8] dark:border-[#1a1a1a]">
+              <span className="flex items-center gap-2 font-mono text-[11px] text-[#6E6A64] dark:text-[#a3a3a3]">
+                <Clock className="w-3.5 h-3.5" /> Estimated Wait
+              </span>
+              <span className="font-mono text-[11px] font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.estimatedWait}</span>
+            </div>
+          )}
+          {hasRealDistance && (
+            <div className="flex items-center justify-between py-3.5 border-b border-[#F0EDE8] dark:border-[#1a1a1a]">
+              <span className="flex items-center gap-2 font-mono text-[11px] text-[#6E6A64] dark:text-[#a3a3a3]">
+                <MapPin className="w-3.5 h-3.5" /> Distance
+              </span>
+              <span className="font-mono text-[11px] font-bold text-[#7C2D12] dark:text-[#fca5a5]">{distanceLabel}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between py-3.5">
             <span className="flex items-center gap-2 font-mono text-[11px] text-[#6E6A64] dark:text-[#a3a3a3]">
               <Phone className="w-3.5 h-3.5" /> Phone
@@ -199,46 +192,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
               {rawEatery.phone}
             </a>
           </div>
-        </div>
-      </div>
-
-      {/* Menu Sections */}
-      <div className="px-6 sm:px-10 pb-10">
-        <p className="font-mono text-[9px] uppercase tracking-[2.5px] text-[#9E9A94] dark:text-[#555] mb-5">Menu</p>
-        <div className="grid md:grid-cols-2 gap-6">
-          {menuSections.map((section) => (
-            <section key={section.title} className="border-t border-black/10 dark:border-white/10 pt-4">
-              <h3 className="font-serif text-2xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4">
-                {section.title}
-              </h3>
-              <div className="space-y-3">
-                {section.items.map((item) => (
-                  <div key={`${section.title}-${item.name}`} className="flex items-start justify-between gap-5">
-                    <span className="text-sm font-sans font-semibold leading-snug text-[#1A1A1A] dark:text-[#f5f5f5]">
-                      {item.name}
-                    </span>
-                    <span className="font-mono text-[11px] font-bold text-[#7C2D12] dark:text-[#fca5a5] whitespace-nowrap">
-                      {item.price}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-        <p className="mt-5 text-[11px] text-[#9E9A94] dark:text-[#666] leading-relaxed">
-          Menu prices are app estimates until live venue menus are connected. Confirm with the restaurant before ordering.
-        </p>
-      </div>
-
-      {/* Good to Know — editorial left-border callout */}
-      <div className="mx-6 sm:mx-10 mb-10 border-l-[2px] border-[#7C2D12] dark:border-[#7C2D12]/50 pl-5 py-0.5 flex items-start gap-3">
-        <Activity className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5] flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="font-mono text-[9px] uppercase tracking-[2.5px] text-[#7C2D12] dark:text-[#fca5a5] mb-2">Good to Know</p>
-          <p className="text-sm text-[#4A4741] dark:text-[#a3a3a3] leading-relaxed font-sans">
-            {rawEatery.digestiveNote}
-          </p>
         </div>
       </div>
 

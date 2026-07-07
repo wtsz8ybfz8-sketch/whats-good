@@ -10,7 +10,7 @@ import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
-import { Sparkles, Dices, Heart, Trash2, Search, MapPin, Navigation, ChevronRight, Sun, Moon } from'lucide-react';
+import { Sparkles, Dices, Heart, Trash2, Search, MapPin, ChevronRight, Sun, Moon } from'lucide-react';
 import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
 import { fetchCapeTownEateries, detectCityFromCoords } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
@@ -585,18 +585,27 @@ export default function App() {
  <button
  id="location-header-toggle"
  onClick={requestUserLocation}
- className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-mono font-extrabold uppercase tracking-wider transition-all duration-300 cursor-pointer select-none active:scale-95 ${
+ disabled={locState ==='requesting'}
+ title={
+ locState ==='granted' ?'Location on — results sorted by distance'
+ : locState ==='denied' ?'Location denied — tap to try again'
+ :'Sort results by distance to you'
+ }
+ aria-label="Sort nearby using your location"
+ className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full border text-[10px] font-mono font-extrabold uppercase tracking-wider transition-all duration-300 cursor-pointer select-none active:scale-95 flex-shrink-0 ${
  locState ==='granted'
- ?'bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+ ?'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
  : locState ==='requesting'
- ?'bg-amber-50/60 dark:bg-amber-950/40 border-amber-500/20 text-amber-800 dark:text-amber-300 animate-pulse'
+ ?'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500/30 text-amber-800 dark:text-amber-300 animate-pulse'
  : locState ==='denied'
- ?'bg-red-50/60 dark:bg-red-950/40 border-red-500/20 text-red-800 dark:text-red-300'
- :'bg-black dark:bg-[#222222] border-black dark:border-[#444] hover:bg-black dark:bg-[#222222] text-[#6E6A64] dark:text-[#a3a3a3]'
+ ?'bg-red-50/80 dark:bg-red-950/40 border-red-500/30 text-red-800 dark:text-red-300'
+ :'glass-subtle border-black/10 dark:border-white/10 text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white'
  }`}
  >
- <MapPin className={`w-3.5 h-3.5 ${locState ==='granted' ?'text-emerald-600 animate-pulse' :'text-[#6E6A64] dark:text-[#a3a3a3]'}`} />
- <span>{locState ==='granted' ?'GPS Active' : locState ==='requesting' ?'GPS...' :'Sort Nearby'}</span>
+ <MapPin className={`w-3.5 h-3.5 ${locState ==='granted' ?'text-emerald-600 animate-pulse' :''}`} />
+ <span className="hidden md:inline">
+ {locState ==='granted' ?'Sorted Nearby' : locState ==='requesting' ?'Locating...' : locState ==='denied' ?'Retry Location' :'Sort Nearby'}
+ </span>
  </button>
 
  <button
@@ -952,73 +961,6 @@ export default function App() {
  </div>
 )}
 
- {/* Persistent Geolocation FAB / Quick Toggle Indicator — sits above the CTA bar when it's shown */}
- <div
- id="location-quick-toggle"
- className={`fixed right-4 sm:right-6 z-[100] transition-all duration-300 transform hover:scale-[1.03] ${
- activeTab ==='mood' && !selectedRecipe && filtersOpen && !isLoading ?'bottom-28' :'bottom-6'
- }`}
- >
- <button
- onClick={requestUserLocation}
- disabled={locState ==='requesting'}
- className={`flex items-center gap-2.5 px-4.5 py-3 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer select-none active:scale-95 ${
- locState ==='granted'
- ?'glass shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:border-emerald-500 text-emerald-800 dark:text-emerald-300'
- : locState ==='requesting'
- ?'glass shadow-[0_12px_30px_rgba(0,0,0,0.12)] text-[#6E6A64] dark:text-[#a3a3a3]'
- : locState ==='denied'
- ?'glass-subtle shadow-[0_12px_30px_rgba(0,0,0,0.12)] border border-red-200/50 dark:border-red-500/30 hover:border-red-300 text-red-800 dark:text-red-300'
- :'bg-[#1A1A1A] dark:bg-[#2a2a2a] border border-[#1A1A1A] shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:bg-neutral-800 text-white'
- }`}
- >
- {locState ==='granted' ? (
- <>
- <span className="relative flex h-2 w-2">
- <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
- <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
- </span>
- <MapPin className="w-4 h-4 text-emerald-600" />
- <div className="text-left text-xs">
- <div className="font-sans font-extrabold leading-none">Sorted Nearby</div>
- <div className="text-[9px] font-mono font-normal opacity-70 mt-0.5">Location Access On</div>
- </div>
- </>
-) : locState ==='requesting' ? (
- <>
- <svg className="animate-spin h-3.5 w-3.5 text-[#7C2D12] dark:text-[#fca5a5]" fill="none" viewBox="0 0 24 24">
- <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
- <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
- </svg>
- <div className="text-left text-xs">
- <div className="font-sans font-extrabold leading-none text-[#1A1A1A] dark:text-[#f5f5f5]">Pinging GPS...</div>
- <div className="text-[9px] font-mono font-normal text-[#6E6A64] dark:text-[#a3a3a3] mt-0.5">Requesting coordinate access</div>
- </div>
- </>
-) : locState ==='denied' ? (
- <>
- <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
- <MapPin className="w-4 h-4 text-red-500 opacity-60" />
- <div className="text-left text-xs">
- <div className="font-sans font-extrabold leading-none">Location Disabled</div>
- <div className="text-[9px] font-mono font-normal opacity-75 mt-0.5">Click to try again</div>
- </div>
- </>
-) : (
- <>
- <span className="relative flex h-2 w-2">
- <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7C2D12]/20 opacity-50"></span>
- <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F5D1C9]"></span>
- </span>
- <Navigation className="w-4 h-4 text-[#F5D1C9]" />
- <div className="text-left text-xs text-white">
- <div className="font-sans font-extrabold leading-none">Enable Location</div>
- <div className="text-[9px] text-[#A2A8A8] font-mono font-normal mt-0.5">Sort eateries by proximity</div>
- </div>
- </>
-)}
- </button>
- </div>
  </div>
 );
 }
