@@ -110,7 +110,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {(recipes.length > 1 || isSavedTab) && (
  <button
  onClick={() => onSelectRecipe(null)}
- className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
+ className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
  >
  <ChevronLeft className="w-3.5 h-3.5" />
  {isSavedTab ? (
@@ -194,7 +194,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  type="button"
  onClick={() => handleAdjustPlates(-1)}
  disabled={plates <= 1}
- className="w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+ className="w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
  >
  -
  </button>
@@ -204,7 +204,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <button
  type="button"
  onClick={() => handleAdjustPlates(1)}
- className="w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:text-[#fca5a5] cursor-pointer transition-colors"
+ className="w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
  >
  +
  </button>
@@ -319,7 +319,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  href={r.source}
  target="_blank"
  rel="noopener noreferrer"
- className="flex items-center gap-1.5 font-sans text-xs font-bold text-[#5b7993] hover:text-[#1A1A1A] dark:text-[#f5f5f5] transition-colors"
+ className="flex items-center gap-1.5 font-sans text-xs font-bold text-[#5b7993] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] transition-colors"
  >
  <ExternalLink className="w-3.5 h-3.5" />
  Recipe Original Source
@@ -415,7 +415,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  triggerToast(`Looking for restaurants serving ${r.category} dishes...`);
  }
  }}
- className="w-full py-3 bg-transparent border border-black dark:border-[#444] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:text-[#fca5a5] text-black dark:text-[#f5f5f5] text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95"
+ className="w-full py-3 bg-transparent border border-black dark:border-[#444] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] text-black dark:text-[#f5f5f5] text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95"
  >
  Find Nearby Restaurants
  </button>
@@ -436,7 +436,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {recipes.length > 1 && (
  <button
  onClick={() => onSelectRecipe(null)}
- className="px-6 py-3.5 bg-none border-none text-[#5b7993] hover:text-[#1A1A1A] dark:text-[#f5f5f5] font-sans text-sm font-bold transition-all cursor-pointer"
+ className="px-6 py-3.5 bg-none border-none text-[#5b7993] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] font-sans text-sm font-bold transition-all cursor-pointer"
  >
  See other matches ({recipes.length - 1} more)
  </button>
@@ -583,7 +583,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="font-mono text-[10px] text-[#6E6A64] dark:text-[#a3a3a3] uppercase tracking-wider block">
  {r.area} Cuisine
  </span>
- <h3 className="font-serif text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] group-hover:text-[#7C2D12] dark:text-[#fca5a5] transition-colors leading-snug line-clamp-2">
+ <h3 className="font-serif text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug line-clamp-2">
  {r.name}
  </h3>
  <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] line-clamp-3 leading-relaxed mt-1 mb-3">

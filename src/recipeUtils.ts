@@ -9,68 +9,78 @@ import { Meal, ParsedRecipe } from './types';
  * Maps the coordinates (Vibe + Regional Cuisine) to real search terms for TheMealDB
  */
 export function mapCoordinatesToQueries(vibe: string | null, regional: string | null): string[] {
-  const queries: string[] = [];
+  const regionalTerms: string[] = [];
+  const vibeTerms: string[] = [];
 
   // Regional mapping
   if (regional) {
     switch (regional) {
       case 'Italian':
-        queries.push('pasta', 'tomato', 'risotto', 'basil');
+        regionalTerms.push('pasta', 'tomato', 'risotto', 'basil');
         break;
       case 'Middle Eastern':
-        queries.push('couscous', 'lamb', 'lentil', 'kebap', 'chickpea');
+        regionalTerms.push('couscous', 'lamb', 'lentil', 'kebap', 'chickpea');
         break;
       case 'Pan-Asian':
-        queries.push('rice', 'noodle', 'stir', 'teriyaki', 'curry', 'ginger');
+        regionalTerms.push('rice', 'noodle', 'stir', 'teriyaki', 'curry', 'ginger');
         break;
       case 'South African':
-        queries.push('stew', 'beef', 'curry', 'bobotie');
+        regionalTerms.push('stew', 'beef', 'curry', 'bobotie');
         break;
       case 'Latin American':
-        queries.push('taco', 'chili', 'lime', 'tortilla', 'fajitas');
+        regionalTerms.push('taco', 'chili', 'lime', 'tortilla', 'fajitas');
         break;
       case 'surprise me':
       default:
-        queries.push('chicken', 'salmon', 'beef', 'pie', 'soup', 'salad');
+        regionalTerms.push('chicken', 'salmon', 'beef', 'pie', 'soup', 'salad');
         break;
     }
   }
 
-  // Vibe mapping (adds fallback searches if regional queries return nothing)
+  // Vibe mapping — kept separate from regional so both dimensions contribute
+  // terms even when the caller caps how many it fetches (interleaved below).
   if (vibe) {
     switch (vibe) {
       case 'tired & cosy':
-        queries.push('soup', 'stew', 'potato');
+        vibeTerms.push('soup', 'stew', 'potato');
         break;
       case 'need comfort food':
-        queries.push('cheese', 'pie', 'lasagna');
+        vibeTerms.push('cheese', 'pie', 'lasagna');
         break;
       case 'feeling adventurous':
-        queries.push('curry', 'spicy', 'seafood');
+        vibeTerms.push('curry', 'spicy', 'seafood');
         break;
       case 'treating myself':
-        queries.push('steak', 'chocolate', 'cake', 'tart');
+        vibeTerms.push('steak', 'chocolate', 'cake', 'tart');
         break;
       case 'something fresh & light':
-        queries.push('salad', 'lemon', 'fish', 'avocado');
+        vibeTerms.push('salad', 'lemon', 'fish', 'avocado');
         break;
       case 'stressed, need quick and easy':
-        queries.push('egg', 'noodle', 'quick');
+        vibeTerms.push('egg', 'noodle', 'quick');
         break;
       case 'craving something bold & spicy':
-        queries.push('chili', 'curry', 'spicy');
+        vibeTerms.push('chili', 'curry', 'spicy');
         break;
       case 'lazy Sunday energy':
-        queries.push('roast', 'chicken', 'pancake', 'bake');
+        vibeTerms.push('roast', 'chicken', 'pancake', 'bake');
         break;
       case 'feeling fancy':
-        queries.push('salmon', 'duck', 'risotto');
+        vibeTerms.push('salmon', 'duck', 'risotto');
         break;
     }
   }
 
-  // Deduplicate and fallback
-  const unique = Array.from(new Set(queries));
+  // Interleave regional and vibe terms (r0, v0, r1, v1, …) so a truncated
+  // slice still samples BOTH dimensions instead of ANDing down to one.
+  const interleaved: string[] = [];
+  const maxLen = Math.max(regionalTerms.length, vibeTerms.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (regionalTerms[i]) interleaved.push(regionalTerms[i]);
+    if (vibeTerms[i]) interleaved.push(vibeTerms[i]);
+  }
+
+  const unique = Array.from(new Set(interleaved));
   return unique.length > 0 ? unique : ['chicken'];
 }
 

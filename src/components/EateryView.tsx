@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { ParsedRecipe } from '../types';
-import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Activity, Clock, ExternalLink, ShoppingBag } from 'lucide-react';
+import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Activity, Clock, ExternalLink } from 'lucide-react';
 
 interface EateryViewProps {
   recipes: ParsedRecipe[];
@@ -239,40 +239,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <p className="text-sm text-[#4A4741] dark:text-[#a3a3a3] leading-relaxed font-sans">
             {rawEatery.digestiveNote}
           </p>
-        </div>
-      </div>
-
-      {/* Delivery Partners */}
-      <div className="px-6 sm:px-10 pb-10">
-        <p className="font-mono text-[9px] uppercase tracking-[2.5px] text-[#9E9A94] dark:text-[#555] mb-4">Order Delivery</p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <a
-            href={`https://www.checkers.co.za/sixty60/restaurants?search=${encodeURIComponent(rawEatery.name)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl border border-black/10 dark:border-white/10 text-[11px] font-sans font-bold text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] transition-all duration-200 cursor-pointer text-center"
-          >
-            <ShoppingBag className="w-4 h-4 flex-shrink-0" />
-            Checkers Sixty60
-          </a>
-          <a
-            href={`https://www.woolworths.co.za/wwd?search=${encodeURIComponent(rawEatery.name)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl border border-black/10 dark:border-white/10 text-[11px] font-sans font-bold text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] transition-all duration-200 cursor-pointer text-center"
-          >
-            <ShoppingBag className="w-4 h-4 flex-shrink-0" />
-            Woolworths Dash
-          </a>
-          <a
-            href={`https://www.pnpnow.co.za?search=${encodeURIComponent(rawEatery.name)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl border border-black/10 dark:border-white/10 text-[11px] font-sans font-bold text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] transition-all duration-200 cursor-pointer text-center"
-          >
-            <ShoppingBag className="w-4 h-4 flex-shrink-0" />
-            PnP asap!
-          </a>
         </div>
       </div>
 

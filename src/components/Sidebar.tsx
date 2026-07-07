@@ -2,7 +2,7 @@ import React from'react';
 import { Dimensions, LocationMode } from'../types';
 import { 
  Search, Moon, Heart, Compass, Sparkles, Leaf, 
- Clock, Flame, Sun, Crown, Globe, Utensils, Dices, ChevronRight,
+ Clock, Flame, Sun, Crown, Globe, Utensils, Dices,
  MapPin, ChefHat
 } from'lucide-react';
 
@@ -34,6 +34,64 @@ const CuisineIcon = ({ name, className ="w-4 h-4" }: { name: string; className?:
  case'Dices': return <Dices className={className} />;
  default: return <Utensils className={className} />;
  }
+};
+
+interface SliderStop {
+ label: string;
+ sub?: string;
+ value: string | null;
+}
+
+/**
+ * Draggable snap-to-stop slider inside the dark glass bar — replaces the
+ * discrete button grids for continuous-feeling ranges (budget, effort).
+ */
+const GlassSlider: React.FC<{
+ stops: SliderStop[];
+ selectedValue: string | null;
+ onSelect: (value: string | null) => void;
+ ariaLabel: string;
+}> = ({ stops, selectedValue, onSelect, ariaLabel }) => {
+ const rawIdx = stops.findIndex((s) => s.value === selectedValue);
+ const idx = rawIdx === -1 ? 0 : rawIdx;
+ const pct = stops.length > 1 ? (idx / (stops.length - 1)) * 100 : 0;
+ return (
+ <div className="bg-black/80 dark:bg-black/60 backdrop-blur-xl px-5 pt-4 pb-2 rounded-2xl select-none">
+ <input
+ type="range"
+ min={0}
+ max={stops.length - 1}
+ step={1}
+ value={idx}
+ aria-label={ariaLabel}
+ aria-valuetext={stops[idx].label}
+ onChange={(e) => onSelect(stops[Number(e.target.value)].value)}
+ className="glass-range"
+ style={{ '--fill': `${pct}%` } as React.CSSProperties}
+ />
+ <div className="mt-1 grid" style={{ gridTemplateColumns: `repeat(${stops.length}, 1fr)` }}>
+ {stops.map((s, i) => (
+ <button
+ key={s.label}
+ type="button"
+ onClick={() => onSelect(s.value)}
+ className={`flex flex-col items-center gap-0.5 py-1.5 cursor-pointer transition-colors duration-200 ${
+ i === idx ?'text-white' :'text-[#b3aea8] hover:text-white'
+ }`}
+ >
+ <span className={`text-[10px] font-bold font-sans leading-tight transition-transform duration-200 ${i === idx ?'scale-110' :''}`}>
+ {s.label}
+ </span>
+ {s.sub && (
+ <span className={`text-[8px] font-mono leading-tight ${i === idx ?'text-[#f6a892]' :'opacity-60'}`}>
+ {s.sub}
+ </span>
+)}
+ </button>
+))}
+ </div>
+ </div>
+);
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -78,14 +136,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
  { label:'High Effort', time:'45m+', value:'high effort, I want to properly cook today' },
  ];
 
- const eatPriceFilters = [
- { label:'Any Price', value: null },
- { label:'R (Budget)', value:'R' },
- { label:'RR (Moderate)', value:'RR' },
- { label:'RRR (Fine)', value:'RRR' },
- { label:'RRRR (Luxury)', value:'RRRR' },
- ];
-
  const handleSelectVibe = (val: string) => {
  onChange({
  ...dimensions,
@@ -100,19 +150,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
  });
  };
 
- const handleSelectEffort = (val: string) => {
- onChange({
- ...dimensions,
- capacity: dimensions.capacity === val ? null : val, // toggle
- });
- };
-
  const handleLocationModeSwitch = (mode: LocationMode) => {
  onChange({
  ...dimensions,
  locationMode: mode,
- // Reset incompatible fields if switching to keep flow organic
- capacity: mode ==='gourmet' ? dimensions.capacity ||'medium effort, around 30 minutes' : null,
+ // Reset incompatible fields if switching to keep flow organic.
+ // capacity holds price tiers in dineout and effort levels in gourmet —
+ // never let one leak into the other.
+ capacity:
+ mode ==='gourmet'
+ ? (dimensions.capacity?.includes('effort') ? dimensions.capacity :'medium effort, around 30 minutes')
+ : null,
  regional: mode ==='dineout' ? null : dimensions.regional,
  });
  };
@@ -123,11 +171,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
  searchQuery: e.target.value,
  });
  };
-
- const isFormValid =
- dimensions.locationMode !=='gourmet' || 
- dimensions.searchQuery.trim().length > 0 ||
- (dimensions.vibe && dimensions.regional && dimensions.capacity);
 
  return (
  <aside className="bg-transparent p-4 lg:p-8 flex flex-col gap-6 lg:gap-8 overflow-y-visible">
@@ -239,24 +282,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  Budget
  </span>
- <div className="grid grid-cols-5 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl">
- {eatPriceFilters.map((p, idx) => {
- const isSelected = dimensions.capacity === p.value;
- return (
- <button
- key={idx}
- onClick={() => onChange({ ...dimensions, capacity: p.value })}
- className={`py-3.5 px-0.5 rounded-xl transition-all cursor-pointer text-center text-[10px] font-bold font-sans ${
- isSelected
- ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#b3aea8] hover:text-white'
- }`}
- >
- {p.value ||'All'}
- </button>
-);
- })}
- </div>
+ <GlassSlider
+ ariaLabel="Budget"
+ stops={[
+ { label:'Any', value: null },
+ { label:'R', sub:'Budget', value:'R' },
+ { label:'RR', sub:'Moderate', value:'RR' },
+ { label:'RRR', sub:'Fine', value:'RRR' },
+ { label:'RRRR', sub:'Luxury', value:'RRRR' },
+ ]}
+ selectedValue={dimensions.capacity}
+ onSelect={(value) => onChange({ ...dimensions, capacity: value })}
+ />
  </div>
 
  {/* Cuisine Coordinates for South African Eateries */}
@@ -324,29 +361,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
  How much time do you have?
  </span>
- <div className="grid grid-cols-3 bg-black/80 dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl">
- {effortLevels.map((e) => {
- const isSelected = dimensions.capacity === e.value;
- return (
- <button
- key={e.value}
- onClick={() => handleSelectEffort(e.value)}
- className={`flex flex-col py-2 px-1 rounded-xl transition-all cursor-pointer text-center ${
- isSelected
- ?'glass shadow-sm text-[#7C2D12] dark:text-[#fca5a5]'
- :'text-[#b3aea8] hover:text-white'
- }`}
- >
- <span className="text-xs font-bold font-sans leading-tight block">
- {e.label}
- </span>
- <span className="text-[9px] font-mono text-[#6E6A64] dark:text-[#a3a3a3] leading-tight block mt-0.5 font-bold">
- {e.time}
- </span>
- </button>
-);
- })}
- </div>
+ <GlassSlider
+ ariaLabel="Cooking effort"
+ stops={effortLevels.map((e) => ({ label: e.label.replace(' Effort',''), sub: e.time, value: e.value }))}
+ selectedValue={dimensions.capacity}
+ onSelect={(value) => onChange({ ...dimensions, capacity: value ?? effortLevels[0].value })}
+ />
  </div>
  </>
 )}

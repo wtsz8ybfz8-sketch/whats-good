@@ -15,31 +15,39 @@ import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
 import { fetchCapeTownEateries, detectCityFromCoords } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
 
-export const EATERY_IMAGES: Record<string, string> = {
-'eat-kloof-house':'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=800&q=80',
-'eat-kloof-street-house':'https://images.unsplash.com/photo-1529042410759-befb1204b468?auto=format&fit=crop&w=800&q=80', // Aliased
-'eat-nandos-rondebosch':'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80',
-'eat-oceanbasket-claremont':'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80',
-'eat-hudsons-claremont':'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80',
-'eat-chefswarehouse':'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-'eat-roxy-latenight':'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=80',
-'eat-bellybeast':'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80',
-'eat-cocoawah':'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80',
-'eat-codfather-campsbay':'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80',
-'eat-fyn-dining':'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
-'eat-jonkershuis-constantia':'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80',
-'eat-truth-coffee':'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
-'eat-jerrys-gardens':'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
-'eat-gold-restaurant':'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?auto=format&fit=crop&w=800&q=80',
-'eat-pot-luck-club':'https://images.unsplash.com/photo-1582163628468-b30f81d86f78?auto=format&fit=crop&w=800&q=80',
-'eat-baia-seafood':'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=800&q=80',
-'eat-mzansi':'https://images.unsplash.com/photo-1627907228181-ed85d8363a0a?auto=format&fit=crop&w=800&q=80',
-'eat-test-kitchen':'https://images.unsplash.com/photo-1514326640560-7d063ef2aed5?auto=format&fit=crop&w=800&q=80',
-'eat-arnolds':'https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=800&q=80',
-'eat-clarkes':'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=800&q=80',
-'eat-rust-en-vrede':'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80',
-'eat-tokara':'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=800&q=80',
-'eat-volkskombuis':'https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?auto=format&fit=crop&w=800&q=80',
+/**
+ * Honest placeholder for venues without a real photo (hardcoded fallback list only).
+ * A warm branded gradient with the venue's initials — never a stock photo of
+ * unrelated food pretending to be the restaurant. Places-sourced results always
+ * carry a real `photoUrl` which takes precedence.
+ */
+export function eateryPlaceholderImage(name: string): string {
+ const initials = name
+ .split(/\s+/)
+ .filter((w) => w && !['the','a','of','&','and'].includes(w.toLowerCase()))
+ .slice(0, 2)
+ .map((w) => w[0].toUpperCase())
+ .join('');
+ // Deterministic warm hue per venue so cards stay distinguishable
+ let hash = 0;
+ for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+ const hue = 14 + (Math.abs(hash) % 26); // 14–40: terracotta → amber band
+ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue},48%,26%)"/><stop offset="1" stop-color="hsl(${hue + 18},42%,14%)"/></linearGradient></defs><rect width="800" height="600" fill="url(#g)"/><circle cx="670" cy="90" r="180" fill="hsl(${hue},50%,32%)" opacity="0.35"/><circle cx="110" cy="520" r="140" fill="hsl(${hue},45%,20%)" opacity="0.5"/><text x="400" y="316" font-family="Georgia, serif" font-size="150" font-weight="bold" fill="rgba(255,245,238,0.92)" text-anchor="middle" dominant-baseline="middle">${initials}</text><text x="400" y="430" font-family="ui-monospace, monospace" font-size="22" letter-spacing="6" fill="rgba(255,245,238,0.45)" text-anchor="middle">NO PHOTO YET</text></svg>`;
+ return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+// Mood values are conversational ("tired & cosy") — map them to terms Google
+// Places actually understands so the vibe widens the search instead of muddying it.
+const VIBE_PLACE_TERMS: Record<string, string> = {
+'tired & cosy':'cozy',
+'need comfort food':'comfort food',
+'feeling adventurous':'hidden gem',
+'treating myself':'upmarket',
+'something fresh & light':'healthy',
+'stressed, need quick and easy':'quick casual',
+'craving something bold & spicy':'spicy',
+'lazy Sunday energy':'brunch',
+'feeling fancy':'fine dining',
 };
 
 // Haversine formula to compute actual spherical distance
@@ -69,7 +77,7 @@ function createEateryResult(
  distanceStr = `${dist.toFixed(1)} km away`;
  }
 
- const imgUrl = eatery.photoUrl || EATERY_IMAGES[eatery.id] ||'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
+ const imgUrl = eatery.photoUrl || eateryPlaceholderImage(eatery.name);
 
  return {
  id: eatery.id,
@@ -243,18 +251,20 @@ export default function App() {
  const searchQuery = (customQuery !== undefined ? customQuery : dimensions.searchQuery).trim().toLowerCase();
  const priceFilter = customQuery ? null : dimensions.capacity;
 
- // Build a Places API search string from available filters
+ // Build a Places API search string from available filters.
+ // Vibe is translated to a dining keyword; price is passed separately so
+ // Places filters it server-side (keeps all 20 result slots useful).
  const placesSearchTerms = [
  customQuery !== undefined ? customQuery : dimensions.searchQuery.trim(),
  customQuery === undefined ? dimensions.regional : null,
- customQuery === undefined ? dimensions.vibe : null,
+ customQuery === undefined && dimensions.vibe ? VIBE_PLACE_TERMS[dimensions.vibe] : null,
  ].filter(Boolean).join(' ');
 
  // Try Places API first; fall back to local Cape Town data when that is the selected city.
  let eateryList: typeof SOUTH_AFRICAN_EATERIES = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES : [];
  let usingPlacesApi = false;
  try {
- const placesResults = await fetchCapeTownEateries(placesSearchTerms || 'restaurant', city);
+ const placesResults = await fetchCapeTownEateries(placesSearchTerms, city, priceFilter);
  if (placesResults.length > 0) {
  eateryList = placesResults as typeof SOUTH_AFRICAN_EATERIES;
  usingPlacesApi = true;
@@ -265,8 +275,9 @@ export default function App() {
 
  const tempRecipes: ParsedRecipe[] = [];
  eateryList.forEach((eatery) => {
- // Price filter applies to both Places and hardcoded results
- if (priceFilter && eatery.priceSymbol !== priceFilter) return;
+ // Price filter client-side only for the hardcoded list — Places results
+ // were already filtered server-side via priceLevels.
+ if (!usingPlacesApi && priceFilter && eatery.priceSymbol !== priceFilter) return;
 
  // Cuisine, vibe, and text filters only apply to hardcoded list
  // (Places API already scoped the results via the search query)
@@ -311,7 +322,9 @@ export default function App() {
  finalMeals = data.meals || [];
  } else {
  const terms = mapCoordinatesToQueries(dimensions.vibe, dimensions.regional);
- const fetchPromises = terms.slice(0, 3).map(async (term) => {
+ // Fetch a wide slice of terms in parallel — TheMealDB's pool is small
+ // (~300 meals), so more terms is the only way to surface variety.
+ const fetchPromises = terms.slice(0, 8).map(async (term) => {
  try {
  const res = await fetch(
  `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(term)}`
@@ -345,6 +358,12 @@ export default function App() {
  }
  return 0;
  });
+ } else {
+ // No effort sort — shuffle so the same few meals don't lead every search
+ for (let i = finalMeals.length - 1; i > 0; i--) {
+ const j = Math.floor(Math.random() * (i + 1));
+ [finalMeals[i], finalMeals[j]] = [finalMeals[j], finalMeals[i]];
+ }
  }
  }
 
@@ -467,7 +486,7 @@ export default function App() {
  if (dimensions.locationMode ==='dineout') {
  const randomEatery = SOUTH_AFRICAN_EATERIES[Math.floor(Math.random() * SOUTH_AFRICAN_EATERIES.length)];
  
- const imgUrl = EATERY_IMAGES[randomEatery.id] ||'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
+ const imgUrl = randomEatery.photoUrl || eateryPlaceholderImage(randomEatery.name);
 
  let distanceStr = randomEatery.fallbackDistance;
  if (userCoords) {
@@ -594,7 +613,7 @@ export default function App() {
  className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='mood'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
  Find a Place
@@ -607,7 +626,7 @@ export default function App() {
  className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
  Stay In
@@ -617,7 +636,7 @@ export default function App() {
  className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
  activeTab ==='saved-recipes'
  ?'bg-blue-900 text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
  <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-white fill-current' :'text-blue-900'}`} />
@@ -628,7 +647,7 @@ export default function App() {
  className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
  activeTab ==='saved-eateries'
  ?'bg-[#7C2D12] text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:text-[#f5f5f5]'
+ :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
  <Heart className={`w-3 h-3 ${activeTab ==='saved-eateries' ?'text-white fill-current' :'text-[#7C2D12] dark:text-[#fca5a5]'}`} />
@@ -665,7 +684,7 @@ export default function App() {
  className="w-full h-8 flex justify-center -mt-4 z-40 relative group cursor-pointer"
  >
  <div className="glass-subtle rounded-full px-4 py-1 flex items-center gap-2 transition-all transform -translate-y-2 group-hover:translate-y-0 group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
- <span className="text-[10px] uppercase font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] group-hover:text-[#7C2D12] dark:text-[#fca5a5]">
+ <span className="text-[10px] uppercase font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5]">
  {filtersOpen ? 'Hide Filters' : 'Adjust Filters'}
  </span>
  </div>
@@ -794,7 +813,7 @@ export default function App() {
  </p>
  <button
  onClick={handleRandomWildcard}
- className="bg-white dark:bg-[#1a1a1a] text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20 active:scale-95 transition-all px-8 py-4 rounded-xl font-serif text-base font-semibold shadow-md cursor-pointer inline-flex items-center gap-2"
+ className="bg-white dark:bg-[#1a1a1a] text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 active:scale-95 transition-all px-8 py-4 rounded-xl font-serif text-base font-semibold shadow-md cursor-pointer inline-flex items-center gap-2"
  >
  <Sparkles className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5]" /> Find a recipe
  </button>
@@ -875,7 +894,7 @@ export default function App() {
  {r.id.startsWith('eat') ? r.tags[1] : r.area} Culture
  </span>
  </div>
- <h4 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] truncate group-hover:text-[#7C2D12] dark:text-[#fca5a5] transition-colors leading-tight">
+ <h4 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] truncate group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-tight">
  {r.id.startsWith('eat') ? (r as any).rawEatery?.name || r.name : r.name}
  </h4>
  </div>
@@ -888,7 +907,7 @@ export default function App() {
  e.stopPropagation();
  handleToggleSave(r);
  }}
- className="w-9 h-9 rounded-xl flex items-center justify-center text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#7C2D12] dark:text-[#fca5a5] hover:bg-[#FAF2F0] dark:bg-[#7C2D12]/20 transition-colors"
+ className="w-9 h-9 rounded-xl flex items-center justify-center text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 transition-colors"
  title="Remove from saved"
  >
  <Trash2 className="w-4 h-4" />

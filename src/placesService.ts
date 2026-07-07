@@ -89,53 +89,98 @@ export function getPlacePhotoUrl(photoName: string): string {
   return `${PLACES_BASE}/${photoName}/media?maxWidthPx=800&key=${key}`;
 }
 
+/** Maps the app's Rand price tier to the Places API priceLevels filter. */
+function symbolToPriceLevels(symbol?: string | null): string[] | undefined {
+  switch (symbol) {
+    case 'R':
+      return ['PRICE_LEVEL_FREE', 'PRICE_LEVEL_INEXPENSIVE'];
+    case 'RR':
+      return ['PRICE_LEVEL_MODERATE'];
+    case 'RRR':
+      return ['PRICE_LEVEL_EXPENSIVE'];
+    case 'RRRR':
+      return ['PRICE_LEVEL_VERY_EXPENSIVE'];
+    default:
+      return undefined;
+  }
+}
+
+async function searchTextOnce(
+  key: string,
+  textQuery: string,
+  priceLevels?: string[],
+): Promise<Place[]> {
+  const response = await fetch(`${PLACES_BASE}/places:searchText`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': [
+        'places.id',
+        'places.displayName',
+        'places.formattedAddress',
+        'places.location',
+        'places.rating',
+        'places.priceLevel',
+        'places.photos',
+        'places.nationalPhoneNumber',
+        'places.websiteUri',
+        'places.regularOpeningHours',
+      ].join(','),
+    },
+    body: JSON.stringify({
+      textQuery,
+      maxResultCount: 20,
+      languageCode: 'en',
+      ...(priceLevels ? { priceLevels } : {}),
+    }),
+  });
+
+  if (!response.ok) return [];
+  const data: PlacesSearchResponse = await response.json();
+  return data.places ?? [];
+}
+
 /**
- * Fetches Cape Town restaurants via the Google Places Text Search API.
- * Maps each result to SouthAfricanEatery format.
+ * Fetches restaurants via the Google Places Text Search API.
+ * Runs two differently-phrased queries in parallel and merges the deduped
+ * results (each call caps at the API's 20-result ceiling, so phrasing
+ * variety is how we widen the pool). Price is filtered server-side via
+ * priceLevels so all 20 slots per call hold matching venues.
  * Returns an empty array on any failure so callers can silently fall back.
  */
 export async function fetchCapeTownEateries(
   query: string,
   city = 'Cape Town',
+  priceSymbol?: string | null,
 ): Promise<SouthAfricanEatery[]> {
   const key = getGooglePlacesKey();
 
   if (!key) return [];
 
   try {
-    const textQuery = query
-      ? `${query} restaurant ${city} South Africa`
-      : `restaurant ${city} South Africa`;
+    const priceLevels = symbolToPriceLevels(priceSymbol);
+    const queries = query
+      ? [
+          `${query} restaurant ${city} South Africa`,
+          `best ${query} places to eat in ${city}`,
+        ]
+      : [
+          `best restaurants in ${city} South Africa`,
+          `popular local eateries in ${city}`,
+        ];
 
-    const response = await fetch(`${PLACES_BASE}/places:searchText`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': key,
-        'X-Goog-FieldMask': [
-          'places.id',
-          'places.displayName',
-          'places.formattedAddress',
-          'places.location',
-          'places.rating',
-          'places.priceLevel',
-          'places.photos',
-          'places.nationalPhoneNumber',
-          'places.websiteUri',
-          'places.regularOpeningHours',
-        ].join(','),
-      },
-      body: JSON.stringify({
-        textQuery,
-        maxResultCount: 20,
-        languageCode: 'en',
-      }),
+    const resultSets = await Promise.all(
+      queries.map((q) => searchTextOnce(key, q, priceLevels).catch(() => [] as Place[])),
+    );
+
+    const seen = new Set<string>();
+    const places = resultSets.flat().filter((p) => {
+      const id = p.id ?? p.displayName?.text ?? '';
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
     });
-
-    if (!response.ok) return [];
-
-    const data: PlacesSearchResponse = await response.json();
-    const places = data.places ?? [];
 
     if (places.length === 0) return [];
 
