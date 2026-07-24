@@ -779,25 +779,14 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='saved-recipes'
- ?'bg-blue-900 text-white shadow-sm'
+ ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
- <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-white fill-current' :'text-blue-900'}`} />
- <span>Saved ({savedRecipes.length})</span>
- </button>
- <button
- onClick={() => handleTabSwitch('saved-eateries')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1 ${
- activeTab ==='saved-eateries'
- ?'bg-[#7C2D12] text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
- }`}
- >
- <Heart className={`w-3 h-3 ${activeTab ==='saved-eateries' ?'text-white fill-current' :'text-[#7C2D12] dark:text-[#fca5a5]'}`} />
- <span>Basket</span>
+ <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-white fill-current' :'text-[var(--accent-terracotta)]'}`} />
+ <span>Saved{savedRecipes.length > 0 ? ` (${savedRecipes.length})` : ''}</span>
  </button>
  </nav>
  </div>
@@ -815,7 +804,7 @@ export default function App() {
  { tab:'mood' as ActiveTab, label:'Find', Icon: Search },
  { tab:'happy-hour' as ActiveTab, label:'Happy Hour', Icon: Sparkles, dot: liveHappyHourCount > 0 },
  { tab:'random' as ActiveTab, label:'Stay In', Icon: Dices },
- { tab:'saved-eateries' as ActiveTab, label:'Saved', Icon: Heart },
+ { tab:'saved-recipes' as ActiveTab, label:'Saved', Icon: Heart },
  ]).map(({ tab, label, Icon, dot }) => {
  const active = activeTab === tab;
  return (
@@ -1014,7 +1003,7 @@ export default function App() {
  Staying in tonight?
  </h2>
  <p className="text-white/70 text-sm leading-relaxed max-w-[440px] mx-auto mb-8">
- Pick a recipe, scale the servings, and use ingredients as the base for a grocery basket later.
+ Pick a recipe, scale it to your table, and get a ready-to-shop ingredient list.
  </p>
  <button
  onClick={handleRandomWildcard}
@@ -1128,7 +1117,7 @@ export default function App() {
  )}
  {/* Footer disclaimer */}
  <footer className="mt-12 pb-24 text-center">
- <p className="text-[10px] text-[#a2a8a8] dark:text-[#555] font-sans leading-relaxed max-w-xs mx-auto">
+ <p className="text-[10px] text-[var(--text-subtle)] font-sans leading-relaxed max-w-xs mx-auto">
  Restaurant info is for reference only — always confirm details with the venue directly.
  </p>
  </footer>

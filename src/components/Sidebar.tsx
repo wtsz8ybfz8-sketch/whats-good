@@ -245,7 +245,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  ?"Search by dish or ingredient, like curry or beef"
  :"Italian, brunch, cocktails, steak, Sea Point..."
  }
- className="w-full bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl py-3 pl-10 pr-12 font-sans text-sm text-[#1A1A1A] dark:text-[#f5f5f5] focus:outline-none focus:border-[#7C2D12] focus:ring-1 focus:ring-[#7C2D12] placeholder:text-[#a2a8a8] transition-all"
+ className="w-full bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl py-3 pl-10 pr-12 font-sans text-sm text-[#1A1A1A] dark:text-[#f5f5f5] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-1 focus:ring-[var(--accent-terracotta)] placeholder:text-[var(--text-subtle)] transition-all"
  />
  <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[var(--text-muted)]" />
  {dimensions.searchQuery && (

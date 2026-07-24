@@ -142,9 +142,9 @@ export const EmptyState: React.FC<EmptyProps> = ({
  </p>
  <div className="space-y-2.5">
  {featured.menu.map((item) => (
- <div key={item} className="flex items-center justify-between gap-4 text-sm">
+ <div key={item} className="flex items-center gap-2.5 text-sm">
+ <span className="w-1 h-1 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0" />
  <span className="font-sans font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">{item}</span>
- <span className="font-mono text-[11px] text-[#7C2D12] dark:text-[#fca5a5]">market</span>
  </div>
 ))}
  </div>

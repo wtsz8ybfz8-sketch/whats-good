@@ -518,7 +518,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white'
- :'text-[#9E9A94] dark:text-[#666] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] hover:bg-black/5 dark:hover:bg-white/5'
+ :'text-[var(--text-subtle)] hover:text-[var(--accent-terracotta)] hover:bg-black/5 dark:hover:bg-white/5'
  }`}
  title={savedIds.includes(r.id) ?'Remove from saved' :'Save eatery'}
  aria-label={savedIds.includes(r.id) ? `Remove ${rawEatery.name} from saved` : `Save ${rawEatery.name}`}
@@ -573,7 +573,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {rawEatery.openNow !== undefined && (
  <>
  <span className="opacity-30">·</span>
- <span className={`font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[#9E9A94] dark:text-[#666]'}`}>
+ <span className={`font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--text-muted)]'}`}>
  {rawEatery.openNow ? 'Open now' : 'Closed'}
  </span>
  </>
@@ -642,7 +642,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {r.name}
  </h3>
  <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] line-clamp-3 leading-relaxed mt-1 mb-3">
- {r.instructions ||'An exquisite composition using matching fresh ingredients.'}
+ {r.instructions ||'A crowd-pleasing dish worth making at home.'}
  </p>
  
  <div className="mt-auto pt-4 border-t border-[#f3f1ed] flex items-center justify-between text-[#6E6A64] dark:text-[#a3a3a3]">

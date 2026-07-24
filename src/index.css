@@ -65,6 +65,14 @@
   }
   /* Tailwind's arbitrary tracking utilities still win where a call site sets
      one explicitly — this only fixes the default. */
+
+  /* Consistent keyboard focus ring for anything interactive that doesn't style
+     its own focus. Only shows for keyboard users (:focus-visible), never on
+     mouse click — so it's an a11y win without visual noise. */
+  :where(button, a, [role="button"], [role="checkbox"], [tabindex]):focus-visible {
+    outline: 2px solid var(--accent-terracotta);
+    outline-offset: 2px;
+  }
 }
 
 /* ─── Design Tokens — Light Mode ─────────────────────── */
