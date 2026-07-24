@@ -96,7 +96,7 @@ const GlassSlider: React.FC<{
  {s.label}
  </span>
  {s.sub && (
- <span className={`text-[8px] font-mono leading-tight ${i === idx ?'text-[#7C2D12] dark:text-[#f6a892]' :'opacity-60'}`}>
+ <span className={`text-[10px] font-mono leading-tight ${i === idx ?'text-[#7C2D12] dark:text-[#f6a892]' :'opacity-60'}`}>
  {s.sub}
  </span>
 )}
@@ -192,7 +192,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  return (
  <aside className="bg-transparent p-4 lg:p-8 flex flex-col gap-6 lg:gap-8 overflow-y-visible">
  <div>
- <h1 className="font-serif text-3xl lg:text-[38px] font-extrabold leading-[1.12] text-[#1A1A1A] dark:text-[#f5f5f5] tracking-tight">
+ <h1 className="font-serif text-3xl lg:text-[38px] font-semibold leading-[1.12] text-[#1A1A1A] dark:text-[#f5f5f5] tracking-tight">
  Where are we<br />
  <span className="italic font-normal text-[#7C2D12] dark:text-[#fca5a5]">eating?</span>
  </h1>
@@ -200,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
  {/* CURATION CONTEXT SEGMENTED CONTROL (Apple HIG & Brutalist Mix) */}
  <div className="flex flex-col gap-2.5">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium block">
+ <span className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)] block">
  Plan
  </span>
  <div className="grid grid-cols-2 bg-black/[0.06] dark:bg-black/60 backdrop-blur-xl p-1 rounded-2xl select-none border border-black/5 dark:border-white/5">
@@ -209,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='dineout'
  ?'bg-white dark:bg-white/10 shadow-sm text-[#7C2D12] dark:text-[#fca5a5] border border-black/5 dark:border-white/10'
- :'text-[#6E6A64] dark:text-[#b3aea8] hover:text-[#1A1A1A] dark:hover:text-white'
+ :'text-[var(--text-muted)] dark:text-[#b3aea8] hover:text-[#1A1A1A] dark:hover:text-white'
  }`}
  >
  <MapPin className="w-4 h-4 mb-1" />
@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  className={`flex flex-col items-center justify-center py-2.5 px-1.5 rounded-xl transition-all cursor-pointer text-center ${
  dimensions.locationMode ==='gourmet'
  ?'bg-white dark:bg-white/10 shadow-sm text-[#7C2D12] dark:text-[#fca5a5] border border-black/5 dark:border-white/10'
- :'text-[#6E6A64] dark:text-[#b3aea8] hover:text-[#1A1A1A] dark:hover:text-white'
+ :'text-[var(--text-muted)] dark:text-[#b3aea8] hover:text-[#1A1A1A] dark:hover:text-white'
  }`}
  >
  <ChefHat className="w-4 h-4 mb-1" />
@@ -231,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
  {/* Direct Search Option */}
  <div className="flex flex-col gap-2">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] flex items-center gap-2">
+ <span className="text-[12px] font-medium text-[var(--text-muted)] flex items-center gap-2">
  {dimensions.locationMode ==='gourmet' ?'Search by dish or ingredient' :'Search restaurants, areas, or cravings'}
  </span>
  <div className="relative">
@@ -246,7 +246,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  }
  className="w-full bg-white/70 dark:bg-white/[0.06] backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl py-3 pl-10 pr-12 font-sans text-sm text-[#1A1A1A] dark:text-[#f5f5f5] focus:outline-none focus:border-[#7C2D12] focus:ring-1 focus:ring-[#7C2D12] placeholder:text-[#a2a8a8] transition-all"
  />
- <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[#6E6A64] dark:text-[#a3a3a3]" />
+ <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[var(--text-muted)]" />
  {dimensions.searchQuery && (
  <button
  onClick={() => onChange({ ...dimensions, searchQuery:'' })}
@@ -259,15 +259,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
  </div>
 
  {/* Or Coordinates Section */}
- <div className="flex items-center gap-4 py-2 font-mono text-[9px] uppercase tracking-[2px] text-[#6E6A64] dark:text-[#a3a3a3] select-none">
- <span className="h-[1px] flex-1 bg-black dark:bg-[#222222]" />
- <span>{dimensions.locationMode ==='gourmet' ?'OR TELL US YOUR MOOD' :'OR SET THE NIGHT'}</span>
- <span className="h-[1px] flex-1 bg-black dark:bg-[#222222]" />
+ <div className="flex items-center gap-4 py-2 text-[12px] font-medium text-[var(--text-muted)] select-none">
+ <span className="h-px flex-1 bg-[var(--rule)]" />
+ <span>Or pick a mood</span>
+ <span className="h-px flex-1 bg-[var(--rule)]" />
+ </div>
+
+{/* Diet — ONE row, single-select, no icons. Four options covers the real
+ need (the meat/no-meat split plus the two common restrictions) without
+ turning the first screen into a form. Tapping the active chip clears it. */}
+ <div className="flex flex-col gap-3 mb-6">
+ <span className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
+ Diet <span className="font-normal text-[var(--text-muted)]">— optional</span>
+ </span>
+ <div className="flex flex-wrap gap-2">
+ {['Vegan','Vegetarian','Halaal','Seafood'].map((d) => {
+ const on = dimensions.diet === d;
+ return (
+ <button
+ key={d}
+ type="button"
+ aria-pressed={on}
+ onClick={() => onChange({ ...dimensions, diet: dimensions.diet === d ? null : d })}
+ className={`press px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
+ on
+ ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
+ : 'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)]'
+ }`}
+ >
+ {d}
+ </button>
+ );
+ })}
+ </div>
  </div>
 
  {/* Your Current Vibe */}
  <div className="flex flex-col gap-3">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
+ <span className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  Mood
  </span>
  <div className="flex flex-wrap gap-2">
@@ -296,7 +325,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <>
  {/* Price Curation Filter for South African Rand Tiers */}
  <div className="flex flex-col gap-3">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
+ <span className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  Budget
  </span>
  <GlassSlider
@@ -315,7 +344,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
  {/* Cuisine Coordinates for South African Eateries */}
  <div className="flex flex-col gap-3">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
+ <span className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  Cuisine
  </span>
  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
@@ -347,7 +376,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <>
  {/* Cuisine Coordinates */}
  <div className="flex flex-col gap-3">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
+ <span className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  Cuisine
  </span>
  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
@@ -375,7 +404,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
  {/* Kitchen Energy Configuration */}
  <div className="flex flex-col gap-3">
- <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#6E6A64] dark:text-[#a3a3a3] font-medium">
+ <span className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  How much time do you have?
  </span>
  <GlassSlider

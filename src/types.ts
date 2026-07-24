@@ -41,10 +41,12 @@ export type City = string;
 
 export interface Dimensions {
   vibe: string | null;
+  /** Single-select diet filter. Deliberately one row of 4 — see Sidebar. */
+  diet: string | null;
   regional: string | null;
   capacity: string | null;
   searchQuery: string;
   locationMode: LocationMode;
 }
 
-export type ActiveTab = 'mood' | 'random' | 'saved-recipes' | 'saved-eateries';
+export type ActiveTab = 'mood' | 'happy-hour' | 'random' | 'saved-recipes' | 'saved-eateries';

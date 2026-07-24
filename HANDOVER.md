@@ -1,174 +1,79 @@
-# What's Good — Session Handover
+# Handover — 2026-07-22 (end of session)
 
-> Last updated: 2026-06-16. Three commits on `main` from this session.
+Live: **https://whats-good-nu.vercel.app** · Vercel project `whats-good` (`nizzle-s-projects`)
 
----
-
-## 1. What Was Built and Changed in This Session
-
-The project was scaffolded from a Google AI Studio React template and rebuilt into a working recipe discovery app. All meaningful product code was written or rewritten in this session.
-
-### Features built from scratch
-
-| Feature | Description |
-|---|---|
-| **Recipe search** | Fixed broken search — replaced vague keyword queries with TheMealDB's `filter.php` area/category endpoints. Mood → category mapping, cuisine → area passthrough, results intersected when both are selected, top 9 shuffled, full detail fetched via `lookup.php`. |
-| **Mood sidebar** | 9 vibe pills, 25-cuisine dropdown (all exact TheMealDB area names), 3-way effort toggle, 500ms debounced text search with clear button, submit button flushes debounce immediately. |
-| **Surprise Me tab** | Calls `random.php`, auto-selects the single result, shows landing screen with call-to-action when idle. |
-| **Save Recipe** | `useSavedRecipes` hook backed by localStorage. Bookmark button on cards and detail view. Saved tab in header with live count badge. Full detail view from saved, unsave from detail view. |
-| **Health Profile overlay** | First-load gate stored in localStorage. 12 health conditions + 4 dietary preferences, select one from each. Pill badge in header with "change" link. Hook returns `condition`, `dietary`, `pillLabel`. |
-| **Recipe detail view** | Full ingredient checklist (tap to cross off), numbered steps, prep/cook time, serves, gut-health tip block, YouTube + source links, back navigation. |
-| **Recipe card grid** | Multi-result grid with image, category badge, area label, time stats, bookmark button. |
-| **Wellness tip copy** | Replaced pseudoscientific gutTip text with accurate 1-sentence ingredient notes + standard disclaimer on every tip. |
-| **Tone overhaul** | Stripped all invented jargon ("Matrix", "Coordinates", "Serendipity Engine", "Gastro", "Culinary Canvas", "Wildcard", "Motility", "FODMAP" in copy) across all four UI files. Replaced with plain, direct language. |
-| **Safety hardening** | Search input sanitised (`/[^a-zA-Z0-9 -]/g`). No `dangerouslySetInnerHTML`. No API keys in source. Removed misleading "Low-FODMAP Compliant" badge from recipe cards. |
+Read `CLAUDE.md` first — stack, tokens, and the working agreement live there.
 
 ---
 
-## 2. File Structure
+## Done this session
 
-```
-/
-├── index.html                  # App shell — sets <title> to "What's Good"
-├── vite.config.ts              # Vite + React + Tailwind v4 config
-├── tsconfig.json               # TS strict mode
-├── package.json                # name is still "react-example" — should rename
-├── src/
-│   ├── main.tsx                # React root mount
-│   ├── index.css               # Tailwind entry + revealUp keyframe animation
-│   ├── types.ts                # Shared interfaces: ParsedRecipe, Meal, Dimensions, ActiveTab
-│   ├── App.tsx                 # Root component — tab state, fetch orchestration, layout
-│   ├── recipeUtils.ts          # All TheMealDB fetch logic + parseMealToRecipe
-│   ├── useSavedRecipes.ts      # localStorage hook for bookmark persistence
-│   └── components/
-│       ├── Sidebar.tsx         # Left panel — search input, vibes, cuisine, effort
-│       ├── RecipeView.tsx      # Detail view + card grid (rendered on right)
-│       ├── StatusStates.tsx    # LoadingState, ErrorState, EmptyState
-│       └── HealthProfile.tsx   # First-load overlay + useHealthProfile hook
+- Token refactor (`--text-subtle`, `--accent-contrast`, `--rule`, `--row-border`), two WCAG AA failures fixed, dark accent unified to one token.
+- Happy Hour tab (live countdowns, sorted by urgency), restaurant menus/specials.
+- Real Places photo thumbnails on result cards.
+- Mobile bottom tab bar; scroll-to-top on navigation.
+- Location copy de-hardcoded (see below).
+- Diet filter (Vegan / Vegetarian / Halaal / Seafood).
+- Deployed to production twice.
+
+---
+
+## 1. Colour + visual direction — THE BIG ONE, needs Lunika's input first
+
+Repeatedly called "cheap". I have changed it three times and missed three times, so **do not guess a fourth time.** Get a decision before touching it.
+
+Current: `--bg-warm: #F4F2EF` light / `#0F0C0A` dark, single terracotta accent `--accent-sage: #7C2D12` / `#F07858`, glass surfaces.
+
+Two concrete suspects, both unaddressed:
+
+- **The glass system is the real problem.** `--glass-blur: blur(22px) saturate(180%)` over `rgba(255,255,255,0.70)` is frosted plastic, not glass. Apple's version is a *lighter* blur over a *lower*-opacity surface with a bright 1px inner top edge doing the work. Worse, glass is currently applied to the header, the search panel, AND the cards simultaneously — so nothing reads as floating above anything. Pick two surfaces max.
+- **`--accent-sage` is misnamed** — it is terracotta (`#7C2D12`), not sage. Rename to `--accent-terracotta` across `index.css` + consumers, or the next person inherits the confusion.
+
+**Ask before starting:** warmer or cooler? One accent or an accent + a neutral secondary? Should the accent stay terracotta at all?
+
+## 2. Font — three misses, stop guessing
+
+Playfair+JetBrains Mono → Instrument Serif → Inter Tight → **currently Schibsted Grotesk**. All rejected ("expected and weird").
+
+One-line swap, `src/index.css:19` — all three `@theme` tokens point at one family, so every call site follows:
+
+```bash
+sed -i '' 's/Schibsted Grotesk/General Sans/g' src/index.css && sed -i '' 's/Schibsted+Grotesk:wght@400..800/General+Sans:wght@400..700/' index.html
 ```
 
-### Key data flow
+Untried candidates: General Sans, Switzer, Geist, Bricolage Grotesque. **Get a one-word direction first** (sharper / softer / more editorial / more technical).
 
-```
-Sidebar (dimensions state) → App.handleTriggerMatch()
-  → recipeUtils.fetchMealsByCoordinates() or search.php
-  → parseMealToRecipe() for each result
-  → RecipeView (grid or detail)
-```
+## 3. Search a city you are not in ("Paris while in CPT")
 
-### localStorage keys
+Not started. `fetchCapeTownEateries(query, city, priceSymbol)` already takes `city` as a parameter and the query strings are now location-generic — so the service layer is ready. What's missing is UI: a destination input that sets `city` independently of geolocation, plus a visible "showing results for X · reset to my location" affordance so the user always knows which mode they're in.
 
-| Key | Value |
-|---|---|
-| `whats-good-health-profile` | `{ condition: string, dietary: string }` JSON |
-| `whats-good-saved-recipes` | `ParsedRecipe[]` JSON array |
+Note `App.tsx` still has three `city === 'Cape Town'` branches gating the hardcoded `SOUTH_AFRICAN_EATERIES` fallback (lines ~288, ~590, ~900). Those are correct for now but will look odd once arbitrary cities are searchable.
 
----
+## 4. Menus and Happy Hour are fabricated
 
-## 3. What Is Still Broken or Incomplete
+`src/venueExtras.ts` synthesises menus, specials and happy-hour windows deterministically from the venue id. **Google Places publishes none of this at any tier** — no API key fixes it.
 
-### Critical
+Now labelled "Sample data" on the Happy Hour tab and "Sample" on each venue block, plus the existing menu provenance note. Roughly 70% of venues get a happy hour (`hash(id + 'hh') % 10 < 7`).
 
-- **Health profile has no effect on recipe results.** The profile is stored and shown in the pill badge, but nothing in `fetchMealsByCoordinates` or `parseMealToRecipe` reads `condition` or `dietary` to filter or re-rank recipes. The UI implies personalisation that doesn't exist. This is the biggest gap between what the product promises and what it delivers.
+Real options, in order of effort: venue website scrape → an aggregator (Zomato / Dineplan / EatOut for SA) → manual curation for a small launch set. **Until one of those exists, do not remove the sample labelling.**
 
-### Minor / polish
+## 5. Known issues not yet fixed
 
-- `package.json` still has `name: "react-example"` from the Google AI Studio scaffold.
-- Three unused dependencies from the AI Studio template are in `package.json` but never imported: `@google/genai`, `express`, `dotenv`. They don't affect the bundle but slow down `npm install`.
-- The card fallback description (`'An exquisite composition using matching fresh ingredients.'`) was never updated to plain language — it wasn't in the original spec replacements list.
-- The comment labels in App.tsx still say `// MOOD CORNER CANVAS`, `// SERENDIPITY ENGINE CANVAS`, `// SAVED RECIPES CANVAS`. Internal-only but inconsistent with the rename.
-- No error boundary at the app level — an uncaught render error will blank the whole page.
-- No loading skeleton on recipe cards — the grid just appears suddenly after the loading spinner.
-- The `dist/` directory is committed to git (should be in `.gitignore`).
+- **Buttons cut off on restaurant pages.** Partly addressed (EateryView footer now `pb-[110px] md:pb-12`, tab bar made opaque) but **not visually verified** — verify at 375px before closing it out.
+- **Desktop layout unverified.** The preview pane reports `innerWidth: 594` no matter what viewport is set, so it always renders the mobile breakpoint. Every desktop change this session is typechecked but unseen. **Check at full width in a real browser.**
+- **`npm run build` hangs locally** — 10+ min at 0.0% CPU, twice. Not caused by `ai-system-build/` (tested by moving it aside; still hung). Vercel's build succeeds, so it is machine-local I/O. `tsc --noEmit` takes ~64s wall for ~1.7s CPU — same cause. Worth investigating; it makes every verification loop painful.
+- **Production is ahead of git.** Deploys went straight from the working directory via `vercel --prod`. Nothing has been committed this session.
+
+## 6. Git state — needs a decision before any commit
+
+Working tree has deletions of files nobody in this session touched: `AGENTS.md`, `HANDOVER_SESSION4.md`, `IDEATION_BRIEF.md`, `prompt.md`, `fix.js`, `replace-colors.js`, `restaurant-first-preview.html`, `package-lock 2.json`, `\'.md`. **Do not `git add -A`** — decide on those first.
+
+`.gitignore` now excludes `ai-system-build/` and `_archive/`.
 
 ---
 
-## 4. Next Recommended Tasks (Priority Order)
+## Working notes
 
-### 1. Connect health profile to actual filtering
-The profile currently does nothing after being saved. Options, from simplest to most useful:
-- **Re-rank results** based on condition — e.g. push Seafood and Vegetarian categories higher for "high-cholesterol" or "vegetarian" users.
-- **Add a warning flag** to gutTip when a recipe likely conflicts with the user's condition (e.g. garlic for IBS/FODMAP users).
-- **Filter categories differently** per profile — swap the vibe→category map to use a profile-aware variant.
-
-### 2. Fix `dist/` in git
-Add `dist/` to `.gitignore`. Vercel builds from source so the committed build artifacts are noise.
-
-### 3. Clean up package.json
-- Rename `"name"` from `"react-example"` to `"whats-good"`.
-- Remove `@google/genai`, `express`, `dotenv` from dependencies (run `npm uninstall`).
-
-### 4. Update card fallback text
-`RecipeView.tsx` line 336: change `'An exquisite composition using matching fresh ingredients.'` to something like `'A recipe from the TheMealDB archive.'`
-
-### 5. Add an app-level error boundary
-Wrap the root in a React error boundary so a component crash shows a recovery UI instead of a blank screen.
-
-### 6. Loading skeletons on cards
-Replace the full-page spinner with card-shaped skeleton placeholders in the grid. Better perceived performance.
-
-### 7. Ingredient quantity display
-Currently ingredients and measures are joined as a single string per item. Consider splitting them — quantity on the left in a muted font, ingredient name on the right — for better readability.
-
----
-
-## 5. Important Technical Decisions Made and Why
-
-**`filter.php` + `lookup.php` instead of `search.php`**
-The original code used `search.php?s=keyword` with vague English words like "stir" or "kebap" — these almost never matched a meal name, so search returned nothing. Replaced with: `filter.php?a=area` and `filter.php?c=category` which return complete lists of meals in that area/category. When both vibe and cuisine are selected, the results are intersected (AND logic). Top 9 are shuffled to avoid always showing the same meals, then each is fetched individually via `lookup.php?i=id` to get full ingredient data (the filter endpoints only return id/name/thumbnail).
-
-**Native `<select>` for the cuisine dropdown**
-With 25 cuisine options, a scrollable pill grid would be unusable. A native `<select>` with `appearance-none` + a `ChevronDown` overlay matches the design system while being accessible and mobile-friendly.
-
-**Inlined JSX instead of `OptionCard` component in HealthProfile**
-React 19 treats `key` as a regular prop in strict TypeScript JSX type-checking, not a reserved one. Passing `key` to a sub-component function caused a TS2322 error. Fixed by removing the `OptionCard` component entirely and inlining the card JSX directly in `.map()`, using plain helper functions (`cardClass`, `labelClass`, `subClass`) that return className strings rather than JSX.
-
-**localStorage for all persistence**
-Saves and the health profile are stored in localStorage rather than a backend. This keeps the app completely zero-backend — no server, no auth, no database. The trade-off is that saves don't sync across devices. Fine for an MVP.
-
-**500ms debounce on search + immediate flush on submit**
-The search input debounces `onChange` by 500ms to avoid firing an API call on every keystroke. But the submit button needs to fire immediately with whatever is currently typed. Solved by passing `localSearch` directly to `onTriggerMatch(localSearch.trim() || undefined)`, bypassing the debounced value in the parent.
-
----
-
-## 6. Deployment Setup
-
-| | |
-|---|---|
-| **GitHub repo** | https://github.com/wtsz8ybfz8-sketch/whats-good |
-| **Branch** | `main` (auto-deploys to Vercel on push) |
-| **Vercel project** | Connected in the previous session — check your Vercel dashboard for the live URL |
-| **Build command** | `npm run build` (runs `vite build`) |
-| **Output directory** | `dist/` |
-| **Environment variables** | None required — TheMealDB is a public API with no auth |
-| **Node version** | Not pinned — Vercel will use its default; the project has no `.nvmrc` |
-
-To deploy: `git push` to `main` triggers Vercel automatically.
-
----
-
-## 7. Known Limitations of TheMealDB
-
-**Coverage**
-- Approximately 250–300 meals in the free public dataset. This is a small corpus — users will see the same recipes repeatedly.
-- Strong Western European and British bias in the dataset. Categories like "British" and "American" have far more entries than "Filipino" or "Tunisian".
-- No vegetarian/vegan/gluten-free tags — dietary filtering at the API level is not possible. The health profile therefore can't filter results reliably.
-
-**API design**
-- `filter.php` returns only `idMeal`, `strMeal`, `strMealThumb` — no ingredients, instructions, or tags. A second lookup call (`lookup.php?i=id`) is required per meal to get full data. With up to 9 meals shown, that's up to 9 sequential or parallel requests.
-- `search.php?s=` matches against meal names only — not ingredients or tags. Searching "garlic" returns nothing; searching "Garlic Bread" returns the specific dish.
-- No pagination — filter endpoints return all matching meals at once (can be 50–100+ items for popular categories).
-- `random.php` returns exactly 1 meal. There is no "random from category" endpoint on the free tier.
-- Ingredient + measure data is stored as 20 parallel flat fields (`strIngredient1`…`strIngredient20`, `strMeasure1`…`strMeasure20`). These must be zipped together and filtered for non-empty values.
-- `strInstructions` is a single wall of text. The app splits it on double-newlines and numbered patterns to produce step arrays — this is heuristic and sometimes produces odd splits.
-
-**Reliability**
-- The API is free and community-maintained. It has no SLA. Occasional downtime or slow responses are normal.
-- Meal images are hosted on TheMealDB's own CDN. Some older images return 404 or fail cross-origin — `referrerPolicy="no-referrer"` helps but doesn't fully prevent broken images.
-- The free API (v1) has informal rate limiting. Heavy usage (e.g. 9 parallel `lookup.php` calls repeatedly) may occasionally get throttled.
-
-**What the API cannot do (without a paid plan)**
-- Search by ingredient
-- Filter by dietary property (vegan, gluten-free, etc.)
-- Return nutritional data
-- Return more than 1 random meal at a time
+- Verify with the Places API directly (`curl` against `places:searchText`) before assuming a UI bug — twice this session the bug was environmental, not code.
+- Vite reads `.env.local` **only at startup**. Editing it mid-session silently disables the API key and everything falls back to the photoless hardcoded list. Restart the dev server after touching env.
+- `.claude/launch.json` drives the preview server (`npm run dev`, port 3000).

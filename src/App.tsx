@@ -3,16 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from'react';
+import { useState, useEffect, useMemo } from'react';
 import { Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
 import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
+import { HappyHourView } from'./components/HappyHourView';
+import { getVenueExtras, getHappyHourStatus } from'./venueExtras';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, ChevronRight, Sun, Moon } from'lucide-react';
 import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
-import { fetchCapeTownEateries, detectCityFromCoords } from'./placesService';
+import { fetchCapeTownEateries, detectCityFromCoords, currencyForCountry } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
 
 /**
@@ -83,7 +85,7 @@ function createEateryResult(
  id: eatery.id,
  name: eatery.name,
  category: eatery.cuisine,
- area:`${city}, ZA`,
+ area: city,
  instructions: `${eatery.signatureDescription}\n\nLocated at ${eatery.address} — ${distanceStr}.`,
  image: imgUrl,
  tags: [
@@ -125,6 +127,7 @@ export default function App() {
  });
  const [dimensions, setDimensions] = useState<Dimensions>({
  vibe: null,
+ diet: null,
  regional: null,
  capacity: null,
  searchQuery:'',
@@ -139,6 +142,15 @@ export default function App() {
 
  // Premium tactical geolocation tracking
  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+ // Drives the price symbol. Venue data was authored in Rand; detection is global,
+ // so the symbol has to follow the detected country or foreign venues render as "R".
+ const [countryCode, setCountryCode] = useState<string | null>(() => {
+ try { return localStorage.getItem('whats_good_country'); } catch { return null; }
+ });
+ const currency = currencyForCountry(countryCode);
+ useEffect(() => {
+ try { if (countryCode) localStorage.setItem('whats_good_country', countryCode); } catch {}
+ }, [countryCode]);
  const [locState, setLocState] = useState<'idle' |'requesting' |'granted' |'denied'>('idle');
 
  // Trigger position query cleanly
@@ -160,14 +172,21 @@ export default function App() {
  // Auto-detect the city from real coordinates — no manual picker.
  // Falls back silently to whatever city is already set (cached or 'Cape Town').
  detectCityFromCoords(coords.latitude, coords.longitude).then((detected) => {
- if (detected) setCity(detected);
+ if (detected) {
+ setCity(detected.city);
+ setCountryCode(detected.countryCode);
+ }
  });
  },
  (err) => {
- console.warn("Client geolocation denied or timed out:", err);
+ // A 6s high-accuracy-by-default request fails constantly indoors and on
+ // desktop — that's why this sat on RETRY LOCATION. Coarse position is
+ // plenty for "restaurants near me", a cached fix is fine, and 15s is a
+ // realistic ceiling.
+ console.warn('Geolocation unavailable:', err.code, err.message);
  setLocState('denied');
  },
- { timeout: 6000 }
+ { timeout: 15000, maximumAge: 5 * 60 * 1000, enableHighAccuracy: false }
 );
  };
 
@@ -181,6 +200,12 @@ export default function App() {
  return false;
  }
  });
+
+ // Opening a venue used to leave you wherever you happened to be scrolled, so the
+ // detail page appeared to "open in the middle". A pushed view always starts at its top.
+ useEffect(() => {
+ window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
+ }, [selectedRecipe?.id, activeTab]);
 
  useEffect(() => {
  document.documentElement.classList.toggle('dark', isDark);
@@ -236,7 +261,7 @@ export default function App() {
  if (activeTab ==='mood') {
  handleTriggerMatch();
  }
- }, [dimensions.locationMode, dimensions.vibe, dimensions.regional, dimensions.capacity, userCoords, city]);
+ }, [dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.capacity, userCoords, city]);
 
  // Perform fetching from TheMealDB or local structures
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
@@ -258,6 +283,7 @@ export default function App() {
  customQuery !== undefined ? customQuery : dimensions.searchQuery.trim(),
  customQuery === undefined ? dimensions.regional : null,
  customQuery === undefined && dimensions.vibe ? VIBE_PLACE_TERMS[dimensions.vibe] : null,
+ customQuery === undefined ? dimensions.diet : null,
  ].filter(Boolean).join(' ');
 
  // Try Places API first; fall back to local Cape Town data when that is the selected city.
@@ -389,7 +415,7 @@ export default function App() {
  }
  };
 
- // Finds South African restaurants matching the flavor profile / category of a selected recipe
+ // Finds restaurants matching the flavor profile / category of a selected recipe
  const handleFindCorrespondingRestaurants = (recipe: ParsedRecipe) => {
  const nameLower = recipe.name.toLowerCase();
  const catLower = (recipe.category ||'').toLowerCase();
@@ -498,7 +524,7 @@ export default function App() {
  id: randomEatery.id,
  name: randomEatery.name,
  category: randomEatery.cuisine,
- area:'Cape Town, ZA',
+ area: city,
  instructions: `${randomEatery.signatureDescription}\n\nRecommended Order: ${randomEatery.signatureOrder}`,
  image: imgUrl,
  tags: [
@@ -550,7 +576,18 @@ export default function App() {
  }
  };
 
- const tabOrder: ActiveTab[] = ['mood','random','saved-recipes','saved-eateries'];
+ const tabOrder: ActiveTab[] = ['mood','happy-hour','random','saved-recipes','saved-eateries'];
+
+ // Live happy-hour count drives the pulse dot on the tab — the whole point of the
+ // feature is time-sensitivity, so it has to be visible without opening the tab.
+ const liveHappyHourCount = useMemo(() => {
+ return recipes.filter((r) => {
+ const raw = (r as any).rawEatery;
+ if (!raw) return false;
+ const extras = getVenueExtras(r.id, raw.priceSymbol, raw.signatureOrder, raw.signatureDescription);
+ return extras.happyHour ? getHappyHourStatus(extras.happyHour).state ==='live' : false;
+ }).length;
+ }, [recipes]);
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
  const featuredEatery = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES[0] : null;
  const featuredResult = featuredEatery ? createEateryResult(featuredEatery, city, userCoords) : null;
@@ -574,7 +611,7 @@ export default function App() {
  />
  </svg>
  </div>
- <div className="font-serif text-xl sm:text-[22px] font-extrabold tracking-tight flex items-center gap-1.5 select-none">
+ <div className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
  <span>What's</span> <span className="text-[#7C2D12] dark:text-[#fca5a5] italic font-normal">Good</span>
  <span className="text-[10px] bg-black dark:bg-[#222222] text-white px-1.5 py-0.5 rounded-lg font-mono tracking-wider font-bold ml-1">{city}</span>
  </div>
@@ -592,7 +629,7 @@ export default function App() {
  :'Sort results by distance to you'
  }
  aria-label="Sort nearby using your location"
- className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full border text-[10px] font-mono font-extrabold uppercase tracking-wider transition-all duration-300 cursor-pointer select-none active:scale-95 flex-shrink-0 ${
+ className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full border text-[10px] font-mono font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer select-none active:scale-95 flex-shrink-0 ${
  locState ==='granted'
  ?'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
  : locState ==='requesting'
@@ -616,7 +653,9 @@ export default function App() {
  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
  </button>
 
- <nav className="flex glass-subtle p-1 rounded-full sm:gap-0.5 whitespace-nowrap overflow-x-auto no-scrollbar max-w-[50vw]">
+ {/* Desktop nav. On mobile this is replaced by the bottom tab bar below — five
+ tabs in a horizontally-scrolling 50vw strip was unusable and hid Saved entirely. */}
+ <nav className="hidden md:flex glass-subtle p-1 rounded-full gap-0.5 whitespace-nowrap">
  <button
  onClick={() => handleTabSwitch('mood')}
  className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
@@ -639,6 +678,22 @@ export default function App() {
  }`}
  >
  Stay In
+ </button>
+ <button
+ onClick={() => handleTabSwitch('happy-hour')}
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ activeTab ==='happy-hour'
+ ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] shadow-sm'
+ :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
+ }`}
+ >
+ {liveHappyHourCount > 0 && activeTab !=='happy-hour' && (
+ <span className="relative flex w-1.5 h-1.5">
+ <span className="absolute inline-flex w-full h-full rounded-full bg-[var(--accent-terracotta)] opacity-60 motion-safe:animate-ping" />
+ <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
+ </span>
+ )}
+ <span>Happy Hour</span>
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
@@ -666,8 +721,56 @@ export default function App() {
  </div>
  </header>
 
+ {/* Mobile tab bar — this is an app, so navigation lives at the thumb, not the
+ forehead. Safe-area padding keeps it clear of the iOS home indicator. */}
+ <nav
+ className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--bg-warm)] border-t border-[var(--rule)]"
+ style={{ paddingBottom:'env(safe-area-inset-bottom)' }}
+ aria-label="Primary"
+ >
+ <ul className="flex items-stretch">
+ {([
+ { tab:'mood' as ActiveTab, label:'Find', Icon: Search },
+ { tab:'happy-hour' as ActiveTab, label:'Happy Hour', Icon: Sparkles, dot: liveHappyHourCount > 0 },
+ { tab:'random' as ActiveTab, label:'Stay In', Icon: Dices },
+ { tab:'saved-eateries' as ActiveTab, label:'Saved', Icon: Heart },
+ ]).map(({ tab, label, Icon, dot }) => {
+ const active = activeTab === tab;
+ return (
+ <li key={tab} className="flex-1">
+ <button
+ onClick={() => {
+ if (tab ==='random') setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
+ handleTabSwitch(tab);
+ }}
+ aria-current={active ?'page' : undefined}
+ className="w-full min-h-[56px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors press"
+ >
+ <span className="relative">
+ <Icon
+ className={`w-[18px] h-[18px] transition-colors ${active ?'text-[var(--accent-terracotta)]' :'text-[var(--text-subtle)]'}`}
+ strokeWidth={active ? 2.2 : 1.8}
+ />
+ {dot && !active && (
+ <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
+ )}
+ </span>
+ <span
+ className={`text-[10px] leading-none tracking-[0.01em] ${
+ active ?'text-[var(--accent-terracotta)] font-semibold' :'text-[var(--text-subtle)] font-medium'
+ }`}
+ >
+ {label}
+ </span>
+ </button>
+ </li>
+ );
+ })}
+ </ul>
+ </nav>
+
  {/* Main Layout Grid wrapper */}
- <div className="flex-1 pt-[60px] flex flex-col relative w-full items-center">
+ <div className="flex-1 pt-[60px] flex flex-col relative w-full items-center pb-[76px] md:pb-0">
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
  className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto ${
@@ -706,6 +809,7 @@ export default function App() {
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
  <EateryView
+ currency={currency}
  recipes={recipes.length > 0 ? recipes : savedRecipes}
  selectedRecipe={selectedRecipe}
  onSelectRecipe={setSelectedRecipe}
@@ -756,7 +860,7 @@ export default function App() {
  <div className="w-12 h-12 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mx-auto mb-4">
  <Search className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
- <h3 className="font-serif text-xl font-bold mb-2 text-[#1A1A1A] dark:text-[#f5f5f5]">No matching places</h3>
+ <h3 className="font-serif text-xl mb-2 text-[#1A1A1A] dark:text-[#f5f5f5]">No matching places</h3>
  <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-6">
  We checked {city} for "{dimensions.searchQuery}" but did not find a strong match. Try simpler searches like "Italian", "brunch", "seafood", or "drinks".
  </p>
@@ -789,6 +893,16 @@ export default function App() {
  }}
  />
 )
+) : activeTab ==='happy-hour' ? (
+ // HAPPY HOUR — time-sensitive drink deals across the current result set
+ isLoading ? (
+ <LoadingState title="Checking who's pouring..." subtitle="Matching happy-hour windows to right now." />
+) : (
+ <HappyHourView
+ recipes={recipes.length > 0 ? recipes : (city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES.map((e) => createEateryResult(e, city, userCoords)) : [])}
+ onSelectRecipe={(r) => setSelectedRecipe(r)}
+ />
+)
 ) : activeTab ==='random' ? (
  // SERENDIPITY ENGINE CANVAS
  isLoading ? (
@@ -812,12 +926,12 @@ export default function App() {
 ) : (
  <div className="max-w-[620px] mx-auto text-center py-12 sm:py-20 px-8 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white rounded-2xl shadow-[0_20px_50px_rgba(124,45,18,0.15)] my-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] border border-black dark:border-[#444]">
  <div className="w-12 h-12 bg-white dark:bg-[#1a1a1a] rounded-full flex items-center justify-center mx-auto mb-6">
- <Dices className="w-6 h-6 text-[#FAF2F0]" />
+ <Dices className="w-6 h-6 text-[var(--accent-terracotta)]" />
  </div>
- <h2 className="font-serif text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 leading-tight">
+ <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight mb-4 leading-tight !text-white">
  Staying in tonight?
  </h2>
- <p className="text-[#6E6A64] dark:text-[#a3a3a3] text-sm leading-relaxed max-w-[440px] mx-auto mb-8">
+ <p className="text-white/70 text-sm leading-relaxed max-w-[440px] mx-auto mb-8">
  Pick a recipe, scale the servings, and use ingredients as the base for a grocery basket later.
  </p>
  <button
@@ -833,10 +947,10 @@ export default function App() {
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black dark:border-[#444] pb-6 mb-8 gap-4">
  <div>
- <span className="font-mono text-[10px] uppercase tracking-[2px] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
+ <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
  {activeTab ==='saved-recipes' ?'Your shortlist' :'Grocery basket'}
  </span>
- <h2 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#1A1A1A] dark:text-[#f5f5f5]">
+ <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">
  {activeTab ==='saved-recipes' ?'Saved Places & Recipes' :'Basket'}
  </h2>
  <p className="text-[#6E6A64] dark:text-[#a3a3a3] font-sans text-sm mt-1">
@@ -860,7 +974,7 @@ export default function App() {
  <div className="w-14 h-14 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center mb-6 border border-[#F5D1C9] dark:border-[#7C2D12]/40">
  <Heart className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
- <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-2 leading-tight">
+ <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-2 leading-tight">
  {activeTab ==='saved-recipes' ?'Your shortlist is empty' :'Basket is coming next'}
  </h3>
  <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[360px] mb-8">
@@ -896,14 +1010,14 @@ export default function App() {
  {/* Title and metadata details */}
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 mb-1">
- <span className="font-mono text-[9px] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] px-2 py-0.5 rounded font-bold">
+ <span className="font-mono text-[10px] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] px-2 py-0.5 rounded font-bold">
  {r.id.startsWith('eat') ? (r as any).rawEatery?.cuisine : r.category}
  </span>
- <span className="font-mono text-[9px] text-[#6E6A64] dark:text-[#a3a3a3] uppercase">
+ <span className="font-mono text-[10px] text-[#6E6A64] dark:text-[#a3a3a3] uppercase">
  {r.id.startsWith('eat') ? r.tags[1] : r.area} Culture
  </span>
  </div>
- <h4 className="font-serif text-lg font-bold text-[#1A1A1A] dark:text-[#f5f5f5] truncate group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-tight">
+ <h4 className="font-serif text-lg text-[#1A1A1A] dark:text-[#f5f5f5] truncate group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-tight">
  {r.id.startsWith('eat') ? (r as any).rawEatery?.name || r.name : r.name}
  </h4>
  </div>
@@ -941,10 +1055,13 @@ export default function App() {
 
  {/* Fixed Bottom CTA — mood tab, whenever filters are open */}
  {activeTab ==='mood' && !selectedRecipe && filtersOpen && !isLoading && (
- <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-6 pt-3 glass border-t border-black/5 flex justify-center !rounded-none">
+ // Pinned to the thumb on mobile; on desktop a permanently-docked bar over a
+ // half-empty viewport is a phone pattern wearing a desktop costume — there it
+ // sits inline under the filters where the eye already is.
+ <div className="fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-4 pt-3 glass border-t border-black/5 flex justify-center !rounded-none md:static md:bg-none md:backdrop-blur-none md:border-0 md:shadow-none md:px-0 md:pt-8 md:pb-4 md:z-auto">
  <button
  onClick={() => { handleTriggerMatch(); setFiltersOpen(false); }}
- className="w-full max-w-md py-4 rounded-2xl font-serif text-lg font-bold transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[#7C2D12] text-white hover:bg-[#5E220E] hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-95"
+ className="w-full max-w-md py-4 rounded-2xl font-sans font-semibold text-base tracking-[-0.01em] transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] hover:opacity-90 hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-[0.97]"
  >
  {isLoading ? (
  <span className="flex items-center justify-center gap-2">

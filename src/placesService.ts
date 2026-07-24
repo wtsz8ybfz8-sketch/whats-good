@@ -1,5 +1,5 @@
 /**
- * Google Places API (New) integration for What's Good Cape Town.
+ * Google Places API (New) integration for What's Good.
  * Falls back silently to hardcoded data on any failure.
  */
 
@@ -31,6 +31,8 @@ interface Place {
   };
   rating?: number;
   priceLevel?: string;
+  primaryType?: string;
+  primaryTypeDisplayName?: { text?: string };
   photos?: PlacePhoto[];
   nationalPhoneNumber?: string;
   websiteUri?: string;
@@ -41,8 +43,18 @@ interface PlacesSearchResponse {
   places?: Place[];
 }
 
+interface PlaceAddressComponent {
+  shortText?: string;
+  types?: string[];
+}
+
 interface NearbySearchResponse {
-  places?: { displayName?: PlaceDisplayName }[];
+  places?: { displayName?: PlaceDisplayName; addressComponents?: PlaceAddressComponent[] }[];
+}
+
+export interface DetectedLocality {
+  city: string;
+  countryCode: string | null;
 }
 
 function getGooglePlacesKey(): string {
@@ -105,6 +117,21 @@ function symbolToPriceLevels(symbol?: string | null): string[] | undefined {
   }
 }
 
+/**
+ * A cuisine label from Places' own type data. Previously this was `${city} Restaurant`,
+ * which rendered as "Cape Town Restaurant" on every card — the city echoed back as if
+ * it were a cuisine. Places returns primaryTypeDisplayName (localised) and primaryType
+ * (an enum like `italian_restaurant`); either is a real signal. When neither is present
+ * we return an empty string and the caller hides the field rather than inventing one.
+ */
+function cuisineFromType(primaryType?: string, displayName?: string): string {
+  if (displayName && !/^restaurant$/i.test(displayName)) return displayName;
+  if (!primaryType) return '';
+  const cleaned = primaryType.replace(/_restaurant$/, '').replace(/_/g, ' ').trim();
+  if (!cleaned || cleaned === 'restaurant' || cleaned === 'food') return '';
+  return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 async function searchTextOnce(
   key: string,
   textQuery: string,
@@ -123,6 +150,8 @@ async function searchTextOnce(
         'places.rating',
         'places.priceLevel',
         'places.photos',
+        'places.primaryType',
+        'places.primaryTypeDisplayName',
         'places.nationalPhoneNumber',
         'places.websiteUri',
         'places.regularOpeningHours',
@@ -162,11 +191,11 @@ export async function fetchCapeTownEateries(
     const priceLevels = symbolToPriceLevels(priceSymbol);
     const queries = query
       ? [
-          `${query} restaurant ${city} South Africa`,
+          `${query} restaurant in ${city}`,
           `best ${query} places to eat in ${city}`,
         ]
       : [
-          `best restaurants in ${city} South Africa`,
+          `best restaurants in ${city}`,
           `popular local eateries in ${city}`,
         ];
 
@@ -186,7 +215,7 @@ export async function fetchCapeTownEateries(
 
     return places.map((place, index): SouthAfricanEatery => {
       const name = place.displayName?.text ?? 'Restaurant';
-      const address = place.formattedAddress ?? 'Cape Town, South Africa';
+      const address = place.formattedAddress ?? city;
       const rating = Math.round((place.rating ?? 4.0) * 10) / 10;
       const priceSymbol = priceLevelToSymbol(place.priceLevel);
       const phone = place.nationalPhoneNumber ?? '';
@@ -202,15 +231,15 @@ export async function fetchCapeTownEateries(
         id: `eat-places-${place.id ?? index}`,
         name,
         address,
-        cuisine: `${city} Restaurant`,
+        cuisine: cuisineFromType(place.primaryType, place.primaryTypeDisplayName?.text),
         vibeMatch: 'feeling adventurous',
-        fallbackDistance: city,
+        fallbackDistance: '',
         rating,
         priceSymbol,
         signatureOrder: `House specialty at ${name}`,
         signatureDescription: `A featured dining experience at ${name}, located at ${address}.`,
         signatureIngredients: [],
-        digestiveNote: `${name} is a Cape Town restaurant. Always check current menus and allergens directly with the venue. General wellness info — not medical advice.`,
+        digestiveNote: `Always check current menus and allergens directly with ${name}. General wellness info — not medical advice.`,
         externalLink: website,
         latitude: place.location?.latitude ?? -33.9249,
         longitude: place.location?.longitude ?? 18.4241,
@@ -235,7 +264,7 @@ export async function fetchCapeTownEateries(
 export async function detectCityFromCoords(
   latitude: number,
   longitude: number,
-): Promise<string | null> {
+): Promise<DetectedLocality | null> {
   const key = getGooglePlacesKey();
   if (!key) return null;
 
@@ -245,7 +274,7 @@ export async function detectCityFromCoords(
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': key,
-        'X-Goog-FieldMask': 'places.displayName',
+        'X-Goog-FieldMask': 'places.displayName,places.addressComponents',
       },
       body: JSON.stringify({
         includedTypes: ['locality'],
@@ -263,8 +292,43 @@ export async function detectCityFromCoords(
     if (!response.ok) return null;
 
     const data: NearbySearchResponse = await response.json();
-    return data.places?.[0]?.displayName?.text ?? null;
+    const place = data.places?.[0];
+    const name = place?.displayName?.text ?? null;
+    if (!name) return null;
+
+    const country =
+      place?.addressComponents?.find((c) => c.types?.includes('country'))?.shortText ?? null;
+
+    return { city: name, countryCode: country };
   } catch {
     return null;
   }
+}
+
+/**
+ * Currency symbol for a detected country.
+ *
+ * The venue data and price tiers were built around South African Rand. Detection is
+ * global, so landing anywhere else used to render foreign venues priced in "R" —
+ * incoherent, and the source of stray currency codes on screen. Price level from
+ * Places is an enum (1–4), so the tier is meaningful anywhere; only the symbol has
+ * to follow the country.
+ */
+const CURRENCY_BY_COUNTRY: Record<string, string> = {
+  ZA: 'R', KE: 'KSh', NG: '₦', GB: '£', US: '$', AU: 'A$', NZ: 'NZ$',
+  IN: '₹', JP: '¥', CN: '¥', BR: 'R$', CA: 'C$', CH: 'CHF', AE: 'AED',
+};
+
+export function currencyForCountry(countryCode?: string | null): string {
+  if (!countryCode) return 'R';
+  return CURRENCY_BY_COUNTRY[countryCode.toUpperCase()] ?? '€';
+}
+
+/**
+ * Renders a stored Rand price tier ('R'|'RR'|'RRR'|'RRRR') in the local currency.
+ * The tier count is the signal; the glyph just has to match where the user is.
+ */
+export function formatPriceTier(priceSymbol: string | undefined, currency: string): string {
+  const tier = Math.min(Math.max((priceSymbol ?? 'RR').length, 1), 4);
+  return currency.repeat(tier);
 }

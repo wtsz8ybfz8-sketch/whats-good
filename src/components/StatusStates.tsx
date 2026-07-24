@@ -23,7 +23,7 @@ export const LoadingState: React.FC<LoadingProps> = ({
  <Sparkles className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5] animate-pulse" />
  </div>
  </div>
- <h4 className="font-serif text-xl sm:text-2xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">
+ <h4 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">
  {title}
  </h4>
  <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[340px]">
@@ -49,7 +49,7 @@ export const ErrorState: React.FC<ErrorProps> = ({
  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6 border border-red-100">
  <AlertCircle className="w-6 h-6" />
  </div>
- <h4 className="font-serif text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">
+ <h4 className="font-serif text-lg sm:text-xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">
  {title}
  </h4>
  <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-8">
@@ -91,10 +91,10 @@ export const EmptyState: React.FC<EmptyProps> = ({
  <div className="w-12 h-12 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mb-6">
  <Compass className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
- <p className="font-mono text-[10px] uppercase tracking-[2px] text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
+ <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
  What's Good {city}
  </p>
- <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4 leading-tight">
+ <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4 leading-tight">
  Where are we eating?
  </h3>
  <p className="text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[420px] mb-8">
@@ -115,14 +115,14 @@ export const EmptyState: React.FC<EmptyProps> = ({
  >
  <div className="p-6 sm:p-8">
  <div className="flex items-center justify-between gap-4 mb-8">
- <span className="font-mono text-[10px] uppercase tracking-[2px] text-[#6E6A64] dark:text-[#a3a3a3]">
+ <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#6E6A64] dark:text-[#a3a3a3]">
  Featured Match
  </span>
  <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#7C2D12] dark:text-[#fca5a5] font-bold">
  <Star className="w-3.5 h-3.5 fill-current" /> Best fit
  </span>
  </div>
- <h4 className="font-serif text-3xl sm:text-4xl font-extrabold leading-tight text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors">
+ <h4 className="font-serif text-3xl sm:text-4xl font-semibold leading-tight text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors">
  {featured.name}
  </h4>
  <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] mb-4">
@@ -137,7 +137,7 @@ export const EmptyState: React.FC<EmptyProps> = ({
  {featured.vibe}
  </p>
  <div className="border-t border-black/10 dark:border-white/10 pt-5">
- <p className="font-mono text-[10px] uppercase tracking-[2px] text-[#6E6A64] dark:text-[#a3a3a3] mb-3">
+ <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#6E6A64] dark:text-[#a3a3a3] mb-3">
  Menu highlights
  </p>
  <div className="space-y-2.5">
