@@ -239,6 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
  type="text"
  value={dimensions.searchQuery}
  onChange={handleTextChange}
+ aria-label={dimensions.locationMode ==='gourmet' ?'Search by dish or ingredient' :'Search restaurants, areas, or cravings'}
  placeholder={
  dimensions.locationMode ==='gourmet'
  ?"Search by dish or ingredient, like curry or beef"

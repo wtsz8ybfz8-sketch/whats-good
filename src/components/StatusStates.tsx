@@ -18,7 +18,7 @@ export const LoadingState: React.FC<LoadingProps> = ({
  return (
  <div className="max-w-[450px] mx-auto text-center py-16 sm:py-24 px-8 glass rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="relative mb-8">
- <div className="w-16 h-16 border-4 border-[#FAF2F0] border-t-[#7C2D12] rounded-full animate-spin" />
+ <div className="w-16 h-16 border-4 border-[var(--accent-tint)] border-t-[var(--accent-terracotta)] rounded-full animate-spin" />
  <div className="absolute inset-0 flex items-center justify-center">
  <Sparkles className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5] animate-pulse" />
  </div>
@@ -46,7 +46,7 @@ export const ErrorState: React.FC<ErrorProps> = ({
 }) => {
  return (
  <div className="max-w-[420px] mx-auto text-center py-16 sm:py-24 px-8 glass rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
- <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-6 border border-red-100">
+ <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center text-red-600 dark:text-red-300 mb-6 border border-red-100 dark:border-red-900/50">
  <AlertCircle className="w-6 h-6" />
  </div>
  <h4 className="font-serif text-lg sm:text-xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">

@@ -256,8 +256,18 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  return (
  <li
  key={idx}
+ role="checkbox"
+ aria-checked={isDone}
+ aria-label={displayIngredient}
+ tabIndex={0}
  onClick={() => toggleIngredient(r.id, idx)}
- className={`py-3 flex items-start gap-3 cursor-pointer transition-all ${
+ onKeyDown={(e) => {
+ if (e.key === 'Enter' || e.key === ' ') {
+ e.preventDefault();
+ toggleIngredient(r.id, idx);
+ }
+ }}
+ className={`py-3 flex items-start gap-3 cursor-pointer transition-all rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2 ${
  isDone ?'opacity-35 line-through' :'opacity-100'
  }`}
  >
@@ -576,8 +586,17 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  return (
  <div
  key={r.id}
+ role="button"
+ tabIndex={0}
+ aria-label={`View ${r.name}`}
  onClick={() => onSelectRecipe(r)}
- className="glass rounded-3xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative"
+ onKeyDown={(e) => {
+ if (e.key === 'Enter' || e.key === ' ') {
+ e.preventDefault();
+ onSelectRecipe(r);
+ }
+ }}
+ className="glass rounded-3xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
  >
  {/* Image banner */}
  <div className="w-full h-52 sm:h-60 bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">

@@ -77,7 +77,10 @@ function createEateryResult(
  if (userCoords) {
  const dist = getDistance(userCoords.latitude, userCoords.longitude, eatery.latitude, eatery.longitude);
  distVal = dist;
- distanceStr = `${dist.toFixed(1)} km away`;
+ // Only show a distance when the venue is plausibly local. Pinning a remote
+ // destination (e.g. searching Paris from Cape Town) otherwise renders a
+ // nonsensical "9341 km away"; past ~150km we drop it rather than mislead.
+ distanceStr = dist <= 150 ? `${dist.toFixed(1)} km away` : '';
  }
 
  const imgUrl = eatery.photoUrl || eateryPlaceholderImage(eatery.name);
@@ -87,7 +90,7 @@ function createEateryResult(
  name: eatery.name,
  category: eatery.cuisine,
  area: city,
- instructions: `${eatery.signatureDescription}\n\nLocated at ${eatery.address} — ${distanceStr}.`,
+ instructions: `${eatery.signatureDescription}\n\nLocated at ${eatery.address}${distanceStr ? ` — ${distanceStr}` : ''}.`,
  image: imgUrl,
  tags: [
  eatery.vibeMatch,
@@ -97,7 +100,7 @@ function createEateryResult(
  ],
  ingredients: eatery.signatureIngredients,
  steps: [
- `Head to ${eatery.address} (${distanceStr}).`,
+ `Head to ${eatery.address}${distanceStr ? ` (${distanceStr})` : ''}.`,
  `Ask about today's menu highlights and availability.`,
  `Order the recommended plate: ${eatery.signatureOrder}.`,
  `Check ingredients against your preferences: ${eatery.signatureIngredients.join(',') ||'ask the venue for the current menu'}.`,
@@ -674,6 +677,7 @@ export default function App() {
  autoFocus
  value={cityDraft}
  onChange={(e) => setCityDraft(e.target.value)}
+ aria-label="Search another city"
  placeholder="Search another city…"
  className="flex-1 min-w-0 bg-transparent text-[13px] font-normal text-[var(--charcoal)] placeholder:text-[var(--text-muted)] px-2 py-1.5 rounded-lg border border-[var(--border-color)] focus:outline-none focus:border-[var(--accent-tint-border)]"
  />
