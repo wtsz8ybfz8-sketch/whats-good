@@ -112,9 +112,9 @@ html.dark {
   --card-bg:            rgba(255, 255, 255, 0.05);
   --charcoal:           #EDE8E1;
   --heading-color:      #F5F0E8;
-  --accent-terracotta:  #F07858;
-  --accent-tint:        rgba(124, 45, 18, 0.14);
-  --accent-tint-border: rgba(240, 120, 88, 0.22);
+  --accent-terracotta:  #fca5a5;              /* dark accent standardised to pink (was #F07858 coral) */
+  --accent-tint:        rgba(252, 165, 165, 0.13);
+  --accent-tint-border: rgba(252, 165, 165, 0.24);
   --text-muted:         #9A9088;
   --text-subtle:        #8A8078;              /* 5.13:1 on --bg-warm dark */
   --accent-contrast:    #1A0B04;              /* dark accent is light — needs dark ink, 6.9:1 */

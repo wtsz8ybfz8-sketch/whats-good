@@ -36,9 +36,9 @@ Bind to them. Never hardcode a hex, and never introduce a new color without addi
 | `--bg-warm` | `#F4F2EF` | `#0F0C0A` | Page canvas |
 | `--charcoal` | `#1A1A1A` | `#EDE8E1` | Body text |
 | `--heading-color` | `#100C08` | `#F5F0E8` | Headings |
-| `--accent-terracotta` | `#7C2D12` | `#F07858` | The single accent |
-| `--accent-tint` | `#FAF2F0` | `rgba(124,45,18,.14)` | Accent-tinted fills |
-| `--accent-tint-border` | `#F5D1C9` | `rgba(240,120,88,.22)` | Borders on tinted fills |
+| `--accent-terracotta` | `#7C2D12` | `#fca5a5` | The single accent (dark = pink, chosen over coral `#F07858`) |
+| `--accent-tint` | `#FAF2F0` | `rgba(252,165,165,.13)` | Accent-tinted fills |
+| `--accent-tint-border` | `#F5D1C9` | `rgba(252,165,165,.24)` | Borders on tinted fills |
 | `--accent-contrast` | `#FFFFFF` | `#1A0B04` | Text/icons **on** the accent |
 | `--text-muted` | `#6E6A64` | `#9A9088` | Metadata, captions |
 | `--text-subtle` | `#716B63` | `#8A8078` | Small labels |
