@@ -422,11 +422,16 @@ html.dark .shimmer::after {
 }
 
 /* ─── Reduced Motion ─────────────────────────────────── */
+/* Respect the OS "reduce motion" setting globally: near-instant animations and
+   transitions, no smooth-scroll. Framer Motion is handled separately via
+   <MotionConfig reducedMotion="user"> in App so JS transforms stop too. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-ios-slide-in-right,
-  .animate-ios-slide-in-left {
-    animation: none;
-    opacity: 1;
-    transform: none;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

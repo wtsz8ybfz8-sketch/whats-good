@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from'react';
 import { eateryPlaceholderImage } from '../App';
 import { ParsedRecipe } from'../types';
-import { Clock, Flame, ChevronLeft, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, Activity, MapPin, Star } from'lucide-react';
+import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, Activity, MapPin, Star } from'lucide-react';
 
 interface RecipeViewProps {
  recipes: ParsedRecipe[];
@@ -219,13 +219,13 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
 
  {/* Clinical Insight Highlight Accent Block */}
- <div className="bg-gradient-to-r from-[#FAF2F0] to-[#FFF9F7] border-l-4 border-[#7C2D12] rounded-r-3xl p-6 flex gap-4 items-start shadow-[0_4px_20px_rgba(124,45,18,0.02)]">
+ <div className="bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] border-l-4 border-l-[var(--accent-terracotta)] rounded-r-3xl p-6 flex gap-4 items-start">
  <Activity className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5] mt-0.5 flex-shrink-0 animate-pulse" />
  <div className="flex-1">
  <strong className="block text-sm font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-1 font-serif tracking-tight">
  Good to know
  </strong>
- <p className="text-xs sm:text-sm text-[#3c3830] leading-relaxed font-sans">
+ <p className="text-xs sm:text-sm text-[var(--charcoal)] leading-relaxed font-sans">
  {r.gutTip}
  </p>
  </div>
@@ -242,7 +242,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="ml-3 text-[10px] font-mono text-[#7C2D12] dark:text-[#fca5a5] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 px-2 py-0.5 rounded-md align-middle">Scaled x{(plates/defaultPlates).toFixed(1).replace(/\.0$/,'')}</span>
 )}
  </h3>
- <span className="md:hidden text-[#1A1A1A] dark:text-[#f5f5f5] font-bold opacity-50 ml-2 group-open:rotate-180 transition-transform">▼</span>
+ <ChevronDown className="md:hidden w-4 h-4 text-[var(--charcoal)] opacity-50 ml-2 group-open:rotate-180 transition-transform flex-shrink-0" />
  </summary>
  <div className="flex flex-col gap-4 pt-4">
  <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] font-mono uppercase tracking-wider">
@@ -286,7 +286,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5]">
  How to make it
  </h3>
- <span className="md:hidden text-[#1A1A1A] dark:text-[#f5f5f5] font-bold opacity-50 ml-2 group-open:rotate-180 transition-transform">▼</span>
+ <ChevronDown className="md:hidden w-4 h-4 text-[var(--charcoal)] opacity-50 ml-2 group-open:rotate-180 transition-transform flex-shrink-0" />
  </summary>
  <div className="flex flex-col gap-6 pt-4">
  {r.steps.map((step, idx) => (

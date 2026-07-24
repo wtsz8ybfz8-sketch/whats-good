@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, MotionConfig } from 'motion/react';
 import { ParsedRecipe } from '../types';
 import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info } from 'lucide-react';
 import { getVenueExtras, getHappyHourStatus, formatDays } from '../venueExtras';
@@ -53,6 +53,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
   const specialsToday = extras.specials.filter((s) => s.days.includes(today));
 
   return (
+    <MotionConfig reducedMotion="user">
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
@@ -415,5 +416,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </button>
       </div>
     </motion.div>
+    </MotionConfig>
   );
 };
