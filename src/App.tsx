@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo } from'react';
+import { useState, useEffect, useMemo, useRef } from'react';
 import { Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
 import { Sidebar } from'./components/Sidebar';
@@ -11,7 +11,8 @@ import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
 import { HappyHourView } from'./components/HappyHourView';
-import { getVenueExtras, getHappyHourStatus } from'./venueExtras';
+import { getHappyHourStatus } from'./venueExtras';
+import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, ChevronRight, Sun, Moon } from'lucide-react';
 import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
 import { fetchCapeTownEateries, detectCityFromCoords, currencyForCountry } from'./placesService';
@@ -125,6 +126,19 @@ export default function App() {
  return 'Cape Town';
  }
  });
+ // When the user types a destination ("Paris while in CPT"), we pin the city and
+ // stop the background geolocation detect from stomping it. A ref mirrors the flag
+ // so the async detect callback reads the current value, not a stale closure.
+ const [cityIsManual, setCityIsManual] = useState<boolean>(() => {
+ try { return localStorage.getItem('whats_good_city_manual') ==='true'; } catch { return false; }
+ });
+ const cityManualRef = useRef(cityIsManual);
+ useEffect(() => {
+ cityManualRef.current = cityIsManual;
+ try { localStorage.setItem('whats_good_city_manual', String(cityIsManual)); } catch {}
+ }, [cityIsManual]);
+ const [cityMenuOpen, setCityMenuOpen] = useState(false);
+ const [cityDraft, setCityDraft] = useState('');
  const [dimensions, setDimensions] = useState<Dimensions>({
  vibe: null,
  diet: null,
@@ -153,8 +167,10 @@ export default function App() {
  }, [countryCode]);
  const [locState, setLocState] = useState<'idle' |'requesting' |'granted' |'denied'>('idle');
 
- // Trigger position query cleanly
- const requestUserLocation = () => {
+ // Trigger position query cleanly. `userInitiated` distinguishes the explicit
+ // "Sort Nearby / use my location" tap (which resets a manual destination) from
+ // the silent detect on load (which must NOT stomp a pinned destination).
+ const requestUserLocation = (userInitiated = false) => {
  if (!navigator.geolocation) {
  setLocState('denied');
  return;
@@ -169,12 +185,15 @@ export default function App() {
  setUserCoords(coords);
  setLocState('granted');
 
- // Auto-detect the city from real coordinates — no manual picker.
- // Falls back silently to whatever city is already set (cached or 'Cape Town').
+ // Detect the city from real coordinates. Skip the overwrite when the user
+ // has pinned a destination — unless they explicitly asked for their location.
  detectCityFromCoords(coords.latitude, coords.longitude).then((detected) => {
  if (detected) {
- setCity(detected.city);
  setCountryCode(detected.countryCode);
+ if (userInitiated || !cityManualRef.current) {
+ setCity(detected.city);
+ setCityIsManual(false);
+ }
  }
  });
  },
@@ -253,6 +272,26 @@ export default function App() {
  searchQuery:'',
  locationMode:'dineout',
  });
+ };
+
+ // Pin a typed destination (e.g. search Paris while standing in Cape Town). We
+ // Title-Case it so "paris" reads as "Paris" in the badge, and mark it manual so
+ // the background geolocation detect leaves it alone until they reset.
+ const handleCitySubmit = () => {
+ const next = cityDraft.trim().replace(/\s+/g,' ');
+ if (!next) return;
+ const titled = next.replace(/\b\w/g, (c) => c.toUpperCase());
+ setCity(titled);
+ setCityIsManual(true);
+ setCityDraft('');
+ setCityMenuOpen(false);
+ };
+
+ // Drop the pinned destination and go back to real geolocation.
+ const resetToMyLocation = () => {
+ setCityMenuOpen(false);
+ setCityIsManual(false);
+ requestUserLocation(true);
  };
 
  // Synchronously update results when coordinate selections change to create a fluid real-time reaction
@@ -580,14 +619,14 @@ export default function App() {
 
  // Live happy-hour count drives the pulse dot on the tab — the whole point of the
  // feature is time-sensitivity, so it has to be visible without opening the tab.
+ // Counts REAL curated happy hours (see happyHourData.ts), not the search results.
  const liveHappyHourCount = useMemo(() => {
- return recipes.filter((r) => {
- const raw = (r as any).rawEatery;
- if (!raw) return false;
- const extras = getVenueExtras(r.id, raw.priceSymbol, raw.signatureOrder, raw.signatureDescription);
- return extras.happyHour ? getHappyHourStatus(extras.happyHour).state ==='live' : false;
- }).length;
- }, [recipes]);
+ return CAPE_TOWN_HAPPY_HOURS.filter(
+ (hh) => getHappyHourStatus(hh).state ==='live',
+ ).length;
+ // Re-evaluated on tab/recipe churn; a minute-level refresh isn't needed for a dot.
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [activeTab, recipes]);
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
  const featuredEatery = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES[0] : null;
  const featuredResult = featuredEatery ? createEateryResult(featuredEatery, city, userCoords) : null;
@@ -613,7 +652,46 @@ export default function App() {
  </div>
  <div className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
  <span>What's</span> <span className="text-[#7C2D12] dark:text-[#fca5a5] italic font-normal">Good</span>
- <span className="text-[10px] bg-black dark:bg-[#222222] text-white px-1.5 py-0.5 rounded-lg font-mono tracking-wider font-bold ml-1">{city}</span>
+ {/* City badge doubles as a destination picker — search a city you're not in. */}
+ <span className="relative ml-1" onClick={(e) => e.stopPropagation()}>
+ <button
+ type="button"
+ onClick={() => setCityMenuOpen((o) => !o)}
+ title="Search another city"
+ aria-label={`Location: ${city}. Tap to search another city.`}
+ className="flex items-center gap-1 text-[10px] bg-black dark:bg-[#222222] text-white pl-1.5 pr-1 py-0.5 rounded-lg font-mono tracking-wider font-bold cursor-pointer hover:opacity-85 transition-opacity"
+ >
+ {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
+ <span>{city}</span>
+ <ChevronRight className={`w-2.5 h-2.5 opacity-70 transition-transform ${cityMenuOpen ?'rotate-90' :''}`} />
+ </button>
+ {cityMenuOpen && (
+ <>
+ <div className="fixed inset-0 z-[55]" onClick={() => setCityMenuOpen(false)} />
+ <div className="absolute left-0 top-full mt-2 w-64 p-2 rounded-2xl bg-[var(--bg-warm)] border border-[var(--border-color)] shadow-[0_16px_44px_rgba(0,0,0,0.20)] z-[60] font-sans">
+ <form onSubmit={(e) => { e.preventDefault(); handleCitySubmit(); }} className="flex items-center gap-1.5">
+ <input
+ autoFocus
+ value={cityDraft}
+ onChange={(e) => setCityDraft(e.target.value)}
+ placeholder="Search another city…"
+ className="flex-1 min-w-0 bg-transparent text-[13px] font-normal text-[var(--charcoal)] placeholder:text-[var(--text-muted)] px-2 py-1.5 rounded-lg border border-[var(--border-color)] focus:outline-none focus:border-[var(--accent-tint-border)]"
+ />
+ <button type="submit" aria-label="Search this city" className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer">
+ <Search className="w-3.5 h-3.5" />
+ </button>
+ </form>
+ {cityIsManual ? (
+ <button type="button" onClick={resetToMyLocation} className="mt-1.5 w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[12px] text-[var(--text-muted)] hover:text-[var(--charcoal)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer">
+ <MapPin className="w-3 h-3 flex-shrink-0" /> Reset to my location
+ </button>
+ ) : (
+ <p className="mt-1.5 px-2 text-[11px] leading-snug text-[var(--text-muted)]">Showing results near you. Type a city to explore somewhere else.</p>
+ )}
+ </div>
+ </>
+ )}
+ </span>
  </div>
  </div>
 
@@ -621,7 +699,7 @@ export default function App() {
  <div className="flex items-center gap-3">
  <button
  id="location-header-toggle"
- onClick={requestUserLocation}
+ onClick={() => requestUserLocation(true)}
  disabled={locState ==='requesting'}
  title={
  locState ==='granted' ?'Location on — results sorted by distance'

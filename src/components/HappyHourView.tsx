@@ -5,27 +5,32 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { ParsedRecipe } from '../types';
-import { getVenueExtras, getHappyHourStatus, compareHappyHour, formatDays, type HappyHourStatus, type HappyHour } from '../venueExtras';
-import { MapPin, Clock, ChevronRight, Martini } from 'lucide-react';
+import { getHappyHourStatus, compareHappyHour, formatDays, type HappyHourStatus } from '../venueExtras';
+import { CAPE_TOWN_HAPPY_HOURS, mapsUrl, type CuratedHappyHour } from '../happyHourData';
+import { MapPin, Clock, Navigation, Martini } from 'lucide-react';
 
 interface HappyHourViewProps {
-  recipes: ParsedRecipe[];
-  onSelectRecipe: (recipe: ParsedRecipe) => void;
+  // Kept for API compatibility with the tab router; the happy-hour list is now real
+  // curated data, not derived from the search results.
+  recipes?: ParsedRecipe[];
+  onSelectRecipe?: (recipe: ParsedRecipe) => void;
 }
 
 interface Entry {
-  recipe: ParsedRecipe;
-  hh: HappyHour;
+  hh: CuratedHappyHour;
   status: HappyHourStatus;
 }
 
 /**
  * The one question this screen answers: "where can I get a drink deal right now, and
- * how long have I got." Everything sorts and styles by time remaining — a venue whose
- * window closes in 20 minutes is a different proposition to one starting Thursday, and
- * the interface has to say so at a glance rather than making you read every card.
+ * how long have I got." Everything sorts and styles by time remaining — a window that
+ * closes in 20 minutes is a different proposition to one starting Thursday.
+ *
+ * The venues and windows are REAL (see `happyHourData.ts`), collected from local
+ * happy-hour guides and confirmed July 2026. Times can still change, so each row links
+ * to directions and the footer says to confirm before travelling.
  */
-export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectRecipe }) => {
+export const HappyHourView: React.FC<HappyHourViewProps> = () => {
   // Re-tick every minute so countdowns stay honest without a render storm.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -34,30 +39,12 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectR
   }, []);
 
   const entries = useMemo<Entry[]>(() => {
-    return recipes
-      .map((recipe) => {
-        const raw = (recipe as any).rawEatery;
-        const extras = getVenueExtras(recipe.id, raw?.priceSymbol, raw?.signatureOrder, raw?.signatureDescription);
-        if (!extras.happyHour) return null;
-        return { recipe, hh: extras.happyHour, status: getHappyHourStatus(extras.happyHour, now) };
-      })
-      .filter((e): e is Entry => e !== null)
+    return CAPE_TOWN_HAPPY_HOURS
+      .map((hh) => ({ hh, status: getHappyHourStatus(hh, now) }))
       .sort((a, b) => compareHappyHour(a.status, b.status));
-  }, [recipes, now]);
+  }, [now]);
 
   const liveCount = entries.filter((e) => e.status.state === 'live').length;
-
-  if (entries.length === 0) {
-    return (
-      <div className="px-6 sm:px-10 py-20 text-center">
-        <Martini className="w-8 h-8 mx-auto mb-4 text-[var(--text-subtle)]" strokeWidth={1.5} />
-        <p className="font-serif text-2xl mb-2">No happy hours yet</p>
-        <p className="font-mono text-[11px] text-[var(--text-muted)] max-w-sm mx-auto">
-          Run a search first — happy hours are pulled from whichever venues come back.
-        </p>
-      </div>
-    );
-  }
 
   return (
     // Desktop gets the width it has. A single 820px column of short rows on a 1440px
@@ -70,8 +57,8 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectR
           <p className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text-subtle)]">
             Happy Hour
           </p>
-          <span className="font-mono text-[10px] uppercase tracking-[0.07em] px-2 py-0.5 rounded-full border border-[var(--rule)] text-[var(--text-subtle)]">
-            Sample data
+          <span className="font-mono text-[10px] uppercase tracking-[0.07em] px-2 py-0.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-bold">
+            Real listings · Cape Town
           </span>
         </div>
         {liveCount > 0 ? (
@@ -84,7 +71,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectR
           </h2>
         )}
         <p className="font-mono text-[11px] text-[var(--text-muted)] mt-3">
-          {entries.length} venue{entries.length === 1 ? '' : 's'} with a regular window ·
+          {entries.length} real venue{entries.length === 1 ? '' : 's'} with a happy hour ·
           updates every minute
         </p>
       </div>
@@ -92,15 +79,17 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectR
       {/* Two columns from xl. Rows stay full-width below that so the deal list never
           gets squeezed into an unreadable measure. */}
       <ul className="stagger flex flex-col xl:grid xl:grid-cols-2 xl:gap-x-12">
-        {entries.map(({ recipe, hh, status }) => {
+        {entries.map(({ hh, status }) => {
           const isLive = status.state === 'live';
           const isSoon = status.state === 'starting-soon';
           const urgent = isLive && status.minutes <= 45;
 
           return (
-            <li key={recipe.id}>
-              <button
-                onClick={() => onSelectRecipe(recipe)}
+            <li key={hh.venue}>
+              <a
+                href={mapsUrl(hh.venue, hh.area)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-full text-left py-5 border-b border-[var(--row-border)] flex items-start gap-4 group cursor-pointer press"
               >
                 {/* Time column — fixed width so every row's status aligns and scans vertically */}
@@ -116,9 +105,6 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectR
                       </span>
                     </span>
                   ) : (
-                    // Left column carries URGENCY only; the exact time is on the right and the
-                    // day range sits in the metadata row. Showing "Wed–Fri" here read as a
-                    // contradiction next to "Tomorrow" once today's window had closed.
                     <span className={`font-mono text-[10px] uppercase tracking-[0.07em] ${isSoon ? 'text-[var(--charcoal)]' : 'text-[var(--text-subtle)]'}`}>
                       {isSoon ? 'Soon' : status.state === 'later-today' ? 'Today' : 'Upcoming'}
                     </span>
@@ -128,7 +114,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectR
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-3">
                     <h3 className="font-serif text-lg leading-tight truncate group-hover:text-[var(--accent-terracotta)] transition-colors">
-                      {recipe.name}
+                      {hh.venue}
                     </h3>
                     <span
                       className={`font-mono text-[10px] tabular-nums whitespace-nowrap ${
@@ -153,28 +139,45 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ recipes, onSelectR
                     ))}
                   </ul>
 
-                  <div className="flex items-center gap-3 font-mono text-[10px] text-[var(--text-subtle)]">
+                  <div className="flex items-center gap-3 font-mono text-[10px] text-[var(--text-subtle)] flex-wrap">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {formatDays(hh.days)}
                     </span>
-                    {recipe.tags[1] && (
-                      <span className="flex items-center gap-1 truncate">
-                        <MapPin className="w-3 h-3 flex-shrink-0" /> {recipe.tags[1]}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1 truncate">
+                      <MapPin className="w-3 h-3 flex-shrink-0" /> {hh.area}
+                    </span>
+                    <span className="flex items-center gap-1 text-[var(--accent-terracotta)] opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Navigation className="w-3 h-3" /> Directions
+                    </span>
                   </div>
                 </div>
-
-                <ChevronRight className="w-4 h-4 flex-shrink-0 mt-1 text-[var(--text-subtle)] group-hover:text-[var(--accent-terracotta)] group-hover:translate-x-0.5 transition-all" />
-              </button>
+              </a>
             </li>
           );
         })}
       </ul>
 
+      {entries.length === 0 && (
+        <div className="py-16 text-center">
+          <Martini className="w-8 h-8 mx-auto mb-4 text-[var(--text-subtle)]" strokeWidth={1.5} />
+          <p className="font-serif text-2xl">No happy hours listed</p>
+        </div>
+      )}
+
       <p className="font-mono text-[10px] text-[var(--text-subtle)] mt-6 leading-relaxed">
-        These windows are illustrative placeholders, not real listings — Google Places publishes no
-        happy-hour data. Treat none of them as confirmed until a real source is wired in.
+        Real venues and windows, collected from local happy-hour guides and confirmed July 2026.
+        Happy-hour times change without notice — tap a venue for directions and confirm before you travel.
+        Sources: {' '}
+        {[...new Map(CAPE_TOWN_HAPPY_HOURS.map((h) => [h.sourceLabel, h.source])).entries()].map(
+          ([label, url], i, arr) => (
+            <React.Fragment key={label}>
+              <a href={url} target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--accent-terracotta)]">
+                {label}
+              </a>
+              {i < arr.length - 1 ? ', ' : '.'}
+            </React.Fragment>
+          ),
+        )}
       </p>
     </div>
   );

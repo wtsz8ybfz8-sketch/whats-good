@@ -7,6 +7,7 @@ import React from 'react';
 import { ParsedRecipe } from '../types';
 import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info } from 'lucide-react';
 import { getVenueExtras, getHappyHourStatus, formatDays } from '../venueExtras';
+import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier } from '../placesService';
 
 interface EateryViewProps {
@@ -43,7 +44,10 @@ export const EateryView: React.FC<EateryViewProps> = ({
   const hasRealWait = rawEatery.estimatedWait && rawEatery.estimatedWait !== 'Check with venue';
 
   const extras = getVenueExtras(r.id, rawEatery.priceSymbol, rawEatery.signatureOrder, rawEatery.signatureDescription);
-  const hhStatus = extras.happyHour ? getHappyHourStatus(extras.happyHour) : null;
+  // Happy hour is REAL data (happyHourData.ts) matched by venue name — only shown when
+  // we genuinely have a confirmed window for this place, never fabricated per-venue.
+  const realHH = findCuratedHappyHour(rawEatery.name);
+  const hhStatus = realHH ? getHappyHourStatus(realHH) : null;
   const today = new Date().getDay();
   const specialsToday = extras.specials.filter((s) => s.days.includes(today));
 
@@ -165,7 +169,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
       {/* Happy Hour — only surfaces when there is one; live state leads because it's the
           only part of this page that expires. */}
-      {extras.happyHour && hhStatus && (
+      {realHH && hhStatus && (
         <div className="px-6 sm:px-10 mb-8">
           <div
             className={`rounded-2xl px-5 py-4 border ${
@@ -183,10 +187,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
                   </span>
                 )}
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--accent-terracotta)] font-bold">
-                  {extras.happyHour.headline}
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.07em] px-1.5 py-0.5 rounded border border-[var(--rule)] text-[var(--text-subtle)] font-normal">
-                  Sample
+                  {realHH.headline}
                 </span>
               </span>
               <span className={`font-mono text-[10px] tabular-nums ${hhStatus.state === 'live' ? 'text-[var(--accent-terracotta)] font-bold' : 'text-[var(--text-muted)]'}`}>
@@ -194,7 +195,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
               </span>
             </div>
             <ul className="flex flex-col gap-1 mb-2">
-              {extras.happyHour.deals.map((d) => (
+              {realHH.deals.map((d) => (
                 <li key={d} className="font-mono text-[11px] text-[var(--charcoal)] flex items-center gap-2">
                   <span className="w-0.5 h-0.5 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0" />
                   {d}
@@ -202,7 +203,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
               ))}
             </ul>
             <p className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-subtle)]">
-              {formatDays(extras.happyHour.days)}
+              {formatDays(realHH.days)} · via {realHH.sourceLabel}
             </p>
           </div>
         </div>

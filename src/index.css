@@ -85,14 +85,17 @@
   --row-border:         #F0EDE8;   /* list-row separators, lighter than --rule */
   --border-color:       rgba(26, 26, 26, 0.07);
 
-  /* Glassmorphism tokens */
-  --glass-bg:           rgba(255, 255, 255, 0.70);
-  --glass-bg-hover:     rgba(255, 255, 255, 0.84);
-  --glass-border:       rgba(255, 255, 255, 0.50);
-  --glass-blur:         blur(22px) saturate(180%);
+  /* Glassmorphism tokens.
+     Was blur(22px)/180% over 0.70 white — a heavy frost that read as plastic.
+     Real glass is a *lighter* blur over a *lower*-opacity surface, with a bright
+     1px top edge doing the depth. Lighter blur is also cheaper to composite. */
+  --glass-bg:           rgba(255, 255, 255, 0.60);
+  --glass-bg-hover:     rgba(255, 255, 255, 0.74);
+  --glass-border:       rgba(255, 255, 255, 0.55);
+  --glass-blur:         blur(14px) saturate(140%);
   --glass-shadow:       0 4px 6px rgba(26, 15, 10, 0.04),
                         0 12px 40px rgba(26, 15, 10, 0.08),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.60);
+                        inset 0 1px 0 rgba(255, 255, 255, 0.72);
 
   /* Ambient body — near-flat by design. The previous version stacked three peachy
      radials over a four-stop linear, which is what read as cheap: a lot of colour
