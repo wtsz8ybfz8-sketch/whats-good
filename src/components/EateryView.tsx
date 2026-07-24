@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { motion } from 'motion/react';
 import { ParsedRecipe } from '../types';
 import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info } from 'lucide-react';
 import { getVenueExtras, getHappyHourStatus, formatDays } from '../venueExtras';
@@ -52,16 +53,31 @@ export const EateryView: React.FC<EateryViewProps> = ({
   const specialsToday = extras.specials.filter((s) => s.days.includes(today));
 
   return (
-    <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="max-w-5xl mx-auto w-full"
+    >
 
-      {/* Hero — true full-bleed: breaks out of the padded content column */}
+      {/* Hero — CONTAINED within the column. The old full-bleed used a
+          left-1/2/-translate-x-1/2/w-screen breakout that mis-centred on wide desktop
+          and clipped the title and Back button off the left edge. */}
       {/* Colours here sit over a photo, not a theme surface — they stay mode-independent. */}
-      <div className="relative left-1/2 -translate-x-1/2 w-screen -mt-6 sm:-mt-10 lg:-mt-16 h-[62vh] sm:h-[74vh] overflow-hidden group">
-        <img
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="relative w-full h-[46vh] sm:h-[56vh] rounded-b-[26px] sm:rounded-[26px] sm:mt-3 overflow-hidden group"
+      >
+        <motion.img
           src={r.image}
           alt={rawEatery.name}
           referrerPolicy="no-referrer"
-          className="w-full h-full object-cover transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04] img-settle"
+          initial={{ scale: 1.14 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full h-full object-cover"
         />
         {/* Gradient scrim for text */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/22 to-transparent" />
@@ -89,7 +105,12 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </button>
 
         {/* Name overlay — bottom of hero */}
-        <div className="absolute bottom-0 left-0 right-0 px-6 sm:px-10 pb-8 sm:pb-12">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute bottom-0 left-0 right-0 px-6 sm:px-10 pb-8 sm:pb-12"
+        >
           {rawEatery.cuisine && (
             <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-white/45 block mb-3">
               {rawEatery.cuisine}
@@ -112,8 +133,16 @@ export const EateryView: React.FC<EateryViewProps> = ({
               </>
             )}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Two-column on desktop: the menu is the main column; everything actionable
+          (address, contact, happy hour) lives in a sticky sidebar so wide screens are
+          used, not left mostly empty. Collapses to a single column below lg. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-8 lg:items-start">
+
+      {/* SIDEBAR (right on desktop, top on mobile) */}
+      <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 self-start lg:pt-4">
 
       {/* Address */}
       <div className="px-6 sm:px-10 pt-5">
@@ -209,6 +238,11 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </div>
       )}
 
+      </aside>
+
+      {/* MAIN column (left on desktop) — the menu is the reason to look at this page */}
+      <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
+
       {/* Specials — today's first, since that's the only actionable set */}
       {extras.specials.length > 0 && (
         <div className="px-6 sm:px-10 mb-8">
@@ -251,8 +285,15 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <span className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-subtle)]">Sample</span>
         </div>
 
-        {extras.menu.map((course) => (
-          <div key={course.course} className="mb-7 last:mb-0">
+        {extras.menu.map((course, ci) => (
+          <motion.div
+            key={course.course}
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-8%' }}
+            transition={{ duration: 0.5, delay: ci * 0.04, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-7 last:mb-0"
+          >
             <h3 className="font-serif text-xl mb-3.5">{course.course}</h3>
             <ul className="flex flex-col">
               {course.items.map((item) => (
@@ -284,7 +325,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
                 </li>
               ))}
             </ul>
-          </div>
+          </motion.div>
         ))}
 
         {/* Provenance. This is not decoration — rendering invented prices without saying
@@ -307,6 +348,9 @@ export const EateryView: React.FC<EateryViewProps> = ({
           </p>
         </div>
       </div>
+
+      </div>{/* /MAIN */}
+      </div>{/* /two-column grid */}
 
       {/* Rule */}
       <div className="mx-6 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
@@ -370,6 +414,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
           Find other eateries
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
