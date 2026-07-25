@@ -1,79 +1,101 @@
-# Handover — 2026-07-22 (end of session)
+# Handover — 2026-07-25
 
 Live: **https://whats-good-nu.vercel.app** · Vercel project `whats-good` (`nizzle-s-projects`)
+Repo: `github.com/wtsz8ybfz8-sketch/whats-good`
 
-Read `CLAUDE.md` first — stack, tokens, and the working agreement live there.
-
----
-
-## Done this session
-
-- Token refactor (`--text-subtle`, `--accent-contrast`, `--rule`, `--row-border`), two WCAG AA failures fixed, dark accent unified to one token.
-- Happy Hour tab (live countdowns, sorted by urgency), restaurant menus/specials.
-- Real Places photo thumbnails on result cards.
-- Mobile bottom tab bar; scroll-to-top on navigation.
-- Location copy de-hardcoded (see below).
-- Diet filter (Vegan / Vegetarian / Halaal / Seafood).
-- Deployed to production twice.
+Read `CLAUDE.md` first — stack, design tokens, and the working agreement live there.
 
 ---
 
-## 1. Colour + visual direction — THE BIG ONE, needs Lunika's input first
+## ⚠️ How to deploy (read this first — the normal path is broken)
 
-Repeatedly called "cheap". I have changed it three times and missed three times, so **do not guess a fourth time.** Get a decision before touching it.
+- **`git push` does NOT work from this machine.** There is no GitHub auth configured
+  (no token in keychain, no SSH keys), and GitHub dropped password auth years ago. So
+  the usual "push → Vercel auto-builds" flow fails at the push.
+- **Deploy goes straight to Vercel instead.** The Vercel CLI is installed and already
+  logged in (a valid session lives in `~/Library/Application Support/com.vercel.cli/`).
+  From the repo root:
+  ```bash
+  vercel deploy --prod --yes
+  ```
+  This uploads the working dir, builds on Vercel, and updates the `whats-good-nu` alias.
+  Builds take a few minutes; the CLI buffers output until done.
+- To get `git push` working later (one-time): `brew install gh && gh auth login`, then
+  push normally and Vercel auto-deploys from GitHub.
+- **`npm run lint` (`tsc --noEmit`) is pathologically slow here** (~60s+ wall at ~0% CPU
+  — local I/O, not the code; Vercel builds fine). Budget for it. Gate every change on it.
 
-Current: `--bg-warm: #F4F2EF` light / `#0F0C0A` dark, single terracotta accent `--accent-sage: #7C2D12` / `#F07858`, glass surfaces.
+## Current state
 
-Two concrete suspects, both unaddressed:
+Everything below is committed and clean (`git status` empty). The last commit `5d09d3b`
+was deploying when this was written — if `whats-good-nu.vercel.app` doesn't yet show the
+new Mood/Cuisine chips, run `vercel deploy --prod --yes` again to be sure it's current.
 
-- **The glass system is the real problem.** `--glass-blur: blur(22px) saturate(180%)` over `rgba(255,255,255,0.70)` is frosted plastic, not glass. Apple's version is a *lighter* blur over a *lower*-opacity surface with a bright 1px inner top edge doing the work. Worse, glass is currently applied to the header, the search panel, AND the cards simultaneously — so nothing reads as floating above anything. Pick two surfaces max.
-- **`--accent-sage` is misnamed** — it is terracotta (`#7C2D12`), not sage. Rename to `--accent-terracotta` across `index.css` + consumers, or the next person inherits the confusion.
+## What this session did (commits, newest first)
 
-**Ask before starting:** warmer or cooler? One accent or an accent + a neutral secondary? Should the accent stay terracotta at all?
+- `5d09d3b` **Conversion pass** — hero value-prop subheadline (was a bare form); results
+  now rank **open venues first** then nearest; **mobile venue pages get a sticky
+  Directions/Call bar** (`lg:hidden`; desktop keeps sidebar actions); **Mood + Cuisine
+  redesigned** — unified with Diet into one bordered/accent-fill chip system, removed the
+  cheap tinted icon-squares and shadows, `VibeIcon`/`CuisineIcon` refactored to lookup
+  maps forwarding a 1.75 stroke.
+- `b49304a` **UX/UI pro pass** — fixed a real bug: mobile "Saved" routed to an empty
+  "Basket coming soon" placeholder, so saved items were unreachable on phones. Both navs
+  now hit the working `saved-recipes` view; removed the dead "Basket" desktop tab and its
+  off-brand navy. Contrast fixes (footer disclaimer, "Closed", placeholder), killed
+  vaporware copy + fake "market" prices, added a global `:focus-visible` ring.
+- `9e8a229` **Dark accent standardised to pink `#fca5a5`** (user's choice over coral
+  `#F07858`) via the `--accent-terracotta` dark token. Light mode unchanged.
+- `ffe3902` Dark-mode status screens, distance sanity (no more "9341 km away" for remote
+  cities), keyboard a11y (recipe cards, ingredient checklist, input labels).
+- `c9eda70` Replaced `▼` glyph-icons with lucide `ChevronDown`; fixed a light-only
+  "Good to know" block; `prefers-reduced-motion` respected (CSS + `<MotionConfig>`).
+- `a4210c1` **EateryView desktop fix** — hero no longer overflows/clips on wide screens
+  (dropped the `w-screen`/`left-1/2` breakout); two-column layout (menu + sticky sidebar);
+  added motion (fade, ken-burns hero, scroll-reveal menu).
+- `b0da6cf` **Real Happy Hour** — `src/happyHourData.ts` has 9 real Cape Town venues with
+  actual public happy-hour windows + sources (confirmed July 2026), replacing the
+  hash-synthesised data. City destination picker (search a city you're not in). Lighter
+  light-mode glass.
+- `a275ede` Synced the working tree that was live on Vercel but never committed; moved old
+  notes into `docs/`; gitignored the cloned `anti-slop-main/` kit.
 
-## 2. Font — three misses, stop guessing
+## Verified vs NOT verified
 
-Playfair+JetBrains Mono → Instrument Serif → Inter Tight → **currently Schibsted Grotesk**. All rejected ("expected and weird").
+- **Verified on screen:** value prop, Mood/Cuisine redesign (desktop), pink accent (dark),
+  the Saved-tab fix, clean desktop nav, real Happy Hour tab, results grid.
+- **NOT visually verified:** the **desktop two-column EateryView** and the **mobile sticky
+  action bar** — the in-app preview pane is capped ~678–800px wide and often glitches, so
+  the `lg:` desktop breakpoint and true mobile can't both be seen here. Typechecks clean
+  and uses standard patterns, but **look at these on a real desktop browser + phone.**
 
-One-line swap, `src/index.css:19` — all three `@theme` tokens point at one family, so every call site follows:
+## Open items / decisions (nothing here is a known bug)
 
-```bash
-sed -i '' 's/Schibsted Grotesk/General Sans/g' src/index.css && sed -i '' 's/Schibsted+Grotesk:wght@400..800/General+Sans:wght@400..700/' index.html
-```
+1. **Neutral-colour token migration.** The app still mixes hardcoded hex (RecipeView,
+   StatusStates, Sidebar, App header) with CSS tokens. The *accent* is now consistent
+   (both resolve to pink in dark), but neutral darks still differ (`#f5f5f5` vs
+   `--charcoal #EDE8E1`). A blind migration would change the dark mode — do it with eyes
+   on dark mode at desktop width. See memory `color-system-inconsistency`.
+2. **Per-venue "gut / digestive wellness" notes** (`digestiveNote` → "Good to know" block).
+   Reads as a bolted-on tangent for a restaurant finder; recommend removing or reframing.
+   A product/strategy call, left untouched.
+3. **Menus are still sample data** (`src/venueExtras.ts`, labelled "Sample"). No aggregator
+   publishes menus; real ones need per-venue scraping or manual curation.
+4. **Dead code:** the `saved-eateries` "Basket" branch in App.tsx's saved view is now
+   unreachable (harmless) — safe to delete for tidiness.
 
-Untried candidates: General Sans, Switzer, Geist, Bricolage Grotesque. **Get a one-word direction first** (sharper / softer / more editorial / more technical).
+## Key gotchas
 
-## 3. Search a city you are not in ("Paris while in CPT")
+- **Preview pane** maxes ~678–800px and is flaky (screenshots go black, `navigate` times
+  out). `get_page_text` / `read_page` / `scroll_to ref` are the reliable tools; real
+  desktop/mobile verification must happen in a real browser.
+- **Places API** returns ~30 real Cape Town eateries when the key is set; falls back to
+  `src/campusData.ts` (photoless) otherwise. `.env.local` is read only at dev-server start.
+- **Two saved "tabs"** existed (`saved-recipes` = real, `saved-eateries` = dead Basket).
+  Only `saved-recipes` is wired now; `savedRecipes` holds both eateries and recipes.
 
-Not started. `fetchCapeTownEateries(query, city, priceSymbol)` already takes `city` as a parameter and the query strings are now location-generic — so the service layer is ready. What's missing is UI: a destination input that sets `city` independently of geolocation, plus a visible "showing results for X · reset to my location" affordance so the user always knows which mode they're in.
+## Memory (persists across sessions, already written)
 
-Note `App.tsx` still has three `city === 'Cape Town'` branches gating the hardcoded `SOUTH_AFRICAN_EATERIES` fallback (lines ~288, ~590, ~900). Those are correct for now but will look odd once arbitrary cities are searchable.
-
-## 4. Menus and Happy Hour are fabricated
-
-`src/venueExtras.ts` synthesises menus, specials and happy-hour windows deterministically from the venue id. **Google Places publishes none of this at any tier** — no API key fixes it.
-
-Now labelled "Sample data" on the Happy Hour tab and "Sample" on each venue block, plus the existing menu provenance note. Roughly 70% of venues get a happy hour (`hash(id + 'hh') % 10 < 7`).
-
-Real options, in order of effort: venue website scrape → an aggregator (Zomato / Dineplan / EatOut for SA) → manual curation for a small launch set. **Until one of those exists, do not remove the sample labelling.**
-
-## 5. Known issues not yet fixed
-
-- **Buttons cut off on restaurant pages.** Partly addressed (EateryView footer now `pb-[110px] md:pb-12`, tab bar made opaque) but **not visually verified** — verify at 375px before closing it out.
-- **Desktop layout unverified.** The preview pane reports `innerWidth: 594` no matter what viewport is set, so it always renders the mobile breakpoint. Every desktop change this session is typechecked but unseen. **Check at full width in a real browser.**
-- **`npm run build` hangs locally** — 10+ min at 0.0% CPU, twice. Not caused by `ai-system-build/` (tested by moving it aside; still hung). Vercel's build succeeds, so it is machine-local I/O. `tsc --noEmit` takes ~64s wall for ~1.7s CPU — same cause. Worth investigating; it makes every verification loop painful.
-- **Production is ahead of git.** Deploys went straight from the working directory via `vercel --prod`. Nothing has been committed this session.
-
-## 6. Git state — needs a decision before any commit
-
-Working tree has deletions of files nobody in this session touched: `AGENTS.md`, `HANDOVER_SESSION4.md`, `IDEATION_BRIEF.md`, `prompt.md`, `fix.js`, `replace-colors.js`, `restaurant-first-preview.html`, `package-lock 2.json`, `\'.md`. **Do not `git add -A`** — decide on those first.
-
-`.gitignore` now excludes `ai-system-build/` and `_archive/`.
-
----
-
-## Working notes
-
-- Verify with the Places API directly (`curl` against `places:searchText`) before assuming a UI bug — twice this session the bug was environmental, not code.
-- Vite reads `.env.local` **only at startup**. Editing it mid-session silently disables the API key and everything falls back to the photoless hardcoded list. Restart the dev server after touching env.
-- `.claude/launch.json` drives the preview server (`npm run dev`, port 3000).
+- `works-decisively-minimal-prompting` — make the call, execute, be economical.
+- `loves-current-dark-mode` — don't change dark mode or the font; scope visual work to light.
+- `color-system-inconsistency` — two colour systems (pink vs coral); don't blind-migrate.
