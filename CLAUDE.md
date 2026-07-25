@@ -69,6 +69,25 @@ surface and text tier must be checked in both modes.
   time at ~0% CPU. It's local I/O, not the code (Vercel builds fine). Budget for it; don't assume
   a hang means a failure.
 
+## Never reintroduce a service worker
+
+`vite-plugin-pwa` used to be in `vite.config.ts` with `registerType: 'autoUpdate'`. It precached
+`index.html` plus the hashed bundle, so **every deploy was invisible on the live URL** — anyone who
+had loaded the site once kept getting the old build from Cache Storage forever. Three sessions of
+work shipped and never appeared. `src/main.tsx` now actively unregisters any surviving worker and
+purges caches. `vercel.json` keeps `index.html` on `must-revalidate` and only hashed `/assets/*`
+immutable. An app whose value is "what's open near me right now" gains nothing from offline
+precaching. Don't add one back.
+
+## Never render invented data as real
+
+Menus, prices and "specials" were once synthesised from a hash of the venue id and rendered as a
+priced menu with a "Today" stamp, under a small grey disclaimer. That disclaimer protected us, not
+the user — nobody reads the footnote under the thing they came for, and a fake price sends someone
+across town for something that doesn't exist. Venue pages now show only true fields (real signature
+dish, the price *band* Google publishes, cuisine) and link out for the actual menu. Real happy-hour
+data (`happyHourData.ts`, human-confirmed) is the standard: if it isn't confirmed, don't render it.
+
 ## Working agreement
 
 - Mobile-first. This gets used standing on a street, one-handed, on a mid-range phone.
