@@ -368,10 +368,17 @@ export default function App() {
  tempRecipes.push(createEateryResult(eatery, city, userCoords));
  });
 
- // Sort by key coordinate proximity if user location is allowed
- if (userCoords) {
- tempRecipes.sort((a: any, b: any) => (a.distanceVal || 0) - (b.distanceVal || 0));
- }
+ // Open venues first — someone searching at 9pm needs somewhere they can
+ // actually go; a closed spot ranking above an open one is a dead end.
+ // Within each group, nearest first (when we have the user's location).
+ // openNow can be undefined (unknown hours) — treat that as open rather
+ // than burying venues we simply lack data for.
+ tempRecipes.sort((a: any, b: any) => {
+ const aClosed = a.rawEatery?.openNow === false ? 1 : 0;
+ const bClosed = b.rawEatery?.openNow === false ? 1 : 0;
+ if (aClosed !== bClosed) return aClosed - bClosed;
+ return userCoords ? (a.distanceVal || 0) - (b.distanceVal || 0) : 0;
+ });
 
  setRecipes(tempRecipes);
  if (tempRecipes.length === 1) {

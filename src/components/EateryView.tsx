@@ -401,7 +401,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="px-6 sm:px-10 pt-6 pb-[110px] md:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
+      <div className="px-6 sm:px-10 pt-6 pb-[140px] lg:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
         <button
           onClick={() => onSelectRecipe(null)}
           className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"
@@ -414,6 +414,31 @@ export const EateryView: React.FC<EateryViewProps> = ({
         >
           Find other eateries
         </button>
+      </div>
+
+      {/* Mobile sticky action bar — the whole journey ends at "go there" or
+          "call ahead", so those actions stay under the thumb while the user
+          scrolls the menu. Desktop keeps the sidebar pillars; lg:hidden. */}
+      <div className="lg:hidden fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-2 pt-2 bg-[var(--bg-warm)]/90 backdrop-blur-md border-t border-[var(--rule)] flex gap-3"
+        style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+      >
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 py-3.5 rounded-2xl bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] font-sans text-sm font-semibold flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-transform"
+        >
+          <Navigation className="w-4 h-4" /> Directions
+        </a>
+        {rawEatery.phone && (
+          <a
+            href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
+            aria-label={`Call ${rawEatery.name}`}
+            className="w-[52px] py-3.5 rounded-2xl border border-[var(--rule)] bg-[var(--bg-warm)] text-[var(--accent-terracotta)] flex items-center justify-center active:scale-[0.98] transition-transform"
+          >
+            <Phone className="w-4 h-4" />
+          </a>
+        )}
       </div>
     </motion.div>
     </MotionConfig>

@@ -6,6 +6,7 @@ import {
  MapPin, ChefHat, Fish, Wine, UtensilsCrossed, Coffee,
  Sandwich, Soup, Pizza, Martini, CookingPot
 } from'lucide-react';
+import type { LucideIcon } from'lucide-react';
 
 interface SidebarProps {
  dimensions: Dimensions;
@@ -14,37 +15,20 @@ interface SidebarProps {
  isLoading: boolean;
 }
 
-const VibeIcon = ({ name, className ="w-3.5 h-3.5" }: { name: string; className?: string }) => {
- switch (name) {
- case'Moon': return <Moon className={className} />;
- case'Heart': return <Heart className={className} />;
- case'Compass': return <Compass className={className} />;
- case'Sparkles': return <Sparkles className={className} />;
- case'Leaf': return <Leaf className={className} />;
- case'Clock': return <Clock className={className} />;
- case'Flame': return <Flame className={className} />;
- case'Sun': return <Sun className={className} />;
- case'Crown': return <Crown className={className} />;
- default: return <Sparkles className={className} />;
- }
+const VIBE_ICONS: Record<string, LucideIcon> = {
+ Moon, Heart, Compass, Sparkles, Leaf, Clock, Flame, Sun, Crown,
+};
+const VibeIcon = ({ name, className = 'w-3.5 h-3.5', strokeWidth = 2 }: { name: string; className?: string; strokeWidth?: number }) => {
+ const Icon = VIBE_ICONS[name] ?? Sparkles;
+ return <Icon className={className} strokeWidth={strokeWidth} />;
 };
 
-const CuisineIcon = ({ name, className ="w-4 h-4" }: { name: string; className?: string }) => {
- switch (name) {
- case'Globe': return <Globe className={className} />;
- case'Dices': return <Dices className={className} />;
- case'Fish': return <Fish className={className} />;
- case'Flame': return <Flame className={className} />;
- case'Wine': return <Wine className={className} />;
- case'UtensilsCrossed': return <UtensilsCrossed className={className} />;
- case'Coffee': return <Coffee className={className} />;
- case'Sandwich': return <Sandwich className={className} />;
- case'Soup': return <Soup className={className} />;
- case'Pizza': return <Pizza className={className} />;
- case'Martini': return <Martini className={className} />;
- case'CookingPot': return <CookingPot className={className} />;
- default: return <Utensils className={className} />;
- }
+const CUISINE_ICONS: Record<string, LucideIcon> = {
+ Globe, Dices, Fish, Flame, Wine, UtensilsCrossed, Coffee, Sandwich, Soup, Pizza, Martini, CookingPot,
+};
+const CuisineIcon = ({ name, className = 'w-4 h-4', strokeWidth = 2 }: { name: string; className?: string; strokeWidth?: number }) => {
+ const Icon = CUISINE_ICONS[name] ?? Utensils;
+ return <Icon className={className} strokeWidth={strokeWidth} />;
 };
 
 interface SliderStop {
@@ -196,6 +180,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
  Where are we<br />
  <span className="italic font-normal text-[#7C2D12] dark:text-[#fca5a5]">eating?</span>
  </h1>
+ <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)] max-w-[420px]">
+ Real spots near you — matched to your mood and budget, sorted by what's <span className="text-[var(--charcoal)] font-medium">open right now</span>. Or grab a recipe for a night in.
+ </p>
  </div>
 
  {/* CURATION CONTEXT SEGMENTED CONTROL (Apple HIG & Brutalist Mix) */}
@@ -307,13 +294,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <button
  key={v.value}
  onClick={() => handleSelectVibe(v.value)}
- className={`flex-none px-3.5 py-3 rounded-full font-sans text-xs font-semibold border transition-all duration-200 ease-out cursor-pointer flex items-center gap-2 shadow-sm whitespace-nowrap ${
+ className={`flex-none px-4 py-2.5 rounded-full font-sans text-[13px] font-medium border transition-all duration-200 ease-out cursor-pointer flex items-center gap-2 whitespace-nowrap ${
  isSelected
- ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
- :'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] hover:bg-white/80 dark:hover:bg-[#7C2D12]/20'
+ ?'bg-[var(--accent-terracotta)] border-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
+ :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
  }`}
  >
- <VibeIcon name={v.iconName} className={`w-3.5 h-3.5 ${isSelected ?'text-white' :'text-[#7C2D12] dark:text-[#fca5a5]'}`} />
+ <VibeIcon name={v.iconName} className={`w-4 h-4 ${isSelected ?'text-[var(--accent-contrast)]' :'text-[var(--accent-terracotta)]'}`} strokeWidth={1.75} />
  <span>{v.label}</span>
  </button>
 );
@@ -355,16 +342,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <button
  key={c.value}
  onClick={() => handleSelectCuisine(c.value)}
- className={`p-3.5 rounded-2xl border flex items-center gap-2.5 transition-all cursor-pointer text-left shadow-sm ${
+ className={`p-3.5 rounded-2xl border flex items-center gap-2.5 transition-all cursor-pointer text-left ${
  isSelected
- ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
- :'glass-subtle border-white/20 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] dark:hover:border-[#7C2D12]/50'
+ ?'bg-[var(--accent-terracotta)] border-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
+ :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
  }`}
  >
- <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isSelected ?'bg-white/20' :'bg-white/30 dark:bg-[#7C2D12]/20'}`}>
- <CuisineIcon name={c.iconName} className={isSelected ?'text-white' :'text-[#7C2D12] dark:text-[#fca5a5]'} />
- </div>
- <span className="text-xs font-bold font-sans">{c.label}</span>
+ <CuisineIcon name={c.iconName} className={`w-[18px] h-[18px] flex-shrink-0 ${isSelected ?'text-[var(--accent-contrast)]' :'text-[var(--accent-terracotta)]'}`} strokeWidth={1.75} />
+ <span className="text-[13px] font-semibold font-sans">{c.label}</span>
  </button>
 );
  })}
@@ -387,16 +372,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
  <button
  key={c.value}
  onClick={() => handleSelectCuisine(c.value)}
- className={`p-3.5 rounded-2xl border flex items-center gap-2.5 transition-all cursor-pointer text-left shadow-sm ${
+ className={`p-3.5 rounded-2xl border flex items-center gap-2.5 transition-all cursor-pointer text-left ${
  isSelected
- ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] border-[#1A1A1A] text-white'
- :'glass-subtle border-white/20 dark:border-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] hover:border-[#7C2D12] dark:hover:border-[#7C2D12]/50'
+ ?'bg-[var(--accent-terracotta)] border-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
+ :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
  }`}
  >
- <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isSelected ?'bg-white/20' :'bg-white/30 dark:bg-[#7C2D12]/20'}`}>
- <CuisineIcon name={c.iconName} className={isSelected ?'text-white' :'text-[#7C2D12] dark:text-[#fca5a5]'} />
- </div>
- <span className="text-xs font-bold font-sans">{c.label}</span>
+ <CuisineIcon name={c.iconName} className={`w-[18px] h-[18px] flex-shrink-0 ${isSelected ?'text-[var(--accent-contrast)]' :'text-[var(--accent-terracotta)]'}`} strokeWidth={1.75} />
+ <span className="text-[13px] font-semibold font-sans">{c.label}</span>
  </button>
 );
  })}
