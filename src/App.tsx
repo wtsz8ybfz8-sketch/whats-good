@@ -256,7 +256,14 @@ export default function App() {
  clearSavedRecipes();
  };
 
- // Switch tabs and clean up states
+ // Switch tabs and clean up states.
+ //
+ // Navigation owns the mode. The filter panel used to carry its own Find/Stay In
+ // segmented control that duplicated these tabs and could disagree with them — that is
+ // why Stay In looked like the home page. `capacity` is the field that has to be
+ // scrubbed here: it holds a PRICE tier in dine-out and an EFFORT string in cooking, so
+ // leaking one into the other silently filters everything out.
+ const DEFAULT_EFFORT = 'medium effort, around 30 minutes';
  const handleTabSwitch = (tab: ActiveTab) => {
  setPrevTab(activeTab);
  setActiveTab(tab);
@@ -264,12 +271,29 @@ export default function App() {
  setSelectedRecipe(null);
  setError(null);
  setFiltersOpen(tab ==='mood');
+ if (tab === 'random') {
+ setDimensions((prev) => ({
+ ...prev,
+ locationMode: 'gourmet',
+ searchQuery: '',
+ regional: null,
+ capacity: prev.capacity?.includes('effort') ? prev.capacity : DEFAULT_EFFORT,
+ }));
+ } else if (tab === 'mood') {
+ setDimensions((prev) => ({
+ ...prev,
+ locationMode: 'dineout',
+ regional: null,
+ capacity: prev.capacity?.includes('effort') ? null : prev.capacity,
+ }));
+ }
  };
 
  const resetHome = () => {
  handleTabSwitch('mood');
  setDimensions({
  vibe: null,
+ diet: null,
  regional: null,
  capacity: null,
  searchQuery:'',
@@ -297,13 +321,14 @@ export default function App() {
  requestUserLocation(true);
  };
 
- // Synchronously update results when coordinate selections change to create a fluid real-time reaction
+ // Re-run the search whenever a filter changes, on both browse tabs. Stay In gets the
+ // same live-filtering behaviour as Find — it's a browse surface now, not a slot machine,
+ // so landing on it should already show food rather than an empty pitch card.
  useEffect(() => {
- // Only auto-trigger when on the Main Mood tab to avoid hijacking Saved or Serendipity views
- if (activeTab ==='mood') {
+ if (activeTab ==='mood' || activeTab ==='random') {
  handleTriggerMatch();
  }
- }, [dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.capacity, userCoords, city]);
+ }, [activeTab, dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.capacity, userCoords, city]);
 
  // Perform fetching from TheMealDB or local structures
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
@@ -982,44 +1007,99 @@ export default function App() {
  />
 )
 ) : activeTab ==='random' ? (
- // SERENDIPITY ENGINE CANVAS
- isLoading ? (
- <LoadingState
- title="Finding a night-in recipe..."
- subtitle="Keeping this as the secondary mode."
- />
+ // STAY IN — a cooking browse surface, deliberately NOT the Find layout.
+ //
+ // This used to render a black "Staying in tonight? → Find a recipe" card that was
+ // dead on arrival: the branch it competed with required `selectedRecipe`, which is
+ // always null here (the detail view is handled one level up), so the card showed
+ // 100% of the time and the only way through was a random roll. You landed on an
+ // empty pitch, gambled, and got one dish with no way to browse. Now the tab loads
+ // real recipes immediately and filters live; "Surprise me" is demoted to what it
+ // actually is — a shortcut, not the product.
+ <div className="w-full max-w-[1000px] mx-auto">
+ <div className="px-2 sm:px-4 mb-8">
+ <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-[var(--heading-color)]">
+ Cooking tonight
+ </h2>
+ <p className="mt-2 text-sm text-[var(--text-muted)] leading-relaxed max-w-[520px]">
+ Pick something, scale it to your table, and send the ingredient list straight to a
+ delivery basket.
+ </p>
+
+ {/* Time first — on a weeknight, "how long have I got" decides more than cuisine. */}
+ <div className="mt-6 flex flex-col gap-4">
+ <div className="flex flex-wrap items-center gap-2">
+ <span className="text-[12px] font-semibold text-[var(--charcoal)] mr-1">Time</span>
+ {[
+ { label:'Under 20 min', value:'low effort, under 20 minutes' },
+ { label:'About 30', value: DEFAULT_EFFORT },
+ { label:'45+ min', value:'high effort, I want to properly cook today' },
+ ].map((t) => (
+ <button
+ key={t.value}
+ type="button"
+ aria-pressed={dimensions.capacity === t.value}
+ onClick={() => setDimensions((p) => ({ ...p, capacity: t.value }))}
+ className={`press px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
+ dimensions.capacity === t.value
+ ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
+ :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
+ }`}
+ >
+ {t.label}
+ </button>
+ ))}
+ </div>
+
+ <div className="flex flex-wrap items-center gap-2">
+ <span className="text-[12px] font-semibold text-[var(--charcoal)] mr-1">Kitchen</span>
+ {['Italian','Middle Eastern','Pan-Asian','South African','Latin American'].map((c) => (
+ <button
+ key={c}
+ type="button"
+ aria-pressed={dimensions.regional === c}
+ onClick={() => setDimensions((p) => ({ ...p, regional: p.regional === c ? null : c }))}
+ className={`press px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
+ dimensions.regional === c
+ ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
+ :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
+ }`}
+ >
+ {c}
+ </button>
+ ))}
+ <button
+ type="button"
+ onClick={handleRandomWildcard}
+ className="press ml-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--accent-terracotta)] cursor-pointer transition-colors"
+ >
+ <Dices className="w-4 h-4" /> Surprise me
+ </button>
+ </div>
+ </div>
+ </div>
+
+ {isLoading ? (
+ <LoadingState title="Pulling recipes…" subtitle="Matching what you've got time for." />
 ) : error ? (
- <ErrorState title="That didn't work" message={error} onRetry={handleRandomWildcard} />
-) : recipes.length > 0 && selectedRecipe ? (
+ <ErrorState title="That didn't work" message={error} onRetry={() => handleTriggerMatch()} />
+) : recipes.length > 0 ? (
  <RecipeView
  recipes={recipes}
- selectedRecipe={selectedRecipe}
+ selectedRecipe={null}
  onSelectRecipe={setSelectedRecipe}
- onRegenerate={handleRandomWildcard}
- isRandomMode={true}
+ onRegenerate={() => handleTriggerMatch()}
+ isRandomMode={false}
  savedIds={savedIds}
  onToggleSave={handleToggleSave}
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
  />
 ) : (
- <div className="max-w-[620px] mx-auto text-center py-12 sm:py-20 px-8 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white rounded-2xl shadow-[0_20px_50px_rgba(124,45,18,0.15)] my-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] border border-black dark:border-[#444]">
- <div className="w-12 h-12 bg-white dark:bg-[#1a1a1a] rounded-full flex items-center justify-center mx-auto mb-6">
- <Dices className="w-6 h-6 text-[var(--accent-terracotta)]" />
- </div>
- <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight mb-4 leading-tight !text-white">
- Staying in tonight?
- </h2>
- <p className="text-white/70 text-sm leading-relaxed max-w-[440px] mx-auto mb-8">
- Pick a recipe, scale it to your table, and get a ready-to-shop ingredient list.
+ <p className="px-2 sm:px-4 py-16 text-sm text-[var(--text-muted)]">
+ Nothing matched that combination. Try clearing the kitchen filter.
  </p>
- <button
- onClick={handleRandomWildcard}
- className="bg-white dark:bg-[#1a1a1a] text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 active:scale-95 transition-all px-8 py-4 rounded-xl font-serif text-base font-semibold shadow-md cursor-pointer inline-flex items-center gap-2"
- >
- <Sparkles className="w-4 h-4 text-[#7C2D12] dark:text-[#fca5a5]" /> Find a recipe
- </button>
+)}
  </div>
-)
 ) : (
  // SAVED RECIPES OR EATERIES COLLECTION TAB
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">

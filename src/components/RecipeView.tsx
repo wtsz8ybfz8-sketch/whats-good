@@ -125,40 +125,33 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 )}
 
  <div className="flex flex-col gap-6 sm:gap-8">
- {/* Badge row & Save Action */}
- <div className="flex flex-wrap items-center justify-between gap-4">
- <div className="flex flex-wrap gap-2">
- <span className="font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5]">
- #{r.category}
- </span>
- <span className="font-mono text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded bg-[#f0f4f8] dark:bg-[#5b7993]/20 text-[#5b7993]">
- {r.area} Culture
- </span>
+ {/* Title block. Two coloured mono "badges" (#Category and a navy "{area} Culture"
+ chip that wasn't even in the palette) used to sit above the title, followed by an
+ italic auto-generated line — "A classic dish representing Beef, Tag, Tag." — that
+ said nothing and read as machine filler. A dish has a cuisine and an origin; that
+ is one quiet line of metadata, not three competing chips. */}
+ <div className="flex flex-wrap items-start justify-between gap-4">
+ <div className="min-w-0">
+ <p className="text-[12px] font-medium text-[var(--text-muted)] mb-2">
+ {[r.area, r.category].filter(Boolean).join(' · ')}
+ </p>
+ <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-[1.08] text-[var(--heading-color)]">
+ {r.name}
+ </h2>
  </div>
 
  <button
  onClick={() => onToggleSave(r)}
- className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold font-sans transition-all cursor-pointer shadow-sm ${
+ aria-pressed={savedIds.includes(r.id)}
+ className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-[13px] font-medium transition-colors cursor-pointer ${
  savedIds.includes(r.id)
- ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E] hover:border-[#5E220E]'
- :'glass text-[#7C2D12] dark:text-[#fca5a5] border-[#F5D1C9] dark:border-[#7C2D12]/40 hover:border-[#7C2D12]/60'
+ ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
+ :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
  }`}
  >
- <Heart className={`w-3.5 h-3.5 transition-transform ${savedIds.includes(r.id) ?'fill-current scale-110' :''}`} />
- {savedIds.includes(r.id) ?'Recipe Saved' :'Save Special Recipe'}
+ <Heart className={`w-4 h-4 ${savedIds.includes(r.id) ?'fill-current' :''}`} />
+ {savedIds.includes(r.id) ?'Saved' :'Save'}
  </button>
- </div>
-
- {/* Heading */}
- <div>
- <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight leading-tight text-[#1A1A1A] dark:text-[#f5f5f5]">
- {r.name}
- </h2>
- {r.tags && r.tags.length > 0 && (
- <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] font-sans mt-3 italic">
- A classic dish representing {r.tags.slice(0, 4).join(',')}.
- </p>
-)}
  </div>
 
  {/* Hero Recipe Image */}
@@ -180,7 +173,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {r.prepTime}
  </span>
  <span className="text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
- Prep Clock
+ Prep
  </span>
  </div>
  <div className="text-center border-l border-r border-[#e6e4e0] dark:border-white/10">
@@ -188,7 +181,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {r.cookTime}
  </span>
  <span className="text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
- Active Cook
+ Cook
  </span>
  </div>
  <div className="text-center flex flex-col items-center justify-center">
@@ -213,14 +206,16 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </button>
  </div>
  <span className="text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
- Yield (Plates)
+ Serves
  </span>
  </div>
  </div>
 
  {/* Clinical Insight Highlight Accent Block */}
  <div className="bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] border-l-4 border-l-[var(--accent-terracotta)] rounded-r-3xl p-6 flex gap-4 items-start">
- <Activity className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5] mt-0.5 flex-shrink-0 animate-pulse" />
+ {/* Was animate-pulse. A throbbing icon next to static advice is an alarm with
+ nothing to report — it pulls the eye off the page's actual content. */}
+ <Activity className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5] mt-0.5 flex-shrink-0" />
  <div className="flex-1">
  <strong className="block text-sm font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-1 font-serif tracking-tight">
  Good to know
@@ -347,93 +342,68 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-4">
  Get it sorted
  </span>
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
- <>
- {/* Grocery Delivery Integration */}
- <div className="glass p-6 sm:p-8 rounded-[2rem] flex flex-col gap-5 transition-shadow">
+ {/* Three hand-drawn retailer logos in their own brand colours — a teal pill, a
+ black "W. DASH" tile, a red/blue "PnP asap!" — pulled four foreign palettes
+ into a warm editorial page and looked like counterfeit badges. They also
+ didn't work: each one did `ingredients.join('')`, with an EMPTY separator, so
+ "2 cups flour" + "1 tsp salt" became one string, `2 cups flour1 tsp salt`,
+ which every one of those search engines returns nothing for. The claim
+ "automatically package all items and deliver in under 60 minutes" was also
+ untrue — we open a search box, we don't build a basket.
+
+ What actually helps someone standing in a kitchen: put the list on their
+ clipboard (so it can be pasted into any store app, or a note, or a message),
+ then open the store. Same three retailers, our own typography, honest copy. */}
+ <div className="flex flex-col gap-4">
  <div>
- <h4 className="font-serif text-2xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-2 flex items-center gap-2">
- <ShoppingBag className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
- Get Ingredients Delivered
+ <h4 className="font-serif text-xl text-[var(--heading-color)] mb-1.5 flex items-center gap-2">
+ <ShoppingBag className="w-5 h-5 text-[var(--accent-terracotta)]" />
+ Shop the ingredients
  </h4>
- <p className="text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed">
- Skip the store trips. Automatically package all items needed for <strong>{r.name}</strong> and deliver in under 60 minutes.
+ <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+ Copies all {r.ingredients.length} items to your clipboard, then opens the store so you can paste and go.
  </p>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
- {/* Checkers Sixty60 */}
- <button 
- onClick={() => {
- const q = encodeURIComponent(r.ingredients.join(''));
- window.open('https://www.checkers.co.za/search/all?q=' + q,'_blank');
- triggerToast(`Opening Checkers Sixty60 with ${r.ingredients.length} items...`);
- }}
- className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-transparent bg-[#0ABFBC]/10 hover:bg-[#0ABFBC]/20 hover:border-[#0ABFBC]/30 transition-all cursor-pointer group active:scale-95"
- >
- <div className="bg-[#0ABFBC] text-white font-semibold text-sm px-4 py-1.5 rounded-full mb-3 shadow-sm transform group-hover:-translate-y-1 transition-transform">
- Sixty60
- </div>
- <span className="font-sans text-xs font-bold text-[#1a5b5a] dark:text-[#5eead4]">Order via Checkers</span>
- </button>
-
- {/* Woolies Dash */}
- <button 
- onClick={() => {
- const q = encodeURIComponent(r.ingredients.join(''));
- window.open('https://www.woolworths.co.za/search?searchTerm=' + q,'_blank');
- triggerToast(`Opening Woolies Dash with ${r.ingredients.length} items...`);
- }}
- className="flex flex-col items-center justify-center p-5 rounded-2xl border border-black dark:border-[#444] bg-black dark:bg-[#222222] hover:bg-zinc-900 transition-all cursor-pointer group active:scale-95 shadow-sm"
- >
- <div className="bg-white dark:bg-[#1a1a1a] text-black dark:text-[#f5f5f5] font-serif font-bold text-xs px-4 py-1.5 rounded-sm mb-3 transform group-hover:-translate-y-1 transition-transform">
- W. DASH
- </div>
- <span className="font-sans text-xs font-bold text-white">Order via Woolies</span>
- </button>
-
- {/* PnP Asap */}
- <button 
- onClick={() => {
- const q = encodeURIComponent(r.ingredients.join(''));
- window.open('https://www.pnp.co.za/search?q=' + q,'_blank');
- triggerToast(`Opening PnP Asap! with ${r.ingredients.length} items...`);
- }}
- className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-[#1264A3]/10 glass-subtle hover:border-[#1264A3]/30 transition-all cursor-pointer group active:scale-95"
- >
- <div className="flex gap-1 mb-3 transform group-hover:-translate-y-1 transition-transform">
- <span className="bg-[#1264A3] text-white font-semibold text-sm px-2.5 py-1 rounded-l-md">PnP</span>
- <span className="bg-[#E03A3E] text-white font-bold text-sm px-2 py-1 rounded-r-md italic">asap!</span>
- </div>
- <span className="font-sans text-xs font-bold text-[#1264A3] dark:text-[#93c5fd]">Order via PnP</span>
- </button>
- </div>
- </div>
-
- <div className="glass p-6 rounded-3xl flex flex-col justify-between hover:shadow-[0_16px_40px_rgba(0,0,0,0.15)] group transition-all duration-300">
- <div>
- <div className="w-10 h-10 rounded-2xl bg-white/30 dark:bg-white/10 border border-white/20 dark:border-white/10 flex items-center justify-center mb-4 text-[#5b7993]">
- <Store className="w-5 h-5" />
- </div>
- <h4 className="font-serif text-lg text-[#1A1A1A] dark:text-[#f5f5f5] mb-1.5">Dine Out Nearby</h4>
- <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-6">
- Craving this right now without the cooking? Find restaurants near you serving this style.
- </p>
- </div>
+ <div className="flex flex-wrap gap-2">
+ {[
+ { name:'Checkers Sixty60', url:'https://www.checkers.co.za/search/all?q=' },
+ { name:'Woolworths Dash', url:'https://www.woolworths.co.za/search?searchTerm=' },
+ { name:'Pick n Pay asap!', url:'https://www.pnp.co.za/search?q=' },
+ ].map((store) => (
  <button
- onClick={() => {
- if (onFindCorrespondingRestaurants) {
- onFindCorrespondingRestaurants(r);
- } else {
- triggerToast(`Looking for restaurants serving ${r.category} dishes...`);
+ key={store.name}
+ onClick={async () => {
+ const list = r.ingredients.map(scaleIngredient).join('\n');
+ try {
+ await navigator.clipboard.writeText(list);
+ triggerToast(`${r.ingredients.length} ingredients copied — paste into ${store.name}.`);
+ } catch {
+ triggerToast(`Opening ${store.name}. Copy didn't work — your browser blocked it.`);
  }
+ // Search the first ingredient so the store lands on something real
+ // rather than a no-results page for the whole concatenated list.
+ window.open(store.url + encodeURIComponent(r.ingredients[0] ?? ''),'_blank','noopener');
  }}
- className="w-full py-3 bg-transparent border border-black dark:border-[#444] hover:border-[#7C2D12] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] text-black dark:text-[#f5f5f5] text-xs font-bold rounded-2xl transition-all cursor-pointer active:scale-95"
+ className="press px-4 py-2.5 rounded-full border border-[var(--rule)] text-[13px] font-medium text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)] transition-colors cursor-pointer"
  >
- Find Nearby Restaurants
+ {store.name}
+ </button>
+ ))}
+ </div>
+
+ <div className="pt-4 mt-2 border-t border-[var(--rule)] flex flex-wrap items-center gap-3">
+ <p className="text-sm text-[var(--text-muted)] flex items-center gap-2">
+ <Store className="w-4 h-4 flex-shrink-0" />
+ Not in the mood to cook after all?
+ </p>
+ <button
+ onClick={() => onFindCorrespondingRestaurants?.(r)}
+ className="press px-4 py-2.5 rounded-full border border-[var(--rule)] text-[13px] font-medium text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)] transition-colors cursor-pointer"
+ >
+ Find somewhere serving it
  </button>
  </div>
- </>
  </div>
  </div>
 )}

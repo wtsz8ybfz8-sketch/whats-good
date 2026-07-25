@@ -7,7 +7,9 @@ import React from 'react';
 import { motion, MotionConfig } from 'motion/react';
 import { ParsedRecipe } from '../types';
 import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info } from 'lucide-react';
-import { getVenueExtras, getHappyHourStatus, formatDays } from '../venueExtras';
+// getVenueExtras is deliberately no longer called — it synthesised menus, prices and
+// "specials" from a hash of the venue id. See the "What to expect" block below.
+import { getHappyHourStatus, formatDays } from '../venueExtras';
 import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier } from '../placesService';
 
@@ -44,13 +46,10 @@ export const EateryView: React.FC<EateryViewProps> = ({
   const hasRealDistance = typeof distanceLabel === 'string' && distanceLabel.includes('km');
   const hasRealWait = rawEatery.estimatedWait && rawEatery.estimatedWait !== 'Check with venue';
 
-  const extras = getVenueExtras(r.id, rawEatery.priceSymbol, rawEatery.signatureOrder, rawEatery.signatureDescription);
   // Happy hour is REAL data (happyHourData.ts) matched by venue name — only shown when
   // we genuinely have a confirmed window for this place, never fabricated per-venue.
   const realHH = findCuratedHappyHour(rawEatery.name);
   const hhStatus = realHH ? getHappyHourStatus(realHH) : null;
-  const today = new Date().getDay();
-  const specialsToday = extras.specials.filter((s) => s.days.includes(today));
 
   return (
     <MotionConfig reducedMotion="user">
@@ -244,108 +243,78 @@ export const EateryView: React.FC<EateryViewProps> = ({
       {/* MAIN column (left on desktop) — the menu is the reason to look at this page */}
       <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
 
-      {/* Specials — today's first, since that's the only actionable set */}
-      {extras.specials.length > 0 && (
-        <div className="px-6 sm:px-10 mb-8">
-          <p className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-4">Specials</p>
-          <div className="flex flex-col gap-3">
-            {[...specialsToday, ...extras.specials.filter((s) => !s.days.includes(today))].map((s) => {
-              const isToday = s.days.includes(today);
-              return (
-                <div key={s.title} className="flex items-start gap-3">
-                  <span
-                    className={`font-mono text-[10px] uppercase tracking-[0.07em] w-[52px] flex-shrink-0 pt-0.5 ${
-                      isToday ? 'text-[var(--accent-terracotta)] font-bold' : 'text-[var(--text-subtle)]'
-                    }`}
-                  >
-                    {isToday ? 'Today' : formatDays(s.days)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-sans text-[13px] font-semibold text-[var(--charcoal)] flex items-center gap-2 flex-wrap">
-                      {s.title}
-                      {s.badge && (
-                        <span className="font-mono text-[10px] uppercase tracking-[0.07em] px-1.5 py-0.5 rounded border border-[var(--rule)] text-[var(--text-subtle)] font-normal">
-                          {s.badge}
-                        </span>
-                      )}
-                    </p>
-                    <p className="font-mono text-[11px] text-[var(--text-muted)] mt-0.5">{s.detail}</p>
-                  </div>
-                </div>
-              );
-            })}
+      {/* WHAT TO EXPECT — replaces the invented menu and the invented "specials".
+       *
+       * What used to be here: a full priced menu (Starters / Mains / Desserts, leader
+       * dots, "R185") and a specials list stamped "Today", both synthesised in
+       * venueExtras.ts from a hash of the venue id, with a small grey disclaimer at the
+       * bottom saying none of it was real.
+       *
+       * That is indefensible for this product regardless of the disclaimer. Someone
+       * standing on a street decides where to walk based on a price and a dish. Nobody
+       * reads the footnote under the thing they came for; the disclaimer protects us,
+       * not them. And "Today: Sunset Set Menu, R295" is a promise attached to a
+       * specific day — the failure mode is a person arriving and being told it doesn't
+       * exist. A fabricated price is worse than no price.
+       *
+       * What replaced it is only fields that are actually true: the venue's real
+       * signature dish, the price BAND that Google publishes (a band is honest — it's
+       * what Places actually knows), and a direct route to the venue's own menu. Less
+       * content on screen, all of it load-bearing. Real happy-hour data still renders
+       * in the sidebar; that comes from happyHourData.ts and is human-confirmed. */}
+      <div className="px-6 sm:px-10 mb-8">
+        <p className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-5">
+          What to expect
+        </p>
+
+        {rawEatery.signatureDescription && (
+          <p className="font-sans text-[15px] leading-relaxed text-[var(--charcoal)] max-w-[62ch] mb-6">
+            {rawEatery.signatureDescription}
+          </p>
+        )}
+
+        <div className="flex flex-col">
+          {rawEatery.signatureOrder && (
+            <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
+              <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Known for</span>
+              <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
+                {rawEatery.signatureOrder}
+              </span>
+            </div>
+          )}
+          {rawEatery.cuisine && (
+            <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
+              <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Kitchen</span>
+              <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
+                {rawEatery.cuisine}
+              </span>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
+            <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Typical spend</span>
+            <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
+              {formatPriceTier(rawEatery.priceSymbol, currency)}
+            </span>
           </div>
         </div>
-      )}
 
-      {/* Menu — the reason to look at this page. Courses as typographic sections, no
-          cards: a menu is a list you read top to bottom, not a grid you scan. */}
-      <div className="px-6 sm:px-10 mb-8">
-        <div className="flex items-baseline justify-between mb-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text-subtle)]">Menu</p>
-          <span className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-subtle)]">Sample</span>
-        </div>
+        {/* The menu itself lives with the venue. Send people there properly, as a real
+            action, instead of burying it in a footnote under fake prices. */}
+        <a
+          href={rawEatery.externalLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-full border border-[var(--rule)] text-[14px] font-medium text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)] transition-colors"
+        >
+          <ExternalLink className="w-4 h-4" />
+          See the full menu and photos
+        </a>
 
-        {extras.menu.map((course, ci) => (
-          <motion.div
-            key={course.course}
-            initial={{ opacity: 0, y: 22 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-8%' }}
-            transition={{ duration: 0.5, delay: ci * 0.04, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-7 last:mb-0"
-          >
-            <h3 className="font-serif text-xl mb-3.5">{course.course}</h3>
-            <ul className="flex flex-col">
-              {course.items.map((item) => (
-                <li key={item.name} className="py-3 border-b border-[var(--row-border)] last:border-b-0">
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] flex items-center gap-2 flex-wrap">
-                      {item.name}
-                      {item.tags?.map((t) => (
-                        <span
-                          key={t}
-                          className="font-mono text-[10px] uppercase tracking-[0.07em] px-1.5 py-0.5 rounded-full bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-normal"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </span>
-                    {/* Leader dots — the one bit of menu typography that makes a price list
-                        read as a menu rather than a table */}
-                    <span className="flex-1 border-b border-dotted border-[var(--rule)] translate-y-[-3px] min-w-[16px]" />
-                    <span className="font-mono text-[13px] tabular-nums text-[var(--charcoal)] whitespace-nowrap">
-                      R{item.price}
-                    </span>
-                  </div>
-                  {item.description && (
-                    <p className="font-mono text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed max-w-[58ch]">
-                      {item.description}
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        ))}
-
-        {/* Provenance. This is not decoration — rendering invented prices without saying
-            so would be lying to the user. */}
-        <div className="mt-6 flex items-start gap-2.5 px-4 py-3 rounded-xl border border-[var(--rule)]">
+        <div className="mt-5 flex items-start gap-2.5">
           <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[var(--text-subtle)]" />
-          <p className="font-mono text-[10px] text-[var(--text-muted)] leading-relaxed">
-            Sample menu — Google Places doesn't publish menus, so these dishes and prices are
-            representative of the venue's cuisine and price band, not confirmed.
-            {rawEatery.signatureOrder && ' The signature dish is real.'}{' '}
-            <a
-              href={rawEatery.externalLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--accent-terracotta)] underline underline-offset-2"
-            >
-              Check the venue's own menu
-            </a>
-            .
+          <p className="text-[12px] text-[var(--text-muted)] leading-relaxed max-w-[58ch]">
+            Spend is the band Google publishes for this venue, not a quoted price. Menus and
+            prices change — confirm with the venue before you go.
           </p>
         </div>
       </div>

@@ -19,6 +19,23 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Evict the old service worker. Builds before this one shipped a precaching worker that
+// kept serving a stale index.html from Cache Storage, so deploys were invisible on the
+// live URL. Removing the plugin only stops NEW installs — devices that already have the
+// worker keep it until something unregisters it. This does, once, then hard-reloads so
+// the user lands on the real current build instead of the cached ghost.
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(async (regs) => {
+    if (!regs.length) return;
+    await Promise.all(regs.map((r) => r.unregister()));
+    if (typeof caches !== 'undefined') {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    window.location.reload();
+  }).catch(() => {});
+}
+
 import App from './App.tsx';
 import './index.css';
 
