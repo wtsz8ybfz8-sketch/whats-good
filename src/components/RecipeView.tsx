@@ -485,7 +485,8 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  e.stopPropagation();
  onToggleSave(r);
  }}
- className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+ // tap-44: drawn at 32px, tapped at 44px (HIG minimum) on touch devices.
+ className={`tap-44 absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white'
  :'text-[var(--text-subtle)] hover:text-[var(--accent-terracotta)] hover:bg-black/5 dark:hover:bg-white/5'
@@ -591,7 +592,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  e.stopPropagation();
  onToggleSave(r);
  }}
- className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm border transition-all ${
+ className={`tap-44 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm border transition-all ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E]'
  :'bg-white/80 dark:bg-black/50 backdrop-blur-md text-[#7C2D12] dark:text-[#fca5a5] border-white/40 dark:border-white/20 hover:scale-110'

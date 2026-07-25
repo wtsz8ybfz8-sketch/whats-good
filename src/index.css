@@ -51,6 +51,61 @@
   /* Body copy wants room to breathe; headings don't. */
   p { text-wrap: pretty; }
   h1, h2, h3 { text-wrap: balance; }
+
+  /* ─── Apple HIG: iOS must not zoom when a field is focused ────────────────
+     Mobile Safari auto-zooms the whole page when you focus an input whose
+     computed font-size is under 16px, then leaves you zoomed in with the
+     layout shifted sideways. Our search fields were `text-sm` (14px), so every
+     tap on "Search" on an iPhone yanked the page. HIG treats unintended zoom as
+     a defect, not a preference — the guidance is to keep the interface at the
+     scale the person chose.
+
+     Fixed at the base layer rather than per-field so a new input can't
+     reintroduce it. 16px only up to the phone breakpoint; desktop keeps the
+     smaller, better-proportioned size where no zoom behaviour exists. */
+  @media (max-width: 767px) {
+    input, select, textarea { font-size: 16px; }
+  }
+
+  /* ─── Apple HIG: respect the safe area ───────────────────────────────────
+     On notched and Dynamic Island iPhones the top inset is real estate the
+     system owns, and in landscape the left/right insets are too. The bottom tab
+     bar already padded for the home indicator; nothing else did. */
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Stop the rubber-band overscroll from revealing a white gap behind the
+       warm canvas, and keep pull-to-refresh from firing mid-scroll. */
+    overscroll-behavior-y: none;
+  }
+}
+
+/* ─── Apple HIG: 44×44pt minimum hit target ───────────────────────────────────
+   HIG's number, and it isn't arbitrary — it's roughly the contact patch of an
+   adult fingertip. Several controls here were drawn at their *visual* size and
+   inherited that as their touch size: the save hearts were 32px, the city badge
+   in the header about 20px tall. On a phone, held one-handed, standing on a
+   street, those are misses.
+
+   The fix is a hit area larger than the ink. `min-height/min-width` would bloat
+   the layout, so this expands the touch target outward with a pseudo-element
+   while the button keeps drawing at its designed size. Coarse pointers only —
+   a mouse is precise and doesn't need it, and on desktop the invisible padding
+   would swallow clicks meant for neighbouring controls. */
+   Implemented as a plain min-size rather than an expanded pseudo-element hit area.
+   The pseudo-element trick is tempting because it grows the touch target without
+   changing the drawing, but it breaks here in two ways: it needs the host to be
+   positioned, and `position: relative` would override the `absolute` these save
+   buttons already rely on to sit in the card corner; and pushing the overflow behind
+   the icon with a negative z-index puts it behind the CARD too, so taps in the
+   overflow would open the recipe instead of saving it — the exact opposite of intent.
+   min-width/min-height always beats a smaller width/height, the icons are already
+   flex-centred, so the control simply grows to 44px and stays centred. */
+@media (pointer: coarse) {
+  .tap-44 {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 /* ─── Label style ────────────────────────────────────────────────────────────

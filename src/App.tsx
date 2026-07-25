@@ -669,7 +669,14 @@ export default function App() {
  return (
  <div className="min-h-screen flex flex-col relative text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
  {/* Global Header */}
- <header className="h-[60px] glass flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none !rounded-none">
+ {/* HIG: index.html sets apple-mobile-web-app-capable, so once this is added to the
+ home screen the web view runs full-bleed and content sits UNDER the status bar /
+ Dynamic Island. Padding the fixed header by the top inset keeps the logo and the
+ controls clear of it; in a normal browser tab the inset is 0 and nothing moves. */}
+ <header
+ className="glass flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none !rounded-none"
+ style={{ height:'calc(60px + env(safe-area-inset-top))', paddingTop:'env(safe-area-inset-top)' }}
+ >
  {/* Logo */}
  <div 
  className="flex items-center gap-2.5 cursor-pointer group hover:opacity-80 transition-opacity" 
@@ -694,7 +701,12 @@ export default function App() {
  onClick={() => setCityMenuOpen((o) => !o)}
  title="Search another city"
  aria-label={`Location: ${city}. Tap to search another city.`}
- className="flex items-center gap-1 text-[10px] bg-black dark:bg-[#222222] text-white pl-1.5 pr-1 py-0.5 rounded-lg font-mono tracking-wider font-bold cursor-pointer hover:opacity-85 transition-opacity"
+ // Was ~20px tall at 10px mono — a control you are meant to tap to change
+ // city, drawn at caption size. Deliberately NOT given `tap-44`: a 44px-tall
+ // black slab in a 60px header would dominate the wordmark next to it. Grown
+ // to a ~32px target instead, which is the honest compromise for a badge that
+ // doubles as a button. Flagged rather than silently left at 20px.
+ className="flex items-center gap-1 text-[11px] bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
  >
  {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
  <span>{city}</span>
@@ -873,7 +885,10 @@ export default function App() {
  </nav>
 
  {/* Main Layout Grid wrapper */}
- <div className="flex-1 pt-[60px] flex flex-col relative w-full items-center pb-[76px] md:pb-0">
+ <div
+ className="flex-1 flex flex-col relative w-full items-center pb-[76px] md:pb-0"
+ style={{ paddingTop:'calc(60px + env(safe-area-inset-top))' }}
+ >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
  className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto ${
