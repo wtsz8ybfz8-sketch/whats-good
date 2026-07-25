@@ -22,6 +22,11 @@ Read `CLAUDE.md` first — stack, design tokens, and the working agreement live 
   Builds take a few minutes; the CLI buffers output until done.
 - To get `git push` working later (one-time): `brew install gh && gh auth login`, then
   push normally and Vercel auto-deploys from GitHub.
+- **`.vercelignore` matters.** Without it, `vercel deploy` tried to upload the gitignored
+  `node_modules` + `ai-system-build` (~65MB) and **hung silently at "Deploying…" forever**
+  (the `.gitignore` fallback didn't exclude them). An explicit `.vercelignore` is now
+  committed and fixes it — deploys go upload→build→Ready in ~15s. Don't delete it. If a
+  deploy ever hangs at "Deploying…" again, that file (or a huge new dir) is the suspect.
 - **`npm run lint` (`tsc --noEmit`) is pathologically slow here** (~60s+ wall at ~0% CPU
   — local I/O, not the code; Vercel builds fine). Budget for it. Gate every change on it.
 
