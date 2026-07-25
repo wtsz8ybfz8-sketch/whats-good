@@ -4,7 +4,7 @@
  */
 
 import React from'react';
-import { AlertCircle, RotateCcw, Compass, Sparkles, MapPin, Star } from'lucide-react';
+import { AlertCircle, RotateCcw, Compass, Sparkles } from'lucide-react';
 
 interface LoadingProps {
  title?: string;
@@ -65,28 +65,33 @@ export const ErrorState: React.FC<ErrorProps> = ({
 );
 };
 
+/**
+ * The "Featured Match / Best fit" card that used to sit beside this one is gone.
+ *
+ * It was never a match. It rendered `SOUTH_AFRICAN_EATERIES[0]` — the first item of the
+ * hardcoded Cape Town fallback list — to every user in Cape Town, before they had searched
+ * for anything, while labelling itself "Best fit" with a filled star. Its "Menu highlights"
+ * were `signatureOrder` plus two `signatureIngredients`, so on any Places-sourced venue it
+ * would have listed "House specialty at …" as a dish.
+ *
+ * So: a fixed venue, presented as a personalised recommendation, with a fabricated menu,
+ * appearing for no reason the reader could infer. The user's read — "just sitting there
+ * randomly and appears when there's no reason for it to" — was exactly right, and it broke
+ * both standing rules in CLAUDE.md at once. Don't rebuild it. A genuine featured slot needs
+ * a real signal (their saves, their filters, confirmed editorial picks); until there is one,
+ * the honest empty state is the invitation on its own.
+ */
 interface EmptyProps {
   onSearchRandom: () => void;
-  onOpenFeatured?: () => void;
   city?: string;
-  featured?: {
-    name: string;
-    area: string;
-    price: string;
-    distance: string;
-    vibe: string;
-    menu: string[];
-  };
 }
 
 export const EmptyState: React.FC<EmptyProps> = ({
  onSearchRandom,
- onOpenFeatured,
  city = 'Cape Town',
- featured,
 }) => {
  return (
- <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-6 lg:gap-10 items-stretch max-w-5xl mx-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-2xl mx-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="text-left py-10 sm:py-14 px-7 sm:px-9 glass rounded-3xl flex flex-col justify-center">
  <div className="w-12 h-12 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mb-6">
  <Compass className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
@@ -107,51 +112,6 @@ export const EmptyState: React.FC<EmptyProps> = ({
  Stay in tonight
  </button>
  </div>
- {featured && (
- <button
- type="button"
- onClick={onOpenFeatured}
- className="text-left glass rounded-3xl overflow-hidden group cursor-pointer transition-all hover:-translate-y-1 active:scale-[0.99]"
- >
- <div className="p-6 sm:p-8">
- <div className="flex items-center justify-between gap-4 mb-8">
- <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#6E6A64] dark:text-[#a3a3a3]">
- Featured Match
- </span>
- <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#7C2D12] dark:text-[#fca5a5] font-bold">
- <Star className="w-3.5 h-3.5 fill-current" /> Best fit
- </span>
- </div>
- <h4 className="font-serif text-3xl sm:text-4xl font-semibold leading-tight text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors">
- {featured.name}
- </h4>
- <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] mb-4">
- <MapPin className="w-3.5 h-3.5" />
- <span>{featured.area}</span>
- <span>·</span>
- <span>{featured.price}</span>
- <span>·</span>
- <span>{featured.distance}</span>
- </div>
- <p className="text-sm text-[#4A4741] dark:text-[#a3a3a3] leading-relaxed mb-7">
- {featured.vibe}
- </p>
- <div className="border-t border-black/10 dark:border-white/10 pt-5">
- <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#6E6A64] dark:text-[#a3a3a3] mb-3">
- Menu highlights
- </p>
- <div className="space-y-2.5">
- {featured.menu.map((item) => (
- <div key={item} className="flex items-center gap-2.5 text-sm">
- <span className="w-1 h-1 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0" />
- <span className="font-sans font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">{item}</span>
- </div>
-))}
- </div>
- </div>
- </div>
- </button>
-)}
- </div>
+  </div>
 );
 };

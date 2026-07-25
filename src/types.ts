@@ -31,7 +31,6 @@ export interface ParsedRecipe {
   prepTime: string;
   cookTime: string;
   serves: string;
-  gutTip: string;
 }
 
 export type LocationMode = 'dineout' | 'gourmet';

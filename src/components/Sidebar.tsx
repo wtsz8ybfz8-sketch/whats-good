@@ -1,6 +1,7 @@
 import React from'react';
 import { Dimensions } from'../types';
-import { Search } from'lucide-react';
+import { Search, type LucideIcon } from'lucide-react';
+import { cuisineIcon } from'../cuisineIcon';
 
 interface SidebarProps {
  dimensions: Dimensions;
@@ -13,33 +14,35 @@ interface SidebarProps {
  * ONE chip. Every filter on this screen — mood, cuisine, diet — is the same control,
  * because they are the same kind of decision: pick one, or none.
  *
- * No icons. The previous version put a lucide glyph in every mood and cuisine chip and
- * it was the single cheapest-looking thing in the app, for three reasons:
- *  1. The icons were redundant — a pill that says "Italian" next to a pizza slice, or
- *     "Burgers" next to a sandwich, tells you nothing the word didn't. Redundant icons
- *     are decoration, and decoration at 16px reads as clip-art.
- *  2. They were dishonest — the set had no 1:1 mapping, so `Flame` did duty for "Bold &
- *     Spicy", "Flame Grill" AND "Latin American", `Soup` meant "Pan-Asian", `Globe` meant
- *     "South African", `Dices` meant "Surprise Me". The user has to decode, not scan.
- *  3. They broke the rhythm — nine chips of differing widths each with a glyph makes a
- *     ragged, busy block. Text-only chips wrap into clean lines you read in one pass.
- * Hierarchy here comes from weight, size and the accent fill on the selected state.
+ * Optionally carries a glyph. Only Cuisine passes one; see `../cuisineIcon` for why the
+ * icons came back and what was actually wrong with the old set. Mood and Diet stay
+ * text-only on purpose — abstract categories have no honest glyph, and the contrast
+ * between a picture row and a word row is what stops this reading as three identical
+ * blocks. The icon is `aria-hidden`: the label already names the thing.
  */
 const Chip: React.FC<{
  label: string;
  selected: boolean;
  onClick: () => void;
-}> = ({ label, selected, onClick }) => (
+ icon?: LucideIcon;
+}> = ({ label, selected, onClick, icon: Icon }) => (
  <button
  type="button"
  aria-pressed={selected}
  onClick={onClick}
- className={`press px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors duration-150 cursor-pointer whitespace-nowrap ${
+ className={`press inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors duration-150 cursor-pointer whitespace-nowrap ${
  selected
  ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
  : 'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
  }`}
  >
+ {Icon && (
+ <Icon
+ aria-hidden="true"
+ strokeWidth={1.75}
+ className={`w-[14px] h-[14px] flex-shrink-0 ${selected ?'' :'text-[var(--accent-terracotta)]'}`}
+ />
+ )}
  {label}
  </button>
 );
@@ -214,7 +217,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange }) => {
 
  <FilterGroup title="Cuisine" optional>
  {cuisines.map((c) => (
- <Chip key={c.value} label={c.label} selected={dimensions.regional === c.value} onClick={() => toggle('regional', c.value)} />
+ <Chip key={c.value} label={c.label} selected={dimensions.regional === c.value} onClick={() => toggle('regional', c.value)} icon={cuisineIcon(c.label)} />
  ))}
  </FilterGroup>
 

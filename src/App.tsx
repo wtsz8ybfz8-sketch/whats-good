@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useMemo, useRef } from'react';
+import React, { useState, useEffect, useMemo, useRef } from'react';
 import { Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
 import { Sidebar } from'./components/Sidebar';
@@ -17,6 +17,7 @@ import { Sparkles, Dices, Heart, Trash2, Search, MapPin, ChevronRight, Sun, Moon
 import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
 import { fetchCapeTownEateries, detectCityFromCoords, currencyForCountry } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
+import { cuisineIcon } from'./cuisineIcon';
 
 /**
  * Honest placeholder for venues without a real photo (hardcoded fallback list only).
@@ -90,7 +91,15 @@ function createEateryResult(
  name: eatery.name,
  category: eatery.cuisine,
  area: city,
- instructions: `${eatery.signatureDescription}\n\nLocated at ${eatery.address}${distanceStr ? ` — ${distanceStr}` : ''}.`,
+ // signatureDescription is empty for every Places-sourced venue now (it used to be a
+ // template built from the venue's own name). Only prefix it when it's real content,
+ // otherwise this string opens with two blank lines.
+ instructions: [
+ eatery.signatureDescription,
+ `Located at ${eatery.address}${distanceStr ? ` — ${distanceStr}` : ''}.`,
+ ]
+ .filter(Boolean)
+ .join('\n\n'),
  image: imgUrl,
  tags: [
  eatery.vibeMatch,
@@ -99,16 +108,20 @@ function createEateryResult(
  'Restaurant'
  ],
  ingredients: eatery.signatureIngredients,
+ // Each step is dropped rather than emitted empty. Without the guards a Places-sourced
+ // venue renders "Order the recommended plate: ." — the punctuation is the giveaway that
+ // the sentence was built around data we never had.
  steps: [
  `Head to ${eatery.address}${distanceStr ? ` (${distanceStr})` : ''}.`,
  `Ask about today's menu highlights and availability.`,
- `Order the recommended plate: ${eatery.signatureOrder}.`,
- `Check ingredients against your preferences: ${eatery.signatureIngredients.join(',') ||'ask the venue for the current menu'}.`,
- ],
+ eatery.signatureOrder ? `Order the recommended plate: ${eatery.signatureOrder}.` : '',
+ eatery.signatureIngredients.length
+ ? `Check ingredients against your preferences: ${eatery.signatureIngredients.join(', ')}.`
+ : '',
+ ].filter(Boolean),
  prepTime: eatery.estimatedWait,
  cookTime: eatery.priceSymbol,
  serves:'Table booking',
- gutTip: eatery.digestiveNote,
  source: eatery.externalLink,
  distanceVal: distVal,
  rawEatery: eatery,
@@ -615,7 +628,6 @@ export default function App() {
  prepTime: randomEatery.estimatedWait,
  cookTime: randomEatery.priceSymbol,
  serves:'Custom Plate',
- gutTip: randomEatery.digestiveNote,
  source: randomEatery.externalLink,
  };
 
@@ -663,8 +675,8 @@ export default function App() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [activeTab, recipes]);
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
- const featuredEatery = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES[0] : null;
- const featuredResult = featuredEatery ? createEateryResult(featuredEatery, city, userCoords) : null;
+ // featuredEatery/featuredResult removed with the "Best fit" card — they pinned
+ // SOUTH_AFRICAN_EATERIES[0] as everyone's recommendation. See StatusStates.tsx.
 
  return (
  <div className="min-h-screen flex flex-col relative text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
@@ -992,19 +1004,6 @@ export default function App() {
 ) : (
  <EmptyState
  city={city}
- featured={featuredEatery ? {
- name: featuredEatery.name,
- area: featuredEatery.address.split(',').slice(-2, -1)[0]?.trim() || city,
- price: featuredEatery.priceSymbol,
- distance: featuredResult?.tags[1] || featuredEatery.fallbackDistance,
- vibe: 'Good for cosy dinners, dates, and groups when nobody wants to make the final call.',
- menu: [featuredEatery.signatureOrder, ...featuredEatery.signatureIngredients.slice(0, 2)],
- } : undefined}
- onOpenFeatured={() => {
- if (!featuredResult) return;
- setRecipes([featuredResult]);
- setSelectedRecipe(featuredResult);
- }}
  onSearchRandom={() => {
  setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
  handleTabSwitch('random');
@@ -1183,7 +1182,11 @@ export default function App() {
  {/* Title and metadata details */}
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 mb-1">
- <span className="font-mono text-[10px] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] px-2 py-0.5 rounded font-bold">
+ <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] px-2 py-0.5 rounded font-bold">
+ {React.createElement(
+ cuisineIcon(r.id.startsWith('eat') ? (r as any).rawEatery?.cuisine : r.category),
+ { 'aria-hidden':'true', strokeWidth: 2, className:'w-3 h-3 flex-shrink-0' },
+)}
  {r.id.startsWith('eat') ? (r as any).rawEatery?.cuisine : r.category}
  </span>
  <span className="font-mono text-[10px] text-[#6E6A64] dark:text-[#a3a3a3] uppercase">

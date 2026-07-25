@@ -236,15 +236,25 @@ export async function fetchCapeTownEateries(
         fallbackDistance: '',
         rating,
         priceSymbol,
-        signatureOrder: `House specialty at ${name}`,
-        signatureDescription: `A featured dining experience at ${name}, located at ${address}.`,
+        /* Empty on purpose. These four fields used to be filled with template strings
+           built from the venue's own name — `House specialty at ${name}`, `A featured
+           dining experience at ${name}, located at ${address}` — which EateryView then
+           rendered as a "Known for" row and a lead paragraph. The result was that every
+           restaurant Google returned claimed a house specialty it had never told us about.
+           A template is not data. Google's Places API does not publish a signature dish,
+           so we do not have one, and the render sites already omit an empty value. An
+           empty section beats a confident lie; see the "never render invented data" rule
+           in CLAUDE.md. Venues in campusData.ts carry real, human-written values here and
+           still render normally. */
+        signatureOrder: '',
+        signatureDescription: '',
         signatureIngredients: [],
-        digestiveNote: `Always check current menus and allergens directly with ${name}. General wellness info — not medical advice.`,
+        digestiveNote: '',
         externalLink: website,
         latitude: place.location?.latitude ?? -33.9249,
         longitude: place.location?.longitude ?? 18.4241,
         phone,
-        estimatedWait: 'Check with venue',
+        estimatedWait: '', // Not published by Places. "Check with venue" is filler, not a wait time.
         photoUrl,
         openNow,
         hoursToday,

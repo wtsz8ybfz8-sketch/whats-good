@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from'react';
 import { eateryPlaceholderImage } from '../App';
 import { ParsedRecipe } from'../types';
-import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, Activity, MapPin, Star } from'lucide-react';
+import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, MapPin, Star } from'lucide-react';
+import { cuisineIcon } from'../cuisineIcon';
 
 interface RecipeViewProps {
  recipes: ParsedRecipe[];
@@ -211,20 +212,13 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
  </div>
 
- {/* Clinical Insight Highlight Accent Block */}
- <div className="bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] border-l-4 border-l-[var(--accent-terracotta)] rounded-r-3xl p-6 flex gap-4 items-start">
- {/* Was animate-pulse. A throbbing icon next to static advice is an alarm with
- nothing to report — it pulls the eye off the page's actual content. */}
- <Activity className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5] mt-0.5 flex-shrink-0" />
- <div className="flex-1">
- <strong className="block text-sm font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-1 font-serif tracking-tight">
- Good to know
- </strong>
- <p className="text-xs sm:text-sm text-[var(--charcoal)] leading-relaxed font-sans">
- {r.gutTip}
- </p>
- </div>
- </div>
+ {/* The "Good to know" gut-health block was removed here. It was invented health
+ copy — generated from a keyword match on the ingredient list, then written in a
+ register ("prokinetic properties", "slow-release carbohydrates that avoid spike
+ loops") that reads as clinical fact. Nobody came to a recipe page for a digestion
+ lecture, and dressing guesswork as nutrition advice is the same failure as the
+ fabricated menus: confident, unsourced, and impossible for the reader to check.
+ Do not reintroduce it. */}
 
  {/* Ingredients & Preparation Lists */}
  <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
@@ -581,7 +575,12 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-60 mix-blend-multiply pointer-events-none transition-opacity duration-300 group-hover:opacity-40" />
  
  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
- <span className="bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
+ <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
+ {React.createElement(cuisineIcon(r.category), {
+'aria-hidden':'true',
+ strokeWidth: 2,
+ className:'w-3 h-3 flex-shrink-0',
+ })}
  {r.category}
  </span>
  </div>
@@ -617,12 +616,19 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </p>
  
  <div className="mt-auto pt-4 border-t border-[#f3f1ed] flex items-center justify-between text-[#6E6A64] dark:text-[#a3a3a3]">
+ {/* Venue cards carry an empty prepTime now that "Check with venue" is gone —
+ Places doesn't publish a wait time. A lone clock icon with nothing beside it
+ reads as a value that failed to load, so drop the whole pair. */}
+ {r.prepTime && (
  <span className="flex items-center gap-1 text-[11px] font-mono">
  <Clock className="w-3.5 h-3.5 text-[#7C2D12] dark:text-[#fca5a5]" /> {r.prepTime}
  </span>
+ )}
+ {r.cookTime && (
  <span className="flex items-center gap-1 text-[11px] font-mono">
  <Flame className="w-3.5 h-3.5 text-amber-600" /> {r.cookTime}
  </span>
+ )}
  </div>
  </div>
  </div>

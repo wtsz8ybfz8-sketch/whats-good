@@ -22,6 +22,10 @@ That's `tsc --noEmit`. It is the only automated gate; it must pass. For anything
 run the dev server and actually look at the change at mobile and desktop widths before saying
 it works. Report what you saw.
 
+**Don't let a pipe swallow the exit code.** `npm run build | tail -20` reports `tail`'s status,
+not the build's — a failed build reads as a success. Same shape as "tsc passed so it works."
+If you need a real local build result, check `${PIPESTATUS[0]}`, or look at `dist/` timestamps.
+
 ## Design direction — already decided, hold to it
 
 **Feel:** warm editorial. A good food magazine, not a SaaS dashboard. Off-white paper, serif
@@ -97,3 +101,20 @@ data (`happyHourData.ts`, human-confirmed) is the standard: if it isn't confirme
   6.3:1 dark). Any new tone must be measured, not eyeballed — especially over glass surfaces,
   where the effective background is whatever is behind it.
 - Don't add dependencies without saying why. The dep list is small on purpose.
+
+## Do NOT use the in-app preview pane. It does not work in this project.
+
+Three consecutive sessions have burned calls on this with an identical outcome:
+`preview_start` reports success, then every `get_page_text`, `read_page`, `navigate` and
+`screenshot` returns **"Policy check in progress for this tab; retry."** forever. The tab
+never loads. Retrying does not help. `preview_logs` shows vite started fine — the server is
+not the problem, the pane is.
+
+**So don't attempt it. Go straight to:**
+
+1. `npm run dev`, then ask the user to open `localhost:3000` and send screenshots at phone
+   and desktop width. They are willing — they are the one reporting the visual bugs.
+2. If they can't, say so and ask how they want to proceed.
+
+Never fall back to shipping on `tsc` alone. Types passing has let broken layout reach the
+user in every session so far. If you have not seen it, say you have not seen it.

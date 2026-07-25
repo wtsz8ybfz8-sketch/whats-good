@@ -10,6 +10,7 @@ import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLin
 // getVenueExtras is deliberately no longer called — it synthesised menus, prices and
 // "specials" from a hash of the venue id. See the "What to expect" block below.
 import { getHappyHourStatus, formatDays } from '../venueExtras';
+import { cuisineIcon } from '../cuisineIcon';
 import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier } from '../placesService';
 
@@ -111,8 +112,17 @@ export const EateryView: React.FC<EateryViewProps> = ({
           transition={{ duration: 0.6, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
           className="absolute bottom-0 left-0 right-0 px-6 sm:px-10 pb-8 sm:pb-12"
         >
+          {/* Was text-white/45, which over a bright photo (a yellow wall, a sunlit
+              terrace) disappeared completely — the kitchen label was invisible on the
+              venue this was tested against. Contrast is not optional; at /85 with a
+              drop-shadow it holds against a light or dark image. */}
           {rawEatery.cuisine && (
-            <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-white/45 block mb-3">
+            <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.09em] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] mb-3">
+              {React.createElement(cuisineIcon(rawEatery.cuisine), {
+                'aria-hidden': 'true',
+                strokeWidth: 2,
+                className: 'w-3 h-3 flex-shrink-0 drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]',
+              })}
               {rawEatery.cuisine}
             </span>
           )}
@@ -285,7 +295,12 @@ export const EateryView: React.FC<EateryViewProps> = ({
           {rawEatery.cuisine && (
             <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
               <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Kitchen</span>
-              <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
+              <span className="inline-flex items-center gap-2 font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
+                {React.createElement(cuisineIcon(rawEatery.cuisine), {
+                  'aria-hidden': 'true',
+                  strokeWidth: 1.75,
+                  className: 'w-[15px] h-[15px] flex-shrink-0 text-[var(--accent-terracotta)]',
+                })}
                 {rawEatery.cuisine}
               </span>
             </div>

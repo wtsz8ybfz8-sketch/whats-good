@@ -153,31 +153,14 @@ export function parseMealToRecipe(meal: Meal, requestedCapacity?: string | null)
     }
   }
 
-  // 4. Generate dynamic gut tip based on typical ingredients
-  let gutTip = 'A balanced, whole-ingredient meal that supports optimal digestive pacing and micro-nutrient absorption without heavy culinary emulsifier lipids.';
-  
-  const lowerInstructions = (meal.strInstructions || '').toLowerCase();
-  const lowerIngredients = ingredients.map(i => i.toLowerCase()).join(' ');
+  /* A "gut tip" used to be generated here: a keyword match on the ingredient list picked
+     one of nine paragraphs of invented nutrition science ("powerful natural prokinetic
+     properties", "beta-glucan fibers form a protective gel barrier"). It was rendered on
+     every recipe under a "Good to know" heading, which framed a hash-lookup as dietary
+     advice. Removed at the user's request, and it should stay removed — see the note at
+     the old render site in RecipeView.tsx. */
 
-  if (lowerIngredients.includes('ginger')) {
-    gutTip = 'Fresh ginger root active components possess powerful natural prokinetic properties that dramatically optimize upper digestive tract clearing and soothe gut mucosa.';
-  } else if (lowerIngredients.includes('rice') || lowerIngredients.includes('jasmine')) {
-    gutTip = 'Utilizing highly digestible polished starches like jasmine rice provides rapid caloric absorption channels, minimizing bloating profiles by avoiding taxing fibrous outer hulls.';
-  } else if (lowerIngredients.includes('pasta') || lowerIngredients.includes('noodle') || lowerIngredients.includes('spaghetti')) {
-    gutTip = 'Boiling regional pasta varieties al dente keeps starch matrices structurally cohesive, creating slow-release carbohydrates that avoid spike loops and support continuous tract energy.';
-  } else if (lowerIngredients.includes('mint') || lowerIngredients.includes('peppermint')) {
-    gutTip = 'Inclusion of mint leaves releases natural menthol oils which soothe local tissue boundaries, acting as a functional tool to relax cramping or stomach bloating loops.';
-  } else if (lowerIngredients.includes('lemon') || lowerIngredients.includes('lime') || lowerIngredients.includes('citrus')) {
-    gutTip = 'Inbuilt pure citrus citric acids aid primary stomach enzyme cycles, improving broad protein digestion rates while keeping stomach acidity profiles nicely regulated.';
-  } else if (lowerIngredients.includes('turmeric') || lowerIngredients.includes('curry') || lowerIngredients.includes('cumin')) {
-    gutTip = 'Warm anti-inflammatory spice blends containing curcumin stimulate metabolic heat while supporting liver detoxification steps and relaxed gastrointestinal flow.';
-  } else if (lowerIngredients.includes('coconut milk') || lowerIngredients.includes('coconut amino')) {
-    gutTip = 'Medium-chain fats present in organic coconut liquids offer instant fuel source availability, bypassing complex processing cycles in the gall bladder for easy assimilation.';
-  } else if (lowerIngredients.includes('oat') || lowerIngredients.includes('porridge')) {
-    gutTip = 'Soluble beta-glucan fibers form a protective gel barrier along GI pathways, slowing nutrient uptake gently while lubricating active motility loops.';
-  }
-
-  // 5. Parse tags
+  // 4. Parse tags
   const tags = meal.strTags
     ? meal.strTags.split(',').map(t => t.trim()).filter(Boolean)
     : [meal.strCategory, meal.strArea].filter(Boolean);
@@ -197,6 +180,5 @@ export function parseMealToRecipe(meal: Meal, requestedCapacity?: string | null)
     prepTime: computedPrep,
     cookTime: computedCook,
     serves: '2 Plates', // default
-    gutTip,
   };
 }
