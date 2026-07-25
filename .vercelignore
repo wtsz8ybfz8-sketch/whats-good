@@ -1,0 +1,7 @@
+node_modules
+ai-system-build
+anti-slop-main
+_archive
+dist
+.git
+.vercel
