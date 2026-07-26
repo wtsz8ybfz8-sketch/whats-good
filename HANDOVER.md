@@ -1,163 +1,160 @@
-# Handover — 2026-07-26 (session 5)
+# HANDOVER — 2026-07-26 (session 8)
 
-Live (production, **old build**): `https://whats-good-nu.vercel.app`
-Preview (this session, verified at 390×844): `https://whats-good-kzarr47ms-nizzle-s-projects.vercel.app`
-Vercel project `whats-good` (`nizzle-s-projects`) · Repo `github.com/wtsz8ybfz8-sketch/whats-good`
+## Status
 
-Read `CLAUDE.md` first. It now ends with **NON-NEGOTIABLE UX, ARCHITECTURE & WORKFLOW RULES** —
-six numbered rules the user added this session. They are not suggestions and not yours to soften.
+**Working tree is NOT clean and nothing new is committed.** Do not commit without being
+asked (CLAUDE.md §4).
 
-**Working tree is clean.** Everything below is committed as `ba5165b`. Production has not been
-touched; promoting is `vercel deploy --prod` and needs the user's explicit go-ahead.
+- Committed earlier this session: `3d7cc07` — full-bleed `.page-grid` / `.bleed`.
+- Deployed preview (that commit): https://whats-good-po6xd462f-nizzle-s-projects.vercel.app
+- **Production is still the old build** — https://whats-good-nu.vercel.app — untouched.
+- Uncommitted, application code: `src/components/EateryView.tsx` (hero name overlay).
+- Uncommitted, instructions: `CLAUDE.md`, `README.md`, `_START_HERE.md`, `HANDOVER.md`.
 
----
+Vercel project `whats-good` (`nizzle-s-projects`) · repo `github.com/wtsz8ybfz8-sketch/whats-good`
 
-## 0. READ THIS FIRST — the verification method finally works
+## Objective
 
-Four sessions claimed "true phone width has not been inspected." That is now solved, and if you
-skip this paragraph you will repeat the same dead end.
+Two things, in order: (1) make the venue hero photo reach the physical viewport edge at
+every width — the requirement the user rejected the previous attempt over; (2) apply the
+operating amendments to the project instruction files.
 
-- The **in-app preview pane does not work here.** Don't try it.
-- **`resize_window` in Claude-in-Chrome does not change the CSS viewport.** It resizes the OS
-  window; `innerWidth` stays ~1440 and every media query stays desktop. This is what defeated the
-  previous sessions. Resizing and screenshotting proves nothing about mobile.
-- **What works: render the deployment inside a 390×844 iframe** and inspect *that*. Media queries
-  resolve against the iframe's own width. Verified: `contentWindow.innerWidth === 390`.
+## What changed
 
-```js
-// via mcp__claude-in-chrome__javascript_tool, on a tab already at the preview URL
-document.documentElement.innerHTML = '';
-const s = document.createElement('style');
-s.textContent = 'html,body{margin:0;background:#555;display:flex;justify-content:center}iframe{width:390px;height:844px;border:0}';
-document.head.appendChild(s);
-const f = document.createElement('iframe');
-f.id = 'mob'; f.src = location.href;
-document.body.appendChild(f);
-await new Promise(r => f.onload = r);
-await new Promise(r => setTimeout(r, 2500));
-const d = f.contentDocument;      // query this, not `document`
-```
+**Committed (`3d7cc07`) — full-bleed layout primitive.**
+- `src/index.css` — added `.page-grid` / `.bleed`. Gutters `minmax(0,1fr)`; a `.bleed`
+  child spans `full-start → full-end`.
+- `src/App.tsx` — `<main>` lost `px-*`, `max-w-7xl mx-auto` and `overflow-x-hidden` (the
+  last was silently clipping left overhang and eating the Back button); now `.page-grid`
+  plus vertical padding only. The tab-content wrapper is the single owner of mobile `px-5`.
+- `src/components/EateryView.tsx` — root is `.page-grid .bleed`; hero is `.bleed`, no
+  negative margins, no `w-screen`.
+- `src/components/HappyHourView.tsx`, `RecipeView.tsx` — dropped their own mobile `px` so
+  the results grid and the filter card share one left edge (was 44px vs 21px).
 
-Then measure with `getBoundingClientRect()` and `getComputedStyle` against `d`. A screenshot of the
-tab shows the iframe, so it is a genuine phone-width screenshot. Toggle dark with
-`d.documentElement.classList.remove('dark')`.
+**Uncommitted — `EateryView.tsx` hero name overlay.**
+- The venue name is no longer a `motion.div`. It was on a 0.22s-delayed
+  `opacity 0→1 / y 16→0` entrance and was measured live at `opacity: 0` — a venue page with
+  no venue name on it. Now a plain `div`, present on first paint.
+- The rating / spend / distance row went `text-white/85` with `text-shadow`, star to full
+  white with drop-shadow, separators `/45`. It was `/55` over a photograph — the same fix
+  the cuisine label above it already had, which this row was left out of.
 
-Deploy first (`vercel deploy --yes`, ~40s remote) and inspect the deploy — do **not** run the dev
-server on the user's laptop, they are short on space.
+**Instruction files** — `CLAUDE.md` rewritten as the single authoritative file (FAST MODE,
+hard-stop rule, Git rule, customer-journey acceptance test, Google-Maps positioning,
+restaurant-page contract, validation ladder, consolidated traps). `README.md` stripped of
+Google AI Studio boilerplate. `_START_HERE.md` reduced to a pointer. Old handover narrative
+replaced by this contract shape.
 
----
+## Customer journey impact
 
-## 1. What shipped this session (`ba5165b`)
+- **Orient / Choose** — the hero now behaves like a magazine opener rather than a card in a
+  column; results and filters share one left edge, so the page reads as one system.
+- **Trust** — the largest gain. A venue page that rendered without its venue name failed
+  trust outright; identity and the three street-level facts (rating, spend, distance) are
+  now present on first paint and legible over any photograph.
+- **Act** — unchanged. Directions / Call / Website were already intact and were not touched.
+- **Recover** — untouched, and still the weakest stage. See open questions.
 
-**Happy Hour no longer lies about your city.** `hasHappyHourData(city)` in `HappyHourView.tsx`
-gates both the view and the pulsing tab dot in `App.tsx`. Outside Cape Town you get an honest
-empty state. Verified live with the city forced to London. This was the ship-blocker in the last
-handover.
+## Verification and actual results
 
-**Cuisine list: curated baseline + real local supplement.** `BASELINE_CUISINES` in `Sidebar.tsx`
-always renders; `nearbyCuisines` (derived in `App.tsx` from `recipe.category`, deduped, "restaurant"
-stripped, capped at 8) is appended. Deriving the list *purely* from Places was rejected — in a
-fast-food suburb it deletes discovery.
+Measured on the deployed preview inside a 390×844 iframe (real CSS viewport **384**) and at
+1440 (CSS **1434**):
 
-**Carousel hell killed.** Mood, Diet and Budget now live in a bottom sheet (`FilterSheet` in
-`Sidebar.tsx`) behind one row that displays its own state. **Cuisine is the only horizontal rail
-on the screen** and must stay that way — `FilterGroup`'s `scroll` prop is documented as
-single-use. Three stacked rails was the failure: Diet had 4 chips, never overflowed, and rendered
-as a static row identical in styling to a scrollable one.
+| Check | 384 | 1434 |
+|---|---|---|
+| `.bleed` x | **0** | **0** |
+| `.bleed` width | **384** | **1434** |
+| Horizontal page scroll | none | none |
 
-**Typography floor: 12px.** No `text-[9px]/[10px]/[11px]` anywhere in `src/`. Verified by grep.
+Venue page at 384: hero spans edge to edge; Back button at x=20 (not clipped); body content
+at x=20, same left edge as the filter card. Screenshot taken and shown to the user.
 
-**Touch targets.** `.tap-44` is no longer wrapped in `@media (pointer: coarse)` — that gate made
-the rule unverifiable in a browser and failed touchscreen laptops. New `.tap-target` lays an
-invisible 44×44 `::after` over a control **without growing its ink** — used on the plate stepper,
-which is back to 24px drawn.
+**The name-overlay fix has NOT been seen rendered.** Evidence for it is a pre-fix
+measurement of `opacity: 0, translateY(16px)` on that element, plus its absence from the
+screenshot.
 
-**`npm run dev` root cause found and fixed.** `src/index.css` had a stray `*/` closing the 44pt
-comment block early (old line 94), leaving prose as live CSS. The next word was
-"Implemented **as** a plain min-size" — that is the exact `Unknown word "as"` PostCSS error.
-**Unconfirmed:** `npx vite` produces no output and binds no port in the agent sandbox, so it could
-not be run. **First thing to do: run `npm run dev` and report whether it works.**
+- `npx esbuild src/components/EateryView.tsx` — **clean, 19ms.** This caught a real defect:
+  the first edit swapped `<motion.div>` for `<div>` and left `</motion.div>` closing it.
+  Fixed and re-parsed clean.
+- `npm run lint` (`tsc --noEmit`) — **did not complete.** Timed out at 7 minutes. Not a pass.
+- The browser renderer timed out twice during measurement. Under the new hard-stop rule that
+  is now a stop-and-hand-over condition.
 
----
+**Session 8 (short, user-capped at ~4 minutes):**
+- Re-read the uncommitted `EateryView.tsx` diff. It is exactly what session 7 described:
+  name overlay demoted from `motion.div` to a plain `div` (present on first paint), and the
+  rating / spend / distance row raised `text-white/55` → `/85` with a text-shadow, star to
+  full white with drop-shadow, separators `/25` → `/45`. Rationale is now written into the
+  code as comments so it survives without this handover.
+- `npx esbuild src/components/EateryView.tsx --outfile=/dev/null` — **clean, 83ms.**
+- **The rendered result is still UNSEEN.** The uncommitted fix exists only in the working
+  tree, so the deployed preview does not contain it; the only honest way to see it is a dev
+  server rendered inside a 390×844 iframe, which did not fit the session's time cap. Action 1
+  of session 7's list is therefore **still open** — do not mark it done.
+- Nothing committed, nothing deployed. Actions 2 (ask before committing) and 3 (mobile CTA
+  bar overlapping "We found 31 eateries" at 384) are untouched.
 
-## 2. Known defects and unfinished work, in priority order
+**`npm run build` is `vite build` and runs no typecheck** — a deploy will not catch a type
+error. An earlier claim in this session that Vercel would run the gate was wrong.
 
-**1. Eyebrow-label tracking was never retuned after the type bump.** 59 sites went 10/11px → 12px
-via `Edit(replace_all)` — a mechanical token swap, not per-site judgement. Labels styled
-`font-mono uppercase tracking-[0.07–0.09em]` are now heavier relative to body text than designed.
-Pull the widest tracking in (0.09 → ~0.06) and check the eyebrow no longer competes with the
-heading beneath it. Largest visual debt outstanding.
+## Protected decisions
 
-**2. Nested horizontal padding wastes a quarter of the screen.** Wrapper `px-4` + card `p-2` +
-`aside px-6` puts content 48px in on a 390px device. It satisfies the breathing-room rule by
-accident of stacking, and it is why the Cuisine rail only reveals ~2.5 chips. Collapse to one
-owner of the margin.
+- Typography: Schibsted Grotesk, one family, weight-led hierarchy. The user has said twice:
+  don't change the font.
+- Dark mode as it stands — the user likes it. Don't touch the dark palette.
+- Any colour goes through the tokens in `src/index.css`. Never hardcode a hex.
+- `.glass` on chrome only (header, mobile CTA bar) — never on a card.
+- No service worker, ever. Never render invented data as real.
+- Grain texture and canvas gradient stay. Skeletons, never conversational loading copy.
+- No slot-machine city animation — it would display cities you are not in.
+- `.page-grid` / `.bleed` is the full-bleed mechanism. No negative-margin breakouts, no
+  `w-screen` + `-translate-x-1/2`, no `overflow-x-hidden` on `<main>`.
 
-**3. `Chip` uses `.tap-44`, which grows the pill 41.5 → 44px.** That is expanding ink, which rule 3
-forbids. Defensible for a pill (iOS controls sit at 44) but it is a deliberate exception the user
-has not blessed. Either get it agreed or convert `Chip` to `.tap-target`.
+## Next session: first three actions
 
-**4. The city badge wraps to two lines at 390px.** "Cape Town" breaks across two rows in the fixed
-header. Cosmetic, visible on first paint, easy.
+1. **Look at the venue page at 384 and confirm the name renders** — "Kloof Street House",
+   its rating row legible over the photo. One iframe measurement of that element's computed
+   `opacity`; expect `1`.
+   (Session 8 note: the user is pushing the working tree themselves, so this fix will be on
+   the deployed preview — measure it there, no dev server needed.)
+2. **Kill the hardcoded recipe cuisine rail** — `src/App.tsx:1142` /
+   `src/recipeUtils.ts:27`. See the open question below; agree the source of truth with the
+   user first. The user raised this directly and it is the live priority.
+3. **Fix the mobile CTA bar overlapping the results heading** at 384 — "Find a place" sits
+   on top of "We found 31 eateries". Either give the results section bottom padding equal to
+   the bar, or hide the bar once results exist. Visible in session 7's screenshot.
 
-**5. Venue page is still not built to the agreed framework.** The user and Gemini specified three
-modules: **Vibe Match** (is this place right for my mood), **Utility Block** (distance, price, open
-status), **Signature Directive** (what to order). `EateryView.tsx` is currently none of these. This
-is the biggest *product* gap, as opposed to the polish items above.
+## Known risks and open questions
 
-**6. Two levels of filter disclosure.** App-level "Adjust filters" reveals the panel; the panel
-holds "Mood, diet & budget" which opens the sheet. Names don't collide and the panel also holds
-search + Cuisine, so it is defensible — but a stricter reading of rule 4 would collapse it to one.
-Raise it; don't decide it silently.
-
----
-
-## 3. Traps this codebase has already sprung — do not re-enter
-
-**`position: fixed` does not work inside the tab content in this app.** The tab-transition wrapper
-carries a `transform`, which makes it the containing block, and the filter panel adds
-`overflow-hidden`. The filter sheet first shipped measuring `top: 844` on an 844px-tall viewport —
-completely below the fold. **Portal any overlay to `document.body`** (`createPortal`), as
-`FilterSheet` now does.
-
-**Never let an entrance `transform` be the thing that positions an overlay.** After the portal fix
-the sheet was *still* invisible: stuck on its keyframe's `from` state at `translateY(717px)`,
-`opacity: 0` — mounted, scroll-locked, unreachable. Opacity fails safe; transform strands the
-user. The sheet now carries no entrance transform at all. Same defect class as the missing back
-button that survived three sessions.
-
-**`.surface` is translucent — it is not a modal fill.** Used on the sheet, the entire home screen
-read through it and the mood chips sat on top of the hero headline. Overlays use `--bg-warm`.
-
-**All three of the above shipped green on `tsc --noEmit`.** Types passing is a gate, never
-verification. Every one was caught by looking at 390px.
-
-**Still true:** no service worker, ever (`CLAUDE.md`). Never render invented data as real. Don't
-touch dark mode or the font — the user has said so repeatedly and it is settled.
-
----
-
-## 4. Decisions already made — do not reopen
-
-- **Typography: Schibsted Grotesk, one family, weight-led hierarchy.** Gemini's critique pushed for
-  a real serif (Playfair/New York). The user has twice said don't change the font, and `CLAUDE.md`
-  commits to one family. **Committed to the grotesk.** Only the user reopens this.
-- **Grain texture and canvas gradient stay.** That warmth is the editorial direction; stripping it
-  produces the cooler, flatter feel `CLAUDE.md` explicitly warns against.
-- **No slot-machine city animation.** It would display cities you are not in — invented data — and
-  adds friction for someone hungry. Agreed replacement is a soft shimmer cross-fade.
-- **Skeletons, never conversational loading copy.** Already done in `StatusStates.tsx`.
-- **Any colour goes through the tokens in `src/index.css`.** Never hardcode a hex.
-
----
-
-## 5. Suggested order for the next session
-
-1. Run `npm run dev`. Confirm or deny the PostCSS fix — everything is faster if local dev is alive.
-2. Eyebrow tracking retune (§2.1) — largest visual debt.
-3. Collapse the nested padding (§2.2) — buys back a quarter of the screen width.
-4. Venue page modules: Vibe Match / Utility Block / Signature Directive (§2.5) — the product gap.
-5. City badge wrap (§2.4), then raise §2.3 and §2.6 with the user.
-
-Verify at 390×844 in an iframe against a fresh Vercel preview before claiming anything is done.
-If you have not seen it, say you have not seen it.
+- **Risk:** the `opacity: 0` reading may have been a throttled-iframe artifact (rAF never
+  ran; the hero `<img>` also measured mid-scale-animation). The fix is correct either way —
+  identity must not depend on an animation — but the *cause* is unconfirmed. If other motion
+  entrances also strand, the problem is broader than this one element.
+- **Risk:** no green typecheck exists for either the committed or the uncommitted work, and
+  the build won't produce one.
+- **I removed `rounded-b-[26px] md:rounded-b-[32px]`** from the hero. Square reads correct
+  for a true bleed, but that was my call, not the user's. Confirm or revert.
+- **Open:** should the results grid also run edge-to-edge on desktop, or is card-edge bleed
+  correct there? Never assume — assuming this cost a previous session.
+- **Open:** `Chip` uses `.tap-44`, growing the pill 41.5 → 44px. That expands visual ink,
+  which CLAUDE.md §11.3 forbids. Defensible for a pill, never agreed. Get it blessed or
+  convert to `.tap-target`.
+- **Open:** two levels of filter disclosure ("Adjust filters" → panel → "Mood, diet &
+  budget" → sheet). Raise it; don't silently collapse it.
+- **Open:** the city badge wraps "Cape Town" onto two lines in the fixed header at 384.
+- **Recover stage is thin** — no visible handling for "everything near you is closed."
+- **Open (raised by the user, session 8): the Recipes side ships a hardcoded cuisine rail
+  that ignores where the user actually is.** `src/App.tsx:1142` renders a literal array —
+  `['Italian','Middle Eastern','Pan-Asian','South African','Latin American']` — and
+  `src/recipeUtils.ts:27` branches on those same fixed strings. The list is a leftover of
+  the app's Cape Town origin (see also `campusData.ts`, which is an all-South-African venue
+  set, and `placesService.ts:321`, where price tiers are built around ZAR).
+  The user's framing: *a German in London has no reason to be offered South African cuisine
+  as a top-level option.* This is the same failure the venue side was corrected for — the
+  product's premise is mood **and location**, and a fixed rail is neither. It reads as a
+  template, which is precisely what §1 of CLAUDE.md calls a failure.
+  **Do not just swap the hardcoded list for a different hardcoded list.** The rail should be
+  derived from something true — the resolved locale/city, or the cuisines actually present
+  in the recipe set — with an honest fallback when location is unknown. Decide with the user
+  which source of truth before writing code; assuming this has cost a session before.

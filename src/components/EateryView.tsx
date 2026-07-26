@@ -139,13 +139,15 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <Heart className={`w-4 h-4 transition-transform ${isSaved ? 'fill-current scale-110' : ''}`} />
         </button>
 
-        {/* Name overlay — bottom of hero */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute bottom-0 left-0 right-0 px-5 sm:px-10 pb-8 sm:pb-12"
-        >
+        {/* Name overlay — bottom of hero.
+            Deliberately NOT a motion element. This is the name of the place you came here
+            to look at; it is the page's identity, and it must be on the first paint with
+            no frame of delay. It used to fade in on a 0.22s-delayed opacity/y entrance,
+            and it was measured live sitting at opacity 0 / translateY(16px) — a venue
+            page with no venue name on it. An entrance animation may never be the thing
+            that decides whether the primary content exists. Everything decorative around
+            it can animate; this cannot. */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-10 pb-8 sm:pb-12">
           {/* Was text-white/45, which over a bright photo (a yellow wall, a sunlit
               terrace) disappeared completely — the kitchen label was invisible on the
               venue this was tested against. Contrast is not optional; at /85 with a
@@ -163,21 +165,24 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <h2 className="font-serif text-5xl sm:text-6xl md:text-[5.5rem] text-white leading-[0.9] tracking-tight mb-5">
             {rawEatery.name}
           </h2>
-          <div className="flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-wider text-white/55">
+          {/* Same fix the cuisine label above already got, which this row was left out of:
+              /55 over a photograph is not a contrast ratio, it's a hope. Rating, spend and
+              distance are the three facts someone standing on a street actually reads. */}
+          <div className="flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-wider text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
             <span className="flex items-center gap-1.5">
-              <Star className="w-3 h-3 fill-white/80 text-white/80" />
+              <Star className="w-3 h-3 fill-white text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]" />
               {rawEatery.rating}
             </span>
-            <span className="text-white/25">·</span>
+            <span className="text-white/45">·</span>
             <span>{formatPriceTier(rawEatery.priceSymbol, currency)}</span>
             {hasRealDistance && (
               <>
-                <span className="text-white/25">·</span>
+                <span className="text-white/45">·</span>
                 <span>{distanceLabel}</span>
               </>
             )}
           </div>
-        </motion.div>
+        </div>
       </motion.div>
 
       {/* Two-column on desktop: the menu is the main column; everything actionable

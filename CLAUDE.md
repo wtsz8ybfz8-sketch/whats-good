@@ -1,146 +1,286 @@
-# whats-good
+# whats-good — authoritative project instructions
 
-Mood-and-location-driven food discovery. Find somewhere to eat or something to cook, based on
-how you feel and where you are.
+**This file is the single source of truth.** Where anything else disagrees with it — a
+handover, a README, a code comment, an older session's reasoning — this file wins.
+**The latest request in the live conversation overrides this file and every handover.**
+Handovers are a record of what happened, never a mandate for what to do next.
 
-## Stack
+---
 
-- **React 19** + **TypeScript 5.8** + **Vite 6** (`npm run dev`, port 3000)
-- **Tailwind v4** via `@tailwindcss/vite` — **there is no `tailwind.config.js`.** v4 is CSS-first;
-  all theme config lives in `src/index.css` under `@theme`. Do not create a config file.
-- **lucide-react** for icons. Never emoji-as-icon, never inline hand-drawn SVG paths.
-- **motion** (v12, the Framer Motion successor) for animation. Import from `motion/react`.
-- No test runner. No backend — `placesService.ts` handles external data.
+## 1. What this product is
 
-## Gate before claiming done
+Mood-and-location-driven food discovery: find somewhere to eat, or something to cook,
+based on how you feel and where you are.
 
-```bash
-npm run lint
-```
+**Position it as an elevated, human alternative to Google Maps.** That means both halves,
+always:
 
-That's `tsc --noEmit`. It is the only automated gate; it must pass. For anything visible, also
-run the dev server and actually look at the change at mobile and desktop widths before saying
-it works. Report what you saw.
+- **Keep the practical utility.** Real place identity, opening hours, price band,
+  distance, address, menu, directions, phone. When a true field is available, it stays.
+  Never trade away usefulness for elegance.
+- **Add a truthful decision layer** on top: why *this* place suits *this* person, mood and
+  moment. That layer is the product.
 
-**Don't let a pipe swallow the exit code.** `npm run build | tail -20` reports `tail`'s status,
-not the build's — a failed build reads as a success. Same shape as "tsc passed so it works."
-If you need a real local build result, check `${PIPESTATUS[0]}`, or look at `dist/` timestamps.
+**A prettier directory of generic metadata is a failure**, even if it looks beautiful.
+So is a wall of raw data with no judgement in it.
 
-## Design direction — already decided, hold to it
+---
 
-**Feel:** warm editorial. A good food magazine, not a SaaS dashboard. Off-white paper, serif
-headlines, generous air, one warm accent. If a change makes it feel cooler, flatter, or more
-generically "clean," it's wrong.
+## 2. FAST MODE — the default operating mode
 
-**Tokens live in `src/index.css`** as CSS custom properties on `:root` and `html.dark`.
-Bind to them. Never hardcode a hex, and never introduce a new color without adding it here first.
+One task = **one diagnosis, one focused implementation, one proportionate validation.**
+
+- Use the **cheapest check that can actually detect the changed behaviour.** A parse check
+  beats a typecheck; a typecheck beats a build; a build beats a browser journey. Pick the
+  lowest rung on §6 that covers what you changed, and stop there.
+- **Do not** run full browser journeys, production builds, research, refactors, commits,
+  deploys or package installs unless *this* task requires them.
+- **Do not inspect the whole repository** when targeted inspection is enough. Read the file
+  you are changing and its immediate callers.
+- **Do not widen scope.** If you notice the restaurant page or the customer journey could be
+  better while doing something unrelated, assess the impact, say so in one line, and change
+  only what the task requires (§4, §9).
+- **Use only the skills and tools that materially help this task.** "Use every relevant
+  skill" never means invoke every available skill.
+
+---
+
+## 3. HARD STOP — stop and hand over
+
+**Stop immediately, at the first occurrence of any of these:**
+
+- a browser renderer times out or hangs;
+- any tool fails **twice**;
+- a context or usage warning appears;
+- the session may end before the result is visible to the user.
+
+**On a hard stop, in this order:**
+
+1. **Save the current code** (write the files; leave the working tree intact).
+2. **Do not** retry the browser, run another probe, commit, deploy, refactor, install
+   anything, or delete Git lock files.
+3. **Create or update root-level `HANDOVER.md`** to the contract in §10.
+4. **End the session.** Say plainly what is verified and what is not.
+
+A partial change plus an honest handover is a good outcome. A stranded session with no
+handover is the only real failure.
+
+---
+
+## 4. Git — ask first, every time
+
+**Never commit, amend, push, tag, deploy, or delete Git lock files (`.git/*.lock`) unless
+the user explicitly asks in the live conversation.** Deleting a lock file to force a commit
+through is specifically forbidden — it risks the user's repository to save you a step.
+Leaving work uncommitted in the working tree is the correct default.
+
+---
+
+## 5. The acceptance test is the customer journey
+
+Every change is judged against the whole path, not the screen it lives on:
+
+**Orient → express intent → choose → trust → explore → act → recover.**
+
+| Stage | The question it must answer |
+|---|---|
+| Orient | Where am I, what is this, what can it do for me right now? |
+| Express intent | Can I say what I want in one gesture? |
+| Choose | Are the options comparable, and is the difference between them legible? |
+| **Trust** | Is this true, current, and sourced? Would I bet a trip across town on it? |
+| Explore | Can I go deeper without losing my place? |
+| Act | Is the next step obvious and one tap away — directions, call, menu, save? |
+| **Recover** | If it's closed, empty, wrong or offline, am I given a way forward? |
+
+**Trust and Recover are the two most often skipped and the two that decide whether this
+beats Google Maps.** A change that improves one stage while breaking another is a
+regression. Name the stage you moved.
+
+---
+
+## 6. Validation ladder — climb only as high as the change demands
+
+| Rung | Command / method | Detects |
+|---|---|---|
+| 1 | `npx esbuild <file> --outfile=/dev/null` (~20ms) | Syntax, unbalanced JSX, bad imports |
+| 2 | `npm run lint` (`tsc --noEmit`) | Types. **The named gate — but see below.** |
+| 3 | `npm run build` (`vite build`) | Bundling. **Runs NO typecheck.** |
+| 4 | 390×844 browser measurement | Layout, contrast, real rendered geometry |
+
+**`npm run lint` and `tsc --noEmit` are pathologically slow on this machine** — many
+minutes at ~0% CPU, and they frequently exceed a 7-minute timeout. That is local I/O, not
+your code. **A timed-out typecheck is not a pass and not a failure — report it as
+"did not complete."** When it won't finish, rung 1 plus a stated caveat is the honest
+outcome. Never silently downgrade.
+
+**`npm run build` is `vite build`. It does not run `tsc`, so a deploy does not typecheck
+your work.** Do not tell the user that CI or Vercel will catch a type error. It won't.
+
+**Don't let a pipe swallow an exit code.** `npm run build | tail -20` reports `tail`'s
+status. Check `${PIPESTATUS[0]}`.
+
+**Anything visible must be looked at before you claim it works.** Types passing has let
+broken layout reach the user in every session so far.
+
+- **The in-app preview pane does not work in this project.** `preview_start` reports
+  success, then every read returns "Policy check in progress for this tab; retry."
+  forever. Don't attempt it.
+- **`resize_window` does not change the CSS viewport** — it resizes the OS window;
+  `innerWidth` stays ~1440 and every media query stays desktop.
+- **What works: render the deployed or dev URL inside a 390×844 iframe** and query that
+  iframe's `contentDocument`. The iframe gets a ~6px scrollbar, so the real CSS viewport
+  is **384px**, not 390 — measure against `d.body.scrollWidth`, never `innerWidth`.
+- **Verify it yourself. Do not ask the user for screenshots.** (This supersedes older
+  guidance that told you to ask.)
+- **If the renderer times out, that is a hard stop — §3.** Do not re-probe.
+- **If you have not seen it, say you have not seen it.**
+
+---
+
+## 7. Design direction — decided, hold to it
+
+**Feel:** warm editorial. A good food magazine, not a SaaS dashboard. Off-white paper,
+serif headlines, generous air, one warm accent. Cooler, flatter or more generically
+"clean" is wrong.
+
+**Tokens live in `src/index.css`** on `:root` and `html.dark`. Bind to them. Never
+hardcode a hex; never add a colour without adding the token first.
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
 | `--bg-warm` | `#F4F2EF` | `#0F0C0A` | Page canvas |
 | `--charcoal` | `#1A1A1A` | `#EDE8E1` | Body text |
 | `--heading-color` | `#100C08` | `#F5F0E8` | Headings |
-| `--accent-terracotta` | `#7C2D12` | `#fca5a5` | The single accent (dark = pink, chosen over coral `#F07858`) |
+| `--accent-terracotta` | `#7C2D12` | `#fca5a5` | The single accent |
 | `--accent-tint` | `#FAF2F0` | `rgba(252,165,165,.13)` | Accent-tinted fills |
 | `--accent-tint-border` | `#F5D1C9` | `rgba(252,165,165,.24)` | Borders on tinted fills |
 | `--accent-contrast` | `#FFFFFF` | `#1A0B04` | Text/icons **on** the accent |
 | `--text-muted` | `#6E6A64` | `#9A9088` | Metadata, captions |
 | `--text-subtle` | `#716B63` | `#8A8078` | Small labels |
-| `--rule` / `--row-border` | `#E8E4DF` / `#F0EDE8` | white @ .10 / .06 | Section rules / list rows |
+| `--rule` / `--row-border` | `#E8E4DF` / `#F0EDE8` | white @ .10 / .06 | Rules / list rows |
 | `--border-color` | `rgba(26,26,26,.07)` | `rgba(255,255,255,.07)` | Hairlines |
-| `--glass-*` | — | — | Card surfaces (see below) |
 
-**Type:** one family — Schibsted Grotesk. All three `@theme` tokens (`--font-sans`, `--font-serif`,
-`--font-mono`) point at it, so every existing call site resolves to the same face. Hierarchy comes
-from weight, size and colour, never from switching typeface. Headings are `600` (`700` only where
-something must shout), set globally in `@layer base` — don't re-declare per component. The font is
-`preload`ed in `index.html`; do not reintroduce an `@import`.
+**Type:** one family, Schibsted Grotesk. All three `@theme` font tokens point at it.
+Hierarchy comes from weight, size and colour — never from switching typeface. Headings are
+`600` (`700` only to shout), set globally in `@layer base`. The font is `preload`ed in
+`index.html`; never reintroduce an `@import`.
 
-**Surfaces are glass.** Cards use `--glass-bg`, `--glass-border`, `--glass-blur`,
-`--glass-shadow`. This is the committed depth strategy — don't mix in flat borders-only cards or
-hard drop shadows alongside it.
+**Surfaces:** `.glass` is on exactly **two** chrome surfaces — the fixed header and the
+mobile CTA bar. Everything holding content uses `.surface`; small recessed controls use
+`.surface-quiet`; hover lift is opt-in via `.surface-hover`. **Never put `.glass` back on a
+card** — that's the regression these classes exist to prevent, and it puts backdrop-filter
+cost on every card in a scrolling list.
 
-**Dark mode is class-based:** `@variant dark (&:where(.dark, .dark *))` on `html.dark`. Every
-surface and text tier must be checked in both modes.
+**Layout:** `.page-grid` / `.bleed` in `src/index.css` is the full-bleed primitive. A
+`.bleed` child spans the physical viewport (`x === 0`, `width === scrollWidth`) at every
+width. Gutters are `minmax(0,1fr)` because each child owns its own horizontal padding.
+Never reintroduce negative-margin breakouts, `w-screen` + `-translate-x-1/2`, or
+`overflow-x-hidden` on `<main>`.
 
-## Known issues — fix when you're in the area
+**Dark mode is class-based** (`html.dark`) and **the user likes it as it is** — check both
+modes, change neither the dark palette nor the font without being asked.
 
-- ~~Glass applied to too many surfaces at once~~ — **fixed.** `.glass` is now on exactly two
-  surfaces, both of them chrome: the fixed header and the mobile CTA bar. Everything that holds
-  content — result cards, the filter panel, status panels — uses `.surface` (solid fill, hairline,
-  soft shadow, no backdrop-filter). Small recessed controls use `.surface-quiet`. Hover lift is
-  opt-in via `.surface-hover`, so static panels don't brighten under the cursor. **Don't put
-  `.glass` back on a card** — that's the regression these classes exist to prevent, and it also
-  puts the backdrop-filter cost back on every card in a scrolling list.
-- **`npm run build` and `tsc --noEmit` are pathologically slow on this machine** — minutes of wall
-  time at ~0% CPU. It's local I/O, not the code (Vercel builds fine). Budget for it; don't assume
-  a hang means a failure.
+---
 
-## Never reintroduce a service worker
+## 8. Restaurant pages are a first-class product surface
 
-`vite-plugin-pwa` used to be in `vite.config.ts` with `registerType: 'autoUpdate'`. It precached
-`index.html` plus the hashed bundle, so **every deploy was invisible on the live URL** — anyone who
-had loaded the site once kept getting the old build from Cache Storage forever. Three sessions of
-work shipped and never appeared. `src/main.tsx` now actively unregisters any surviving worker and
-purges caches. `vercel.json` keeps `index.html` on `must-revalidate` and only hashed `/assets/*`
-immutable. An app whose value is "what's open near me right now" gains nothing from offline
-precaching. Don't add one back.
+When a restaurant/venue page is in scope, it must carry all six. Each is a real field or
+it is absent — never a placeholder.
 
-## Never render invented data as real
+1. **A specific recommendation thesis** — why this place, for this person, right now. One
+   sentence with a point of view.
+2. **Evidence-backed Vibe Match** — tied to a real signal (`vibeMatch`, cuisine, confirmed
+   attributes). Never a vibe asserted from nothing.
+3. **Truthful Utility Block** — distance, spend band, live open/closed, hours today.
+   Compare `openNow` against `undefined`, never truthiness: `false` is a real answer
+   ("Closed") and a truthy check swallows it.
+4. **Real Signature Directive, or an honest menu link.** No dish, no module — link out.
+5. **One useful distinctive detail** — the thing a directory would not tell you.
+6. **One clear next action** — directions, call, menu or save. Unmistakable.
 
-Menus, prices and "specials" were once synthesised from a hash of the venue id and rendered as a
-priced menu with a "Today" stamp, under a small grey disclaimer. That disclaimer protected us, not
-the user — nobody reads the footnote under the thing they came for, and a fake price sends someone
-across town for something that doesn't exist. Venue pages now show only true fields (real signature
-dish, the price *band* Google publishes, cuisine) and link out for the actual menu. Real happy-hour
-data (`happyHourData.ts`, human-confirmed) is the standard: if it isn't confirmed, don't render it.
+**Never invent a restaurant fact and never add decorative filler.** Menus, prices and
+"specials" were once synthesised from a hash of the venue id and rendered under a small
+grey disclaimer. The disclaimer protected us, not the user — a fake price sends someone
+across town for something that doesn't exist. `happyHourData.ts` (human-confirmed) is the
+standard: **if it isn't confirmed, don't render it.**
 
-## Working agreement
+**The primary content never depends on an animation.** The venue name shipped stranded at
+`opacity: 0` on a delayed entrance — a venue page with no venue name. Decoration may
+animate; identity, facts and actions must be present on first paint.
 
-- Mobile-first. This gets used standing on a street, one-handed, on a mid-range phone.
-- Use what's here before adding: check `src/components/` and the tokens above. `StatusStates.tsx`
-  already handles loading/empty/error — reuse it rather than writing new ones.
-- Contrast is not optional. `--text-muted` currently passes AA in both modes (5.2:1 light,
-  6.3:1 dark). Any new tone must be measured, not eyeballed — especially over glass surfaces,
-  where the effective background is whatever is behind it.
-- Don't add dependencies without saying why. The dep list is small on purpose.
+---
 
-## Do NOT use the in-app preview pane. It does not work in this project.
+## 9. Stack
 
-Three consecutive sessions have burned calls on this with an identical outcome:
-`preview_start` reports success, then every `get_page_text`, `read_page`, `navigate` and
-`screenshot` returns **"Policy check in progress for this tab; retry."** forever. The tab
-never loads. Retrying does not help. `preview_logs` shows vite started fine — the server is
-not the problem, the pane is.
+- **React 19** + **TypeScript 5.8** + **Vite 6** — `npm run dev`, port 3000.
+- **Tailwind v4** via `@tailwindcss/vite`. **There is no `tailwind.config.js`** and never
+  will be; v4 is CSS-first and all theme config lives in `src/index.css` under `@theme`.
+- **lucide-react** for icons. Never emoji-as-icon, never inline hand-drawn SVG paths.
+- **motion** v12 — import from `motion/react`.
+- No test runner. No backend; `src/placesService.ts` handles external data.
+- Don't add dependencies without saying why. The list is small on purpose.
+- Components: `EateryView`, `RecipeView`, `HappyHourView`, `Sidebar`, `StatusStates`.
+  **Reuse `StatusStates.tsx`** for loading/empty/error — don't write new ones.
 
-**So don't attempt it. Go straight to:**
+---
 
-1. `npm run dev`, then ask the user to open `localhost:3000` and send screenshots at phone
-   and desktop width. They are willing — they are the one reporting the visual bugs.
-2. If they can't, say so and ask how they want to proceed.
+## 10. HANDOVER.md contract
 
-Never fall back to shipping on `tsc` alone. Types passing has let broken layout reach the
-user in every session so far. If you have not seen it, say you have not seen it.
+Root-level `HANDOVER.md`, and **only these sections, in this order**:
 
-## NON-NEGOTIABLE UX, ARCHITECTURE & WORKFLOW RULES
+```
+Status
+Objective
+What changed
+Customer journey impact
+Verification and actual results
+Protected decisions
+Next session: first three actions
+Known risks and open questions
+```
 
-1. **Elite iOS HIG Persona:** You must architect every view applying Apple HIG and elite
-   customer journey mapping. Prioritize progressive disclosure, spatial hierarchy, and
-   optical balance.
-2. **No Brute-Force Scripting for UI:** Never use Python string replacements (`replace()`)
-   or `sed` for structural UI changes. UI updates must be executed via deliberate,
-   component-level React refactoring.
-3. **Optical vs. Mathematical Scaling:** Enforce 44x44pt hit targets using invisible
-   bounding boxes (e.g., `p-2`, transparent wrappers, or `min-w-[44px] min-h-[44px]`).
-   You are strictly forbidden from expanding the visual "ink" (backgrounds, borders,
-   icons) of small controls to achieve this.
-4. **No Carousel Hell (Progressive Disclosure):** Do not stack multiple horizontal
-   scrolling rails. Primary categories (e.g., Cuisine) may scroll horizontally. Granular
-   secondary filters (e.g., Mood, Diet) must be hidden behind a single "Filters"
-   affordance that triggers a native-style modal or bottom sheet.
-5. **Screen Breathing Room:** Mobile wrappers must maintain strict outer margins
-   (minimum `px-5` or `px-6`). Content must never hug the physical device bezel.
-6. **Mobile-First Verification:** When verifying your work via your browser tool, you MUST
-   configure your headless browser/Puppeteer to emulate a mobile viewport (e.g., width
-   390px, height 844px) so you can actually verify mobile margins and breakpoints. Do NOT
-   ask the user for screenshots.
+No narrative history, no re-litigating past sessions, no duplicating this file. Durable
+engineering knowledge belongs here in CLAUDE.md; the handover carries only live state.
+Verification records **actual observed results**, including "did not complete."
+
+---
+
+## 11. Non-negotiable UX rules
+
+1. **Elite iOS HIG.** Architect every view with progressive disclosure, spatial hierarchy
+   and optical balance.
+2. **No brute-force scripting for UI.** Never `sed` or Python `replace()` for structural
+   UI change. Component-level React refactoring only.
+3. **Optical, not mathematical, scaling.** Enforce 44×44pt hit targets with invisible
+   bounding boxes (`p-2`, transparent wrappers, `min-w-[44px] min-h-[44px]`). **Never
+   expand the visual ink** — backgrounds, borders, icons — of a small control to reach 44.
+4. **No carousel hell.** One horizontal rail maximum (primary categories, e.g. Cuisine).
+   Granular secondary filters live behind a single "Filters" affordance opening a
+   native-style sheet.
+5. **Breathing room.** Mobile wrappers keep a minimum `px-5`. Content never hugs the
+   bezel. **One owner of the horizontal margin per branch** — never nested padding.
+6. **Mobile-first.** This is used standing on a street, one-handed, on a mid-range phone.
+7. **Contrast is not optional.** `--text-muted` passes AA in both modes (5.2:1 light,
+   6.3:1 dark). Any new tone is measured, not eyeballed — especially over photos and glass,
+   where the effective background is whatever is behind it.
+
+---
+
+## 12. Traps already sprung — do not re-enter
+
+- **`position: fixed` does not work inside tab content.** The tab-transition wrapper
+  carries a `transform`, making it the containing block. **Portal overlays to
+  `document.body`** (`createPortal`), as `FilterSheet` does.
+- **Never let an entrance `transform` position an overlay.** The filter sheet once shipped
+  stuck on its keyframe's `from` state — mounted, scroll-locked, unreachable. Opacity fails
+  safe; transform strands the user.
+- **`.surface` is translucent — it is not a modal fill.** Overlays use `--bg-warm`.
+- **`overflow-x-hidden` silently eats left overhang.** It clipped the venue Back button.
+  The `.page-grid` cannot overflow horizontally, so it isn't needed.
+- **Never reintroduce a service worker.** `vite-plugin-pwa` with `registerType:
+  'autoUpdate'` precached `index.html`, so **every deploy was invisible on the live URL**
+  — three sessions of work shipped and never appeared. `src/main.tsx` now unregisters any
+  survivor and purges caches; `vercel.json` keeps `index.html` on `must-revalidate` and
+  only hashed `/assets/*` immutable. An app whose value is "what's open near me right now"
+  gains nothing from offline precaching.
+- **All of the above passed `tsc` clean.** Types are a gate, never verification.
