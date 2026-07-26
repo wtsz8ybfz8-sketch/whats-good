@@ -109,18 +109,25 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  if (selectedRecipe) {
  const r = selectedRecipe;
  return (
- <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] px-2 sm:px-4 py-4">
- {/* Navigation back header if we have other recipes in list */}
- {(recipes.length > 1 || isSavedTab) && (
+ <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] px-6 sm:px-8 py-4">
+ {/* Back is UNCONDITIONAL. It used to be gated on `recipes.length > 1 || isSavedTab`,
+ which meant every single-result path — the Stay In random recipe, the wildcard,
+ any deep link that lands on one dish — rendered a detail page with no way out.
+ The user's report was "I can't go back to my starting point once I've viewed a
+ restaurant or recipe", and this gate was it. A detail view ALWAYS needs an exit;
+ if the count is uninteresting, drop the count, not the button. */}
+ {(
  <button
  onClick={() => onSelectRecipe(null)}
- className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.07em] text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
+ className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.07em] text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
  >
  <ChevronLeft className="w-3.5 h-3.5" />
  {isSavedTab ? (
  <span>Back to Saved Recipes ({recipes.length} saved)</span>
-) : (
+) : recipes.length > 1 ? (
  <span>Back to results ({recipes.length} found)</span>
+) : (
+ <span>Back</span>
 )}
  </button>
 )}
@@ -173,7 +180,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="font-mono text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] block">
  {r.prepTime}
  </span>
- <span className="text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
+ <span className="text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
  Prep
  </span>
  </div>
@@ -181,17 +188,22 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="font-mono text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] block">
  {r.cookTime}
  </span>
- <span className="text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
+ <span className="text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
  Cook
  </span>
  </div>
  <div className="text-center flex flex-col items-center justify-center">
- <div className="flex items-center gap-3">
+ {/* Stepper. The ink stays 24px — a 44px drawn circle beside an 18px numeral is
+ the "comically large button" failure. `.tap-target` lays an invisible 44×44
+ box over each control instead, so the touch is HIG-legal and the drawing
+ isn't. Gap widened to 4 (16px) so the two invisible boxes clear each other. */}
+ <div className="flex items-center gap-4">
  <button
  type="button"
+ aria-label="One fewer plate"
  onClick={() => handleAdjustPlates(-1)}
  disabled={plates <= 1}
- className="w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+ className="tap-target w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
  >
  -
  </button>
@@ -200,13 +212,14 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </span>
  <button
  type="button"
+ aria-label="One more plate"
  onClick={() => handleAdjustPlates(1)}
- className="w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
+ className="tap-target w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
  >
  +
  </button>
  </div>
- <span className="text-[10px] uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
+ <span className="text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
  Serves
  </span>
  </div>
@@ -228,7 +241,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5]">
  Ingredients
  {plates !== defaultPlates && (
- <span className="ml-3 text-[10px] font-mono text-[#7C2D12] dark:text-[#fca5a5] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 px-2 py-0.5 rounded-md align-middle">Scaled x{(plates/defaultPlates).toFixed(1).replace(/\.0$/,'')}</span>
+ <span className="ml-3 text-xs font-mono text-[#7C2D12] dark:text-[#fca5a5] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 px-2 py-0.5 rounded-md align-middle">Scaled x{(plates/defaultPlates).toFixed(1).replace(/\.0$/,'')}</span>
 )}
  </h3>
  <ChevronDown className="md:hidden w-4 h-4 text-[var(--charcoal)] opacity-50 ml-2 group-open:rotate-180 transition-transform flex-shrink-0" />
@@ -333,7 +346,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {/* Grocery delivery & dine-out follow-ups — recipes only */}
  {!r.id.startsWith('eat') && (
  <div className="border-t border-black dark:border-[#444] pt-8 mt-4 select-none">
- <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-4">
+ <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-4">
  Get it sorted
  </span>
  {/* Three hand-drawn retailer logos in their own brand colours — a teal pill, a
@@ -432,15 +445,15 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  // Showcase grid if multiple matches are returned and none are explicitly active
  return (
- <div className="max-w-[1000px] mx-auto w-full px-2 sm:px-4 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-[1000px] mx-auto w-full px-6 sm:px-8 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col gap-2 mb-8 sm:mb-12">
- <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold">
+ <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold">
  Here's what we found
  </span>
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">
  {recipes.some((r) => r.id.startsWith('eat'))
- ? `We found ${recipes.length} eateries near ${city}`
- : `We found ${recipes.length} recipes for you`}
+ ? `We found ${recipes.length} ${recipes.length === 1 ?'eatery' :'eateries'} near ${city}`
+ : `We found ${recipes.length} ${recipes.length === 1 ?'recipe' :'recipes'} for you`}
  </h2>
  <p className="text-[#6E6A64] dark:text-[#a3a3a3] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
  {recipes.some((r) => r.id.startsWith('eat'))
@@ -470,7 +483,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="glass rounded-2xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[#fca5a5]"
+ className="surface surface-hover rounded-2xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[#fca5a5]"
  >
  {/* Save button */}
  <button
@@ -510,7 +523,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Cuisine tag */}
  {rawEatery.cuisine && (
- <span className="inline-flex self-start font-mono text-[10px] font-bold uppercase tracking-[0.07em] px-2.5 py-1 rounded-full bg-[var(--accent-tint)] text-[var(--accent-terracotta)] mb-4 max-w-[70%] truncate">
+ <span className="inline-flex self-start font-mono text-xs font-bold uppercase tracking-[0.07em] px-2.5 py-1 rounded-full bg-[var(--accent-tint)] text-[var(--accent-terracotta)] mb-4 max-w-[70%] truncate">
  {rawEatery.cuisine}
  </span>
  )}
@@ -521,7 +534,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </h3>
 
  {/* Rating · price · distance · open now */}
- <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] font-mono text-[#6E6A64] dark:text-[#a3a3a3]">
+ <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-mono text-[#6E6A64] dark:text-[#a3a3a3]">
  <span className="flex items-center gap-1 text-[#1A1A1A] dark:text-[#f5f5f5] font-bold">
  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {rawEatery.rating}
  </span>
@@ -561,7 +574,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="glass rounded-3xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
+ className="surface surface-hover rounded-3xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
  >
  {/* Image banner */}
  <div className="w-full h-52 sm:h-60 bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
@@ -575,7 +588,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-60 mix-blend-multiply pointer-events-none transition-opacity duration-300 group-hover:opacity-40" />
  
  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
- <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
+ <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-xs font-bold uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
  {React.createElement(cuisineIcon(r.category), {
 'aria-hidden':'true',
  strokeWidth: 2,
@@ -605,7 +618,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Core copy */}
  <div className="p-6 flex flex-col flex-1 gap-2.5">
- <span className="font-mono text-[10px] text-[#6E6A64] dark:text-[#a3a3a3] uppercase tracking-wider block">
+ <span className="font-mono text-xs text-[#6E6A64] dark:text-[#a3a3a3] uppercase tracking-wider block">
  {r.area} Cuisine
  </span>
  <h3 className="font-serif text-lg sm:text-xl text-[#1A1A1A] dark:text-[#f5f5f5] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug line-clamp-2">
@@ -620,12 +633,12 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  Places doesn't publish a wait time. A lone clock icon with nothing beside it
  reads as a value that failed to load, so drop the whole pair. */}
  {r.prepTime && (
- <span className="flex items-center gap-1 text-[11px] font-mono">
+ <span className="flex items-center gap-1 text-xs font-mono">
  <Clock className="w-3.5 h-3.5 text-[#7C2D12] dark:text-[#fca5a5]" /> {r.prepTime}
  </span>
  )}
  {r.cookTime && (
- <span className="flex items-center gap-1 text-[11px] font-mono">
+ <span className="flex items-center gap-1 text-xs font-mono">
  <Flame className="w-3.5 h-3.5 text-amber-600" /> {r.cookTime}
  </span>
  )}

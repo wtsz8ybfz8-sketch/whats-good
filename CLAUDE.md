@@ -65,10 +65,13 @@ surface and text tier must be checked in both modes.
 
 ## Known issues — fix when you're in the area
 
-- **Glass is applied to too many surfaces at once** — header, search panel and cards all use it,
-  so nothing reads as floating above anything. Pick two surfaces max. Related: `--glass-blur` is
-  `blur(22px) saturate(180%)`; backdrop-filter is expensive, and it's the first suspect if
-  scrolling gets janky on mid-range phones.
+- ~~Glass applied to too many surfaces at once~~ — **fixed.** `.glass` is now on exactly two
+  surfaces, both of them chrome: the fixed header and the mobile CTA bar. Everything that holds
+  content — result cards, the filter panel, status panels — uses `.surface` (solid fill, hairline,
+  soft shadow, no backdrop-filter). Small recessed controls use `.surface-quiet`. Hover lift is
+  opt-in via `.surface-hover`, so static panels don't brighten under the cursor. **Don't put
+  `.glass` back on a card** — that's the regression these classes exist to prevent, and it also
+  puts the backdrop-filter cost back on every card in a scrolling list.
 - **`npm run build` and `tsc --noEmit` are pathologically slow on this machine** — minutes of wall
   time at ~0% CPU. It's local I/O, not the code (Vercel builds fine). Budget for it; don't assume
   a hang means a failure.
@@ -118,3 +121,26 @@ not the problem, the pane is.
 
 Never fall back to shipping on `tsc` alone. Types passing has let broken layout reach the
 user in every session so far. If you have not seen it, say you have not seen it.
+
+## NON-NEGOTIABLE UX, ARCHITECTURE & WORKFLOW RULES
+
+1. **Elite iOS HIG Persona:** You must architect every view applying Apple HIG and elite
+   customer journey mapping. Prioritize progressive disclosure, spatial hierarchy, and
+   optical balance.
+2. **No Brute-Force Scripting for UI:** Never use Python string replacements (`replace()`)
+   or `sed` for structural UI changes. UI updates must be executed via deliberate,
+   component-level React refactoring.
+3. **Optical vs. Mathematical Scaling:** Enforce 44x44pt hit targets using invisible
+   bounding boxes (e.g., `p-2`, transparent wrappers, or `min-w-[44px] min-h-[44px]`).
+   You are strictly forbidden from expanding the visual "ink" (backgrounds, borders,
+   icons) of small controls to achieve this.
+4. **No Carousel Hell (Progressive Disclosure):** Do not stack multiple horizontal
+   scrolling rails. Primary categories (e.g., Cuisine) may scroll horizontally. Granular
+   secondary filters (e.g., Mood, Diet) must be hidden behind a single "Filters"
+   affordance that triggers a native-style modal or bottom sheet.
+5. **Screen Breathing Room:** Mobile wrappers must maintain strict outer margins
+   (minimum `px-5` or `px-6`). Content must never hug the physical device bezel.
+6. **Mobile-First Verification:** When verifying your work via your browser tool, you MUST
+   configure your headless browser/Puppeteer to emulate a mobile viewport (e.g., width
+   390px, height 844px) so you can actually verify mobile margins and breakpoints. Do NOT
+   ask the user for screenshots.

@@ -10,10 +10,10 @@ import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
-import { HappyHourView } from'./components/HappyHourView';
+import { HappyHourView, hasHappyHourData } from'./components/HappyHourView';
 import { getHappyHourStatus } from'./venueExtras';
 import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
-import { Sparkles, Dices, Heart, Trash2, Search, MapPin, ChevronRight, Sun, Moon } from'lucide-react';
+import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon } from'lucide-react';
 import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
 import { fetchCapeTownEateries, detectCityFromCoords, currencyForCountry } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
@@ -662,18 +662,66 @@ export default function App() {
  }
  };
 
+ // Hardware / browser / swipe back closes the detail view.
+ //
+ // On iOS Safari the edge-swipe fires popstate, and on a home-screen web app there is
+ // no browser chrome at all — so without this the ONLY exit from a detail page is the
+ // in-app Back button. That button was itself conditional until now (see RecipeView),
+ // which is how the app ended up with pages you could enter and not leave. Two
+ // independent exits is the Apple HIG expectation, not a nicety.
+ //
+ // We push one history entry on open and pop it when the user closes in-app, so the
+ // stack stays balanced and Back doesn't need pressing twice after a normal close.
+ const pushedDetailEntry = useRef(false);
+ useEffect(() => {
+ if (selectedRecipe && !pushedDetailEntry.current) {
+ window.history.pushState({ whatsGoodDetail: true }, '');
+ pushedDetailEntry.current = true;
+ } else if (!selectedRecipe && pushedDetailEntry.current) {
+ // Closed from inside the app — retire the entry we added.
+ pushedDetailEntry.current = false;
+ if (window.history.state?.whatsGoodDetail) window.history.back();
+ }
+ }, [selectedRecipe]);
+
+ useEffect(() => {
+ const onPop = () => {
+ pushedDetailEntry.current = false;
+ setSelectedRecipe(null);
+ };
+ window.addEventListener('popstate', onPop);
+ return () => window.removeEventListener('popstate', onPop);
+ }, []);
+
+ // Real cuisine types from the current result set, deduped in first-seen order.
+ // Feeds the Cuisine rail as a SUPPLEMENT to its curated baseline (see Sidebar).
+ const nearbyCuisines = useMemo(() => {
+ const out: string[] = [];
+ const seen = new Set<string>();
+ for (const r of recipes) {
+ const c = (r.category || '').trim();
+ if (!c || seen.has(c.toLowerCase())) continue;
+ seen.add(c.toLowerCase());
+ out.push(c);
+ }
+ return out;
+ }, [recipes]);
+
  const tabOrder: ActiveTab[] = ['mood','happy-hour','random','saved-recipes','saved-eateries'];
 
  // Live happy-hour count drives the pulse dot on the tab — the whole point of the
  // feature is time-sensitivity, so it has to be visible without opening the tab.
  // Counts REAL curated happy hours (see happyHourData.ts), not the search results.
  const liveHappyHourCount = useMemo(() => {
+ // Only pulse when the detected city actually has human-confirmed windows. A dot
+ // promising live deals in a city we hold no data for is a lie told in one pixel.
+ if (!hasHappyHourData(city)) return 0;
  return CAPE_TOWN_HAPPY_HOURS.filter(
  (hh) => getHappyHourStatus(hh).state ==='live',
  ).length;
  // Re-evaluated on tab/recipe churn; a minute-level refresh isn't needed for a dot.
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [activeTab, recipes]);
+ }, [activeTab, recipes, city]);
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
  // featuredEatery/featuredResult removed with the "Best fit" card — they pinned
  // SOUTH_AFRICAN_EATERIES[0] as everyone's recommendation. See StatusStates.tsx.
@@ -718,7 +766,7 @@ export default function App() {
  // black slab in a 60px header would dominate the wordmark next to it. Grown
  // to a ~32px target instead, which is the honest compromise for a badge that
  // doubles as a button. Flagged rather than silently left at 20px.
- className="flex items-center gap-1 text-[11px] bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
+ className="flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
  >
  {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
  <span>{city}</span>
@@ -746,7 +794,7 @@ export default function App() {
  <MapPin className="w-3 h-3 flex-shrink-0" /> Reset to my location
  </button>
  ) : (
- <p className="mt-1.5 px-2 text-[11px] leading-snug text-[var(--text-muted)]">Showing results near you. Type a city to explore somewhere else.</p>
+ <p className="mt-1.5 px-2 text-xs leading-snug text-[var(--text-muted)]">Showing results near you. Type a city to explore somewhere else.</p>
  )}
  </div>
  </>
@@ -767,25 +815,32 @@ export default function App() {
  :'Sort results by distance to you'
  }
  aria-label="Sort nearby using your location"
- className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2.5 rounded-full border text-[10px] font-mono font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer select-none active:scale-95 flex-shrink-0 ${
- locState ==='granted'
- ?'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
- : locState ==='requesting'
- ?'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500/30 text-amber-800 dark:text-amber-300 animate-pulse'
- : locState ==='denied'
- ?'bg-red-50/80 dark:bg-red-950/40 border-red-500/30 text-red-800 dark:text-red-300'
- :'glass-subtle border-black/10 dark:border-white/10 text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white'
- }`}
+ // Was a colour-flipping pill — emerald when granted, amber and *pulsing* while
+ // locating, red when denied — with a second pulse on the icon inside it. Three
+ // saturated colours that appear nowhere else in the palette, animating, in the
+ // one bar that should sit still. State rides on the icon alone now: accent when
+ // it's on, MapPinOff once denied, dimmed while it resolves. The full sentence
+ // stays in the tooltip and the aria-label, where it costs nothing to read.
+ className="flex w-10 h-10 items-center justify-center rounded-full transition-colors cursor-pointer flex-shrink-0 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:cursor-default"
  >
- <MapPin className={`w-3.5 h-3.5 ${locState ==='granted' ?'text-emerald-600 animate-pulse' :''}`} />
- <span className="hidden md:inline">
- {locState ==='granted' ?'Sorted Nearby' : locState ==='requesting' ?'Locating...' : locState ==='denied' ?'Retry Location' :'Sort Nearby'}
- </span>
+ {locState ==='denied' ? (
+ <MapPinOff className="w-4 h-4 text-[var(--text-muted)]" />
+) : (
+ <MapPin
+ className={`w-4 h-4 ${
+ locState ==='granted'
+ ?'text-[var(--accent-terracotta)]'
+ : locState ==='requesting'
+ ?'text-[var(--text-muted)] opacity-40'
+ :'text-[var(--text-muted)]'
+ }`}
+ />
+)}
  </button>
 
  <button
  onClick={() => setIsDark((d) => !d)}
- className="flex w-10 h-10 items-center justify-center rounded-full glass text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white transition-colors cursor-pointer flex-shrink-0"
+ className="flex w-10 h-10 items-center justify-center rounded-full text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
  aria-label={isDark ?'Switch to light mode' :'Switch to dark mode'}
  >
  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -793,10 +848,10 @@ export default function App() {
 
  {/* Desktop nav. On mobile this is replaced by the bottom tab bar below — five
  tabs in a horizontally-scrolling 50vw strip was unusable and hid Saved entirely. */}
- <nav className="hidden md:flex glass-subtle p-1 rounded-full gap-0.5 whitespace-nowrap">
+ <nav className="hidden md:flex surface-quiet p-1 rounded-full gap-0.5 whitespace-nowrap">
  <button
  onClick={() => handleTabSwitch('mood')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='mood'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
@@ -809,7 +864,7 @@ export default function App() {
  setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
  handleTabSwitch('random');
  }}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
@@ -819,7 +874,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('happy-hour')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='happy-hour'
  ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] shadow-sm'
  :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
@@ -835,7 +890,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-[11px] font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='saved-recipes'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
@@ -883,7 +938,7 @@ export default function App() {
  )}
  </span>
  <span
- className={`text-[10px] leading-none tracking-[0.01em] ${
+ className={`text-xs leading-none tracking-[-0.005em] ${
  active ?'text-[var(--accent-terracotta)] font-semibold' :'text-[var(--text-subtle)] font-medium'
  }`}
  >
@@ -903,13 +958,14 @@ export default function App() {
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
- className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto ${
+ className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto px-4 sm:px-6 ${
  activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >
- <div className="glass rounded-3xl p-2 mb-6">
+ <div className="surface rounded-3xl p-2 mb-6">
  <Sidebar
  dimensions={dimensions}
+ nearbyCuisines={nearbyCuisines}
  onChange={setDimensions}
  onTriggerMatch={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  isLoading={isLoading && activeTab ==='mood'}
@@ -923,11 +979,13 @@ export default function App() {
  type="button"
  onClick={() => setFiltersOpen((v) => !v)}
  aria-expanded={filtersOpen}
- className="w-full h-8 flex justify-center -mt-4 z-40 relative group cursor-pointer"
+ // Full-width, 44pt tall hit area; the pill inside stays small. The button is
+ // the touch target, the pill is the ink — they are not the same rectangle.
+ className="w-full min-h-[44px] flex items-center justify-center -mt-4 z-40 relative group cursor-pointer"
  >
- <div className="glass-subtle rounded-full px-4 py-1 flex items-center gap-2 transition-all transform -translate-y-2 group-hover:translate-y-0 group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
- <span className="text-[10px] uppercase font-mono font-bold text-[#6E6A64] dark:text-[#a3a3a3] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5]">
- {filtersOpen ? 'Hide Filters' : 'Adjust Filters'}
+ <div className="surface-quiet rounded-full px-4 py-1.5 flex items-center gap-2 transition-all transform group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
+ <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--text-muted)] group-hover:text-[var(--accent-terracotta)]">
+ {filtersOpen ? 'Hide filters' : 'Adjust filters'}
  </span>
  </div>
  </button>
@@ -971,7 +1029,7 @@ export default function App() {
  {activeTab ==='mood' ? (
  // MOOD CORNER CANVAS
  isLoading ? (
- <LoadingState title="Finding a good table..." subtitle="Checking the city, budget, mood, and distance." />
+ <LoadingState />
 ) : error ? (
  <ErrorState title="Something went wrong" message={error} onRetry={() => handleTriggerMatch()} />
 ) : recipes.length > 0 ? (
@@ -986,7 +1044,7 @@ export default function App() {
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
  />
 ) : dimensions.searchQuery ? (
- <div className="max-w-[450px] mx-auto text-center py-16 px-8 glass rounded-3xl">
+ <div className="max-w-[450px] mx-auto text-center py-16 px-8 surface rounded-3xl">
  <div className="w-12 h-12 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mx-auto mb-4">
  <Search className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
@@ -1013,11 +1071,12 @@ export default function App() {
 ) : activeTab ==='happy-hour' ? (
  // HAPPY HOUR — time-sensitive drink deals across the current result set
  isLoading ? (
- <LoadingState title="Checking who's pouring..." subtitle="Matching happy-hour windows to right now." />
+ <LoadingState count={4} />
 ) : (
  <HappyHourView
  recipes={recipes.length > 0 ? recipes : (city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES.map((e) => createEateryResult(e, city, userCoords)) : [])}
  onSelectRecipe={(r) => setSelectedRecipe(r)}
+ city={city}
  />
 )
 ) : activeTab ==='random' ? (
@@ -1094,7 +1153,7 @@ export default function App() {
  </div>
 
  {isLoading ? (
- <LoadingState title="Pulling recipes…" subtitle="Matching what you've got time for." />
+ <LoadingState />
 ) : error ? (
  <ErrorState title="That didn't work" message={error} onRetry={() => handleTriggerMatch()} />
 ) : recipes.length > 0 ? (
@@ -1119,7 +1178,7 @@ export default function App() {
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black dark:border-[#444] pb-6 mb-8 gap-4">
  <div>
- <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
+ <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
  {activeTab ==='saved-recipes' ?'Your shortlist' :'Grocery basket'}
  </span>
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">
@@ -1142,7 +1201,7 @@ export default function App() {
  </div>
 
  {(activeTab ==='saved-recipes' ? savedRecipes : []).length === 0 ? (
- <div className="text-center py-16 sm:py-24 px-4 flex flex-col items-center justify-center glass rounded-2xl border-dashed">
+ <div className="text-center py-16 sm:py-24 px-4 flex flex-col items-center justify-center surface rounded-2xl border-dashed">
  <div className="w-14 h-14 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center mb-6 border border-[#F5D1C9] dark:border-[#7C2D12]/40">
  <Heart className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
@@ -1167,7 +1226,7 @@ export default function App() {
  <div
  key={r.id}
  onClick={() => setSelectedRecipe(r)}
- className="glass cursor-pointer rounded-2xl p-4 flex items-center gap-4 group transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(26,15,10,0.12)]"
+ className="surface surface-hover cursor-pointer rounded-2xl p-4 flex items-center gap-4 group transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(26,15,10,0.12)]"
  >
  {/* Thumbnail image */}
  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[#F2F1EE] dark:bg-[#222222] flex-shrink-0 border border-black dark:border-[#444]">
@@ -1182,14 +1241,14 @@ export default function App() {
  {/* Title and metadata details */}
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 mb-1">
- <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] px-2 py-0.5 rounded font-bold">
+ <span className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] px-2 py-0.5 rounded font-bold">
  {React.createElement(
  cuisineIcon(r.id.startsWith('eat') ? (r as any).rawEatery?.cuisine : r.category),
  { 'aria-hidden':'true', strokeWidth: 2, className:'w-3 h-3 flex-shrink-0' },
 )}
  {r.id.startsWith('eat') ? (r as any).rawEatery?.cuisine : r.category}
  </span>
- <span className="font-mono text-[10px] text-[#6E6A64] dark:text-[#a3a3a3] uppercase">
+ <span className="font-mono text-xs text-[#6E6A64] dark:text-[#a3a3a3] uppercase">
  {r.id.startsWith('eat') ? r.tags[1] : r.area} Culture
  </span>
  </div>
@@ -1222,7 +1281,7 @@ export default function App() {
  )}
  {/* Footer disclaimer */}
  <footer className="mt-12 pb-24 text-center">
- <p className="text-[10px] text-[var(--text-subtle)] font-sans leading-relaxed max-w-xs mx-auto">
+ <p className="text-xs text-[var(--text-subtle)] font-sans leading-relaxed max-w-xs mx-auto">
  Restaurant info is for reference only — always confirm details with the venue directly.
  </p>
  </footer>

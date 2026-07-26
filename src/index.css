@@ -87,25 +87,44 @@
    in the header about 20px tall. On a phone, held one-handed, standing on a
    street, those are misses.
 
-   The fix is a hit area larger than the ink. `min-height/min-width` would bloat
-   the layout, so this expands the touch target outward with a pseudo-element
-   while the button keeps drawing at its designed size. Coarse pointers only —
-   a mouse is precise and doesn't need it, and on desktop the invisible padding
-   would swallow clicks meant for neighbouring controls. */
-   Implemented as a plain min-size rather than an expanded pseudo-element hit area.
-   The pseudo-element trick is tempting because it grows the touch target without
-   changing the drawing, but it breaks here in two ways: it needs the host to be
-   positioned, and `position: relative` would override the `absolute` these save
-   buttons already rely on to sit in the card corner; and pushing the overflow behind
-   the icon with a negative z-index puts it behind the CARD too, so taps in the
-   overflow would open the recipe instead of saving it — the exact opposite of intent.
-   min-width/min-height always beats a smaller width/height, the icons are already
-   flex-centred, so the control simply grows to 44px and stays centred. */
-@media (pointer: coarse) {
-  .tap-44 {
-    min-width: 44px;
-    min-height: 44px;
-  }
+   The fix is a hit area larger than the ink. Implemented as a plain min-size rather
+   than an expanded pseudo-element hit area. The pseudo-element trick is tempting
+   because it grows the touch target without changing the drawing, but it breaks here
+   in two ways: it needs the host to be positioned, and `position: relative` would
+   override the `absolute` these save buttons already rely on to sit in the card
+   corner; and pushing the overflow behind the icon with a negative z-index puts it
+   behind the CARD too, so taps in the overflow would open the recipe instead of
+   saving it — the exact opposite of intent. min-width/min-height always beats a
+   smaller width/height, the icons are already flex-centred, so the control simply
+   grows to 44px and stays centred.
+
+   NOT gated on `@media (pointer: coarse)` any more. That gate had two costs: laptops
+   with touchscreens and hybrid devices report `fine` and got the un-tappable version,
+   and it made the rule invisible to browser verification — you could never prove the
+   target was 44pt, only that the class was attached. Enforced structurally instead.
+
+   `.tap-target` is the version for controls whose INK must stay small. It grows the
+   hit area with padding and pulls the layout back with a matching negative margin, so
+   the button occupies its drawn size in the flow while accepting a 44pt touch. Use it
+   for steppers and icon buttons; use `.tap-44` only where the control may legitimately
+   grow. Never grow a control's background, border or icon to reach 44 — that is the
+   difference between an invisible hit area and a comically large button. */
+.tap-44 {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.tap-target {
+  position: relative;
+}
+.tap-target::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
 /* ─── Label style ────────────────────────────────────────────────────────────
@@ -160,6 +179,19 @@
                         0 12px 40px rgba(26, 15, 10, 0.08),
                         inset 0 1px 0 rgba(255, 255, 255, 0.72);
 
+  /* Solid card surface — the fix for the "everything is glass so nothing floats"
+     issue flagged at the top of CLAUDE.md. Glass is now reserved for the two
+     *chrome* layers (fixed header, mobile CTA bar) that content scrolls under;
+     every content card sits on this instead. Depth is a hairline plus a soft
+     shadow, no backdrop-filter — which also takes the compositing cost off every
+     card in a scrolling list, the other half of that known issue. */
+  --surface-bg:         #FDFCFA;
+  --surface-bg-hover:   #FFFFFF;
+  --surface-border:     rgba(26, 26, 26, 0.08);
+  --surface-shadow:     0 1px 2px rgba(26, 15, 10, 0.04),
+                        0 8px 24px rgba(26, 15, 10, 0.06);
+  --surface-quiet-bg:   rgba(26, 26, 26, 0.045);   /* segmented-control tracks, small chips */
+
   /* Ambient body — near-flat by design. The previous version stacked three peachy
      radials over a four-stop linear, which is what read as cheap: a lot of colour
      doing nothing. Expensive interfaces are mostly one quiet surface, with the
@@ -194,6 +226,17 @@ html.dark {
                         0 12px 40px rgba(0, 0, 0, 0.50),
                         inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
+  /* Dark surface deliberately carries the *same* fill and border the dark glass
+     card already had — only the backdrop-filter is dropped. Over a near-flat
+     near-black canvas the blur was contributing nothing visible anyway, so dark
+     mode looks the same as before and only gets cheaper to scroll. */
+  --surface-bg:         rgba(255, 255, 255, 0.055);
+  --surface-bg-hover:   rgba(255, 255, 255, 0.09);
+  --surface-border:     rgba(255, 255, 255, 0.10);
+  --surface-shadow:     0 4px 6px rgba(0, 0, 0, 0.30),
+                        0 12px 40px rgba(0, 0, 0, 0.50);
+  --surface-quiet-bg:   rgba(255, 255, 255, 0.06);
+
   /* Same restraint on dark — one warm lift over a near-flat near-black. */
   --body-gradient:
     radial-gradient(ellipse 120% 70% at 50% -10%, rgba(120, 55, 28, 0.16) 0%, transparent 62%),
@@ -221,6 +264,34 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 1000;
+}
+
+/* ─── Content Surfaces ───────────────────────────────────
+   Use `.surface` for anything that holds content: result cards, the filter
+   panel, status panels. Use `.glass` ONLY for the fixed header and the mobile
+   CTA bar. If you find yourself reaching for `.glass` on a card, that is the
+   regression this class exists to prevent. */
+.surface {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Hover lift is opt-in, unlike the old `.glass:hover` which fired on every panel
+   it touched — a static "No matching places" box brightening under the cursor
+   reads as clickable when it isn't. Add this only to surfaces you can actually
+   click. */
+.surface-hover:hover {
+  background: var(--surface-bg-hover);
+}
+
+/* Small controls that need to read as recessed rather than raised — segmented
+   control tracks, the Adjust Filters chip. No blur: these mostly sit inside the
+   header, and glass nested in glass is just haze. */
+.surface-quiet {
+  background: var(--surface-quiet-bg);
+  border: 1px solid transparent;
 }
 
 /* ─── Glassmorphism Utility Classes ──────────────────── */
@@ -256,6 +327,27 @@ html.dark .glass-subtle {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Apple Maps-style filter rail. One row that scrolls sideways instead of a two-row
+   wall of pills. Three things make it feel native rather than like an overflow bug:
+   no visible scrollbar, momentum scrolling on iOS, and proximity snapping so a chip
+   never comes to rest half-clipped at the left edge. The rail is deliberately
+   edge-bleeding — the chip clipped at the right IS the affordance. */
+.chip-rail {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 1rem;
+  overscroll-behavior-x: contain;
+}
+.chip-rail::-webkit-scrollbar {
+  display: none;
+}
+.chip-rail > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
 }
 
 /* ─── Glass Range Slider ─────────────────────────────── */
@@ -356,6 +448,18 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 }
 
 /* ─── Animations ─────────────────────────────────────── */
+
+/* Scrim fade for the filter sheet. This is the ONLY entrance motion on that
+   component, and it is opacity-only on purpose: an opacity animation that fails to
+   run leaves the element visible, a transform animation that fails to run leaves it
+   parked off-screen. The sheet itself carried a translateY entrance and shipped
+   stuck at translateY(100%) — rendered, body-locked, unreachable. Motion may
+   decorate a state change here; it may never be the thing that positions it. */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 @keyframes revealUp {
   from {
     opacity: 0;

@@ -14,7 +14,18 @@ interface HappyHourViewProps {
   // curated data, not derived from the search results.
   recipes?: ParsedRecipe[];
   onSelectRecipe?: (recipe: ParsedRecipe) => void;
+  /** The city the header is showing. Curated data only exists for some cities. */
+  city?: string;
 }
+
+/**
+ * The curated set is Cape Town only. Rendering nine Rand-priced Cape Town venues to
+ * someone standing in London is the same failure as the fabricated menus we tore out:
+ * it is invented-for-this-user data wearing a "REAL LISTINGS" badge. Until a city has
+ * human-confirmed windows in `happyHourData.ts`, it gets an honest empty state.
+ */
+export const hasHappyHourData = (city?: string) =>
+  (city ?? '').trim().toLowerCase() === 'cape town';
 
 interface Entry {
   hh: CuratedHappyHour;
@@ -30,7 +41,7 @@ interface Entry {
  * happy-hour guides and confirmed July 2026. Times can still change, so each row links
  * to directions and the footer says to confirm before travelling.
  */
-export const HappyHourView: React.FC<HappyHourViewProps> = () => {
+export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
   // Re-tick every minute so countdowns stay honest without a render storm.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -38,13 +49,36 @@ export const HappyHourView: React.FC<HappyHourViewProps> = () => {
     return () => clearInterval(t);
   }, []);
 
+  const covered = hasHappyHourData(city);
+
   const entries = useMemo<Entry[]>(() => {
+    if (!covered) return [];
     return CAPE_TOWN_HAPPY_HOURS
       .map((hh) => ({ hh, status: getHappyHourStatus(hh, now) }))
       .sort((a, b) => compareHappyHour(a.status, b.status));
-  }, [now]);
+  }, [now, covered]);
 
   const liveCount = entries.filter((e) => e.status.state === 'live').length;
+
+  if (!covered) {
+    return (
+      <div className="max-w-[820px] mx-auto w-full px-6 sm:px-10 pb-[120px] md:pb-16">
+        <div className="surface rounded-3xl px-7 py-12 text-center mt-2">
+          <div className="w-12 h-12 rounded-full bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mx-auto mb-5">
+            <Martini className="w-5 h-5 text-[var(--accent-terracotta)]" strokeWidth={1.75} />
+          </div>
+          <h2 className="font-serif text-2xl sm:text-3xl leading-[1.1] tracking-tight mb-3">
+            No confirmed happy hours in {city || 'this city'} yet
+          </h2>
+          <p className="text-sm leading-relaxed text-[var(--text-muted)] max-w-[380px] mx-auto">
+            Google publishes no happy-hour data, so every window here is confirmed by a
+            human first. Cape Town is covered today. We would rather show you nothing
+            than send you across town for a deal that does not exist.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     // Desktop gets the width it has. A single 820px column of short rows on a 1440px
@@ -54,10 +88,10 @@ export const HappyHourView: React.FC<HappyHourViewProps> = () => {
       {/* Status header — the focal element is the live count, nothing else competes */}
       <div className="pt-2 pb-7">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <p className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text-subtle)]">
+          <p className="font-mono text-xs uppercase tracking-[0.09em] text-[var(--text-subtle)]">
             Happy Hour
           </p>
-          <span className="font-mono text-[10px] uppercase tracking-[0.07em] px-2 py-0.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-bold">
+          <span className="font-mono text-xs uppercase tracking-[0.07em] px-2 py-0.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-bold">
             Real listings · Cape Town
           </span>
         </div>
@@ -70,7 +104,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = () => {
             Nothing pouring yet
           </h2>
         )}
-        <p className="font-mono text-[11px] text-[var(--text-muted)] mt-3">
+        <p className="font-mono text-xs text-[var(--text-muted)] mt-3">
           {entries.length} real venue{entries.length === 1 ? '' : 's'} with a happy hour ·
           updates every minute
         </p>
@@ -100,12 +134,12 @@ export const HappyHourView: React.FC<HappyHourViewProps> = () => {
                         <span className="absolute inline-flex w-full h-full rounded-full bg-[var(--accent-terracotta)] opacity-60 motion-safe:animate-ping" />
                         <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
                       </span>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--accent-terracotta)] font-bold">
+                      <span className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--accent-terracotta)] font-bold">
                         Live
                       </span>
                     </span>
                   ) : (
-                    <span className={`font-mono text-[10px] uppercase tracking-[0.07em] ${isSoon ? 'text-[var(--charcoal)]' : 'text-[var(--text-subtle)]'}`}>
+                    <span className={`font-mono text-xs uppercase tracking-[0.07em] ${isSoon ? 'text-[var(--charcoal)]' : 'text-[var(--text-subtle)]'}`}>
                       {isSoon ? 'Soon' : status.state === 'later-today' ? 'Today' : 'Upcoming'}
                     </span>
                   )}
@@ -117,7 +151,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = () => {
                       {hh.venue}
                     </h3>
                     <span
-                      className={`font-mono text-[10px] tabular-nums whitespace-nowrap ${
+                      className={`font-mono text-xs tabular-nums whitespace-nowrap ${
                         urgent ? 'text-[var(--accent-terracotta)] font-bold' : isLive ? 'text-[var(--charcoal)]' : 'text-[var(--text-muted)]'
                       }`}
                     >
@@ -125,21 +159,21 @@ export const HappyHourView: React.FC<HappyHourViewProps> = () => {
                     </span>
                   </div>
 
-                  <p className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-subtle)] mt-1.5 mb-2.5">
+                  <p className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--text-subtle)] mt-1.5 mb-2.5">
                     {hh.headline}
                   </p>
 
                   {/* Deals — the actual reason to go, so they get real weight not a tooltip */}
                   <ul className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
                     {hh.deals.map((d) => (
-                      <li key={d} className="font-mono text-[11px] text-[var(--charcoal)] flex items-center gap-1.5">
+                      <li key={d} className="font-mono text-xs text-[var(--charcoal)] flex items-center gap-1.5">
                         <span className="w-0.5 h-0.5 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0" />
                         {d}
                       </li>
                     ))}
                   </ul>
 
-                  <div className="flex items-center gap-3 font-mono text-[10px] text-[var(--text-subtle)] flex-wrap">
+                  <div className="flex items-center gap-3 font-mono text-xs text-[var(--text-subtle)] flex-wrap">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {formatDays(hh.days)}
                     </span>
@@ -164,7 +198,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = () => {
         </div>
       )}
 
-      <p className="font-mono text-[10px] text-[var(--text-subtle)] mt-6 leading-relaxed">
+      <p className="font-mono text-xs text-[var(--text-subtle)] mt-6 leading-relaxed">
         Real venues and windows, collected from local happy-hour guides and confirmed July 2026.
         Happy-hour times change without notice — tap a venue for directions and confirm before you travel.
         Sources: {' '}

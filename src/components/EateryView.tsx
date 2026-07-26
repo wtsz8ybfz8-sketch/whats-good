@@ -86,7 +86,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         {/* Back — top left */}
         <button
           onClick={() => onSelectRecipe(null)}
-          className="absolute top-5 left-5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.07em] text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
+          className="absolute top-5 left-5 flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.07em] text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
         >
           <ChevronLeft className="w-3 h-3" />
           {isSavedTab ? `Saved (${recipes.length})` : `Results (${recipes.length})`}
@@ -117,7 +117,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
               venue this was tested against. Contrast is not optional; at /85 with a
               drop-shadow it holds against a light or dark image. */}
           {rawEatery.cuisine && (
-            <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.09em] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] mb-3">
+            <span className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.09em] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] mb-3">
               {React.createElement(cuisineIcon(rawEatery.cuisine), {
                 'aria-hidden': 'true',
                 strokeWidth: 2,
@@ -129,7 +129,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <h2 className="font-serif text-5xl sm:text-6xl md:text-[5.5rem] text-white leading-[0.9] tracking-tight mb-5">
             {rawEatery.name}
           </h2>
-          <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-white/55">
+          <div className="flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-wider text-white/55">
             <span className="flex items-center gap-1.5">
               <Star className="w-3 h-3 fill-white/80 text-white/80" />
               {rawEatery.rating}
@@ -156,7 +156,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
       {/* Address */}
       <div className="px-6 sm:px-10 pt-5">
-        <div className="flex items-center gap-2 text-[var(--text-muted)] text-[11px] font-mono">
+        <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs font-mono">
           <MapPin className="w-3 h-3 flex-shrink-0" />
           <span>{rawEatery.address}</span>
         </div>
@@ -177,7 +177,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <div className="w-11 h-11 rounded-full bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] flex items-center justify-center group-hover:opacity-90 transition-opacity">
             <Navigation className="w-4 h-4" />
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-subtle)]">Directions</span>
+          <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--text-subtle)]">Directions</span>
         </a>
         <a
           href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
@@ -187,7 +187,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
             <Phone className="w-4 h-4 text-[var(--accent-terracotta)]" />
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-subtle)]">Call</span>
+          <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--text-subtle)]">Call</span>
         </a>
         <a
           href={rawEatery.externalLink}
@@ -199,7 +199,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--dusty-blue)] transition-colors">
             <ExternalLink className="w-4 h-4 text-[var(--dusty-blue)]" />
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-subtle)]">Website</span>
+          <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--text-subtle)]">Website</span>
         </a>
       </div>
 
@@ -225,23 +225,23 @@ export const EateryView: React.FC<EateryViewProps> = ({
                     <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
                   </span>
                 )}
-                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--accent-terracotta)] font-bold">
+                <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--accent-terracotta)] font-bold">
                   {realHH.headline}
                 </span>
               </span>
-              <span className={`font-mono text-[10px] tabular-nums ${hhStatus.state === 'live' ? 'text-[var(--accent-terracotta)] font-bold' : 'text-[var(--text-muted)]'}`}>
+              <span className={`font-mono text-xs tabular-nums ${hhStatus.state === 'live' ? 'text-[var(--accent-terracotta)] font-bold' : 'text-[var(--text-muted)]'}`}>
                 {hhStatus.label}
               </span>
             </div>
             <ul className="flex flex-col gap-1 mb-2">
               {realHH.deals.map((d) => (
-                <li key={d} className="font-mono text-[11px] text-[var(--charcoal)] flex items-center gap-2">
+                <li key={d} className="font-mono text-xs text-[var(--charcoal)] flex items-center gap-2">
                   <span className="w-0.5 h-0.5 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0" />
                   {d}
                 </li>
               ))}
             </ul>
-            <p className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-subtle)]">
+            <p className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--text-subtle)]">
               {formatDays(realHH.days)} · via {realHH.sourceLabel}
             </p>
           </div>
@@ -273,7 +273,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
        * content on screen, all of it load-bearing. Real happy-hour data still renders
        * in the sidebar; that comes from happyHourData.ts and is human-confirmed. */}
       <div className="px-6 sm:px-10 mb-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-5">
+        <p className="font-mono text-xs uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-5">
           What to expect
         </p>
 
@@ -342,41 +342,41 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
       {/* Visit Details — pure typography, no container */}
       <div className="px-6 sm:px-10 pb-10">
-        <p className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-5">Visit Details</p>
+        <p className="font-mono text-xs uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-5">Visit Details</p>
         <div className="flex flex-col">
           {rawEatery.openNow !== undefined && (
             <div className="flex items-center justify-between py-3.5 border-b border-[var(--row-border)]">
-              <span className="flex items-center gap-2 font-mono text-[11px] text-[var(--text-muted)]">
+              <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
                 <Clock className="w-3.5 h-3.5" /> {rawEatery.openNow ? 'Open Now' : 'Closed Now'}
               </span>
-              <span className={`font-mono text-[11px] font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--text-subtle)]'}`}>
+              <span className={`font-mono text-xs font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--text-subtle)]'}`}>
                 {rawEatery.hoursToday ?? (rawEatery.openNow ? 'Open' : 'Closed')}
               </span>
             </div>
           )}
           {hasRealWait && (
             <div className="flex items-center justify-between py-3.5 border-b border-[var(--row-border)]">
-              <span className="flex items-center gap-2 font-mono text-[11px] text-[var(--text-muted)]">
+              <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
                 <Clock className="w-3.5 h-3.5" /> Estimated Wait
               </span>
-              <span className="font-mono text-[11px] font-bold text-[var(--charcoal)]">{rawEatery.estimatedWait}</span>
+              <span className="font-mono text-xs font-bold text-[var(--charcoal)]">{rawEatery.estimatedWait}</span>
             </div>
           )}
           {hasRealDistance && (
             <div className="flex items-center justify-between py-3.5 border-b border-[var(--row-border)]">
-              <span className="flex items-center gap-2 font-mono text-[11px] text-[var(--text-muted)]">
+              <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
                 <MapPin className="w-3.5 h-3.5" /> Distance
               </span>
-              <span className="font-mono text-[11px] font-bold text-[var(--accent-terracotta)]">{distanceLabel}</span>
+              <span className="font-mono text-xs font-bold text-[var(--accent-terracotta)]">{distanceLabel}</span>
             </div>
           )}
           <div className="flex items-center justify-between py-3.5">
-            <span className="flex items-center gap-2 font-mono text-[11px] text-[var(--text-muted)]">
+            <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
               <Phone className="w-3.5 h-3.5" /> Phone
             </span>
             <a
               href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
-              className="font-mono text-[11px] font-bold text-[var(--charcoal)] hover:text-[var(--accent-terracotta)] transition-colors"
+              className="font-mono text-xs font-bold text-[var(--charcoal)] hover:text-[var(--accent-terracotta)] transition-colors"
             >
               {rawEatery.phone}
             </a>
@@ -388,13 +388,13 @@ export const EateryView: React.FC<EateryViewProps> = ({
       <div className="px-6 sm:px-10 pt-6 pb-[140px] lg:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
         <button
           onClick={() => onSelectRecipe(null)}
-          className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"
+          className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"
         >
           <ChevronLeft className="w-3 h-3" /> Back to results
         </button>
         <button
           onClick={onRegenerate}
-          className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--accent-terracotta)] hover:opacity-60 cursor-pointer transition-opacity"
+          className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--accent-terracotta)] hover:opacity-60 cursor-pointer transition-opacity"
         >
           Find other eateries
         </button>

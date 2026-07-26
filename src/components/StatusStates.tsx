@@ -4,31 +4,57 @@
  */
 
 import React from'react';
-import { AlertCircle, RotateCcw, Compass, Sparkles } from'lucide-react';
+import { AlertCircle, RotateCcw, Compass } from'lucide-react';
 
 interface LoadingProps {
- title?: string;
- subtitle?: string;
+ /** How many card skeletons to draw. Defaults to a full first row on desktop. */
+ count?: number;
 }
 
-export const LoadingState: React.FC<LoadingProps> = ({
- title ='Finding your recipes...',
- subtitle ="This won't take long.",
-}) => {
+/**
+ * Skeleton, not a sentence.
+ *
+ * This used to be a spinner with a Sparkles icon pulsing inside it, under a serif
+ * headline and a subtitle, and each of the three call sites passed its own bit of
+ * copy — "Finding a good table…", "Checking who's pouring…", "Pulling recipes…".
+ * Cute exactly once. By the fourth search it is a paragraph standing between the
+ * user and the thing they asked for, and it tells them nothing the layout can't:
+ * the shape of the result is the honest progress indicator.
+ *
+ * The block dimensions below mirror the eatery card in RecipeView (the 168/180px
+ * bleed image, the cuisine pill, the title, the rating·price·distance row) so the
+ * page doesn't reflow when real results land. If that card's proportions change,
+ * change these too — a skeleton that doesn't match is worse than none.
+ */
+export const LoadingState: React.FC<LoadingProps> = ({ count = 3 }) => {
  return (
- <div className="max-w-[450px] mx-auto text-center py-16 sm:py-24 px-8 glass rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
- <div className="relative mb-8">
- <div className="w-16 h-16 border-4 border-[var(--accent-tint)] border-t-[var(--accent-terracotta)] rounded-full animate-spin" />
- <div className="absolute inset-0 flex items-center justify-center">
- <Sparkles className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5] animate-pulse" />
+ <div
+ role="status"
+ aria-busy="true"
+ className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 w-full"
+ >
+ <span className="sr-only">Loading results</span>
+ {Array.from({ length: count }).map((_, i) => (
+ <div
+ key={i}
+ aria-hidden="true"
+ className="surface rounded-2xl p-5 sm:p-6 flex flex-col animate-pulse motion-reduce:animate-none"
+ >
+ {/* Image band — same bleed and height as the real card */}
+ <div className="-mx-5 -mt-5 sm:-mx-6 sm:-mt-6 mb-4 rounded-t-2xl h-[168px] sm:h-[180px] bg-[var(--rule)]" />
+ {/* Cuisine pill */}
+ <div className="h-[22px] w-24 rounded-full bg-[var(--rule)] mb-4" />
+ {/* Venue name, two lines */}
+ <div className="h-[18px] w-4/5 rounded bg-[var(--rule)] mb-2" />
+ <div className="h-[18px] w-1/2 rounded bg-[var(--rule)] mb-5" />
+ {/* Rating · price · distance */}
+ <div className="mt-auto flex items-center gap-3">
+ <div className="h-3 w-10 rounded bg-[var(--rule)]" />
+ <div className="h-3 w-6 rounded bg-[var(--rule)]" />
+ <div className="h-3 w-16 rounded bg-[var(--rule)]" />
  </div>
  </div>
- <h4 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">
- {title}
- </h4>
- <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[340px]">
- {subtitle}
- </p>
+))}
  </div>
 );
 };
@@ -45,7 +71,7 @@ export const ErrorState: React.FC<ErrorProps> = ({
  onRetry,
 }) => {
  return (
- <div className="max-w-[420px] mx-auto text-center py-16 sm:py-24 px-8 glass rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-[420px] mx-auto text-center py-16 sm:py-24 px-8 surface rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center text-red-600 dark:text-red-300 mb-6 border border-red-100 dark:border-red-900/50">
  <AlertCircle className="w-6 h-6" />
  </div>
@@ -92,11 +118,11 @@ export const EmptyState: React.FC<EmptyProps> = ({
 }) => {
  return (
  <div className="max-w-2xl mx-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
- <div className="text-left py-10 sm:py-14 px-7 sm:px-9 glass rounded-3xl flex flex-col justify-center">
+ <div className="text-left py-10 sm:py-14 px-7 sm:px-9 surface rounded-3xl flex flex-col justify-center">
  <div className="w-12 h-12 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mb-6">
  <Compass className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
- <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
+ <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
  What's Good {city}
  </p>
  <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4 leading-tight">
