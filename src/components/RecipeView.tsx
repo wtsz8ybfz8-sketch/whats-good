@@ -119,7 +119,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {(
  <button
  onClick={() => onSelectRecipe(null)}
- className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.07em] text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
+ className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
  >
  <ChevronLeft className="w-3.5 h-3.5" />
  {isSavedTab ? (
@@ -167,6 +167,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <img
  src={r.image}
  alt={r.name}
+ decoding="async"
  referrerPolicy="no-referrer"
  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
  />
@@ -346,7 +347,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {/* Grocery delivery & dine-out follow-ups — recipes only */}
  {!r.id.startsWith('eat') && (
  <div className="border-t border-black dark:border-[#444] pt-8 mt-4 select-none">
- <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-4">
+ <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-4">
  Get it sorted
  </span>
  {/* Three hand-drawn retailer logos in their own brand colours — a teal pill, a
@@ -447,7 +448,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  return (
  <div className="max-w-[1000px] mx-auto w-full px-6 sm:px-8 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col gap-2 mb-8 sm:mb-12">
- <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold">
+ <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold">
  Here's what we found
  </span>
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">
@@ -523,7 +524,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Cuisine tag */}
  {rawEatery.cuisine && (
- <span className="inline-flex self-start font-mono text-xs font-bold uppercase tracking-[0.07em] px-2.5 py-1 rounded-full bg-[var(--accent-tint)] text-[var(--accent-terracotta)] mb-4 max-w-[70%] truncate">
+ <span className="inline-flex self-start font-mono text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--accent-tint)] text-[var(--accent-terracotta)] mb-4 max-w-[70%] truncate">
  {rawEatery.cuisine}
  </span>
  )}
@@ -581,6 +582,8 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <img
  src={r.image}
  alt={r.name}
+ loading="lazy"
+ decoding="async"
  referrerPolicy="no-referrer"
  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
  />
@@ -588,7 +591,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-60 mix-blend-multiply pointer-events-none transition-opacity duration-300 group-hover:opacity-40" />
  
  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
- <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-xs font-bold uppercase tracking-[0.2em] px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
+ <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
  {React.createElement(cuisineIcon(r.category), {
 'aria-hidden':'true',
  strokeWidth: 2,

@@ -6,7 +6,7 @@
 import React from 'react';
 import { motion, MotionConfig } from 'motion/react';
 import { ParsedRecipe } from '../types';
-import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info } from 'lucide-react';
+import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info, Sparkles, Wallet } from 'lucide-react';
 // getVenueExtras is deliberately no longer called — it synthesised menus, prices and
 // "specials" from a hash of the venue id. See the "What to expect" block below.
 import { getHappyHourStatus, formatDays } from '../venueExtras';
@@ -52,6 +52,37 @@ export const EateryView: React.FC<EateryViewProps> = ({
   const realHH = findCuratedHappyHour(rawEatery.name);
   const hhStatus = realHH ? getHappyHourStatus(realHH) : null;
 
+  // Utility Block source of truth. Assembled then filtered, so a field we don't have
+  // produces one fewer tile instead of a tile rendering an empty string. `openNow` is
+  // deliberately checked against `undefined` — `false` is a real, renderable answer
+  // ("Closed"), and a truthiness check would silently swallow it.
+  const utilityTiles: {
+    label: string;
+    value: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tone?: string;
+  }[] = [
+    hasRealDistance
+      ? { label: 'Distance', value: distanceLabel as string, icon: MapPin, tone: 'text-[var(--accent-terracotta)]' }
+      : null,
+    { label: 'Spend', value: formatPriceTier(rawEatery.priceSymbol, currency), icon: Wallet },
+    rawEatery.openNow !== undefined
+      ? {
+          label: 'Status',
+          value: rawEatery.openNow ? 'Open now' : 'Closed',
+          icon: Clock,
+          tone: rawEatery.openNow
+            ? 'text-emerald-700 dark:text-emerald-400'
+            : 'text-[var(--text-muted)]',
+        }
+      : null,
+  ].filter(Boolean) as {
+    label: string;
+    value: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tone?: string;
+  }[];
+
   return (
     <MotionConfig reducedMotion="user">
     <motion.div
@@ -61,15 +92,18 @@ export const EateryView: React.FC<EateryViewProps> = ({
       className="max-w-5xl mx-auto w-full"
     >
 
-      {/* Hero — CONTAINED within the column. The old full-bleed used a
-          left-1/2/-translate-x-1/2/w-screen breakout that mis-centred on wide desktop
-          and clipped the title and Back button off the left edge. */}
       {/* Colours here sit over a photo, not a theme surface — they stay mode-independent. */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
-        className="relative w-full h-[46vh] sm:h-[56vh] rounded-b-[26px] sm:rounded-[26px] sm:mt-3 overflow-hidden group"
+        // True full bleed: the negative margins exactly cancel <main>'s padding at each
+        // breakpoint (px-5 / sm:p-10 / lg:p-16), so the photo touches the outer boundary
+        // of the content column with no dead margin. This is NOT the old
+        // left-1/2/-translate-x-1/2/w-screen viewport breakout — that mis-centred on wide
+        // desktop and clipped the title and Back button off the left edge. Staying inside
+        // the column keeps the overlay controls addressable at every width.
+        className="relative -mx-5 sm:-mx-10 lg:-mx-16 -mt-6 sm:-mt-10 lg:-mt-16 w-[calc(100%+2.5rem)] sm:w-[calc(100%+5rem)] lg:w-[calc(100%+8rem)] h-[46vh] sm:h-[56vh] md:h-[60vh] rounded-b-[26px] md:rounded-b-[32px] overflow-hidden group"
       >
         <motion.img
           src={r.image}
@@ -86,7 +120,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         {/* Back — top left */}
         <button
           onClick={() => onSelectRecipe(null)}
-          className="absolute top-5 left-5 flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.07em] text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
+          className="absolute top-5 left-5 flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
         >
           <ChevronLeft className="w-3 h-3" />
           {isSavedTab ? `Saved (${recipes.length})` : `Results (${recipes.length})`}
@@ -110,14 +144,14 @@ export const EateryView: React.FC<EateryViewProps> = ({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute bottom-0 left-0 right-0 px-6 sm:px-10 pb-8 sm:pb-12"
+          className="absolute bottom-0 left-0 right-0 px-5 sm:px-10 pb-8 sm:pb-12"
         >
           {/* Was text-white/45, which over a bright photo (a yellow wall, a sunlit
               terrace) disappeared completely — the kitchen label was invisible on the
               venue this was tested against. Contrast is not optional; at /85 with a
               drop-shadow it holds against a light or dark image. */}
           {rawEatery.cuisine && (
-            <span className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.09em] text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] mb-3">
+            <span className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)] mb-3">
               {React.createElement(cuisineIcon(rawEatery.cuisine), {
                 'aria-hidden': 'true',
                 strokeWidth: 2,
@@ -155,7 +189,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
       <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 self-start lg:pt-4">
 
       {/* Address */}
-      <div className="px-6 sm:px-10 pt-5">
+      <div className="px-5 sm:px-10 pt-5">
         <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs font-mono">
           <MapPin className="w-3 h-3 flex-shrink-0" />
           <span>{rawEatery.address}</span>
@@ -163,10 +197,10 @@ export const EateryView: React.FC<EateryViewProps> = ({
       </div>
 
       {/* Rule */}
-      <div className="mx-6 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
+      <div className="mx-5 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
 
       {/* Contact — minimalist icon pillars */}
-      <div className="px-6 sm:px-10 flex items-start">
+      <div className="px-5 sm:px-10 flex items-start">
         <a
           href={directionsUrl}
           target="_blank"
@@ -177,7 +211,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <div className="w-11 h-11 rounded-full bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] flex items-center justify-center group-hover:opacity-90 transition-opacity">
             <Navigation className="w-4 h-4" />
           </div>
-          <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--text-subtle)]">Directions</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Directions</span>
         </a>
         <a
           href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
@@ -187,7 +221,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
             <Phone className="w-4 h-4 text-[var(--accent-terracotta)]" />
           </div>
-          <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--text-subtle)]">Call</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Call</span>
         </a>
         <a
           href={rawEatery.externalLink}
@@ -199,17 +233,17 @@ export const EateryView: React.FC<EateryViewProps> = ({
           <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--dusty-blue)] transition-colors">
             <ExternalLink className="w-4 h-4 text-[var(--dusty-blue)]" />
           </div>
-          <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--text-subtle)]">Website</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Website</span>
         </a>
       </div>
 
       {/* Rule */}
-      <div className="mx-6 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
+      <div className="mx-5 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
 
       {/* Happy Hour — only surfaces when there is one; live state leads because it's the
           only part of this page that expires. */}
       {realHH && hhStatus && (
-        <div className="px-6 sm:px-10 mb-8">
+        <div className="px-5 sm:px-10 mb-8">
           <div
             className={`rounded-2xl px-5 py-4 border ${
               hhStatus.state === 'live'
@@ -225,7 +259,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
                     <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
                   </span>
                 )}
-                <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--accent-terracotta)] font-bold">
+                <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
                   {realHH.headline}
                 </span>
               </span>
@@ -241,7 +275,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
                 </li>
               ))}
             </ul>
-            <p className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--text-subtle)]">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
               {formatDays(realHH.days)} · via {realHH.sourceLabel}
             </p>
           </div>
@@ -272,46 +306,127 @@ export const EateryView: React.FC<EateryViewProps> = ({
        * what Places actually knows), and a direct route to the venue's own menu. Less
        * content on screen, all of it load-bearing. Real happy-hour data still renders
        * in the sidebar; that comes from happyHourData.ts and is human-confirmed. */}
-      <div className="px-6 sm:px-10 mb-8">
-        <p className="font-mono text-xs uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-5">
-          What to expect
-        </p>
+      <div className="px-5 sm:px-10 mb-8">
 
-        {rawEatery.signatureDescription && (
-          <p className="font-sans text-[15px] leading-relaxed text-[var(--charcoal)] max-w-[62ch] mb-6">
-            {rawEatery.signatureDescription}
-          </p>
-        )}
-
-        <div className="flex flex-col">
-          {rawEatery.signatureOrder && (
-            <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
-              <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Known for</span>
-              <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
-                {rawEatery.signatureOrder}
+        {/* ── VIBE & ATMOSPHERE MATCH ──────────────────────────────────────────────
+            Answers "is this place right for how I feel", which is the question the whole
+            app is built around. `vibeMatch` is an authored field on the venue record, not
+            derived or synthesised — so the module simply does not render when it is
+            absent rather than emitting an empty tinted pill. */}
+        {rawEatery.vibeMatch && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              Vibe &amp; atmosphere
+            </p>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] px-4 py-2">
+              <Sparkles className="w-3.5 h-3.5 flex-shrink-0 text-[var(--accent-terracotta)]" />
+              <span className="font-sans text-[14px] font-semibold text-[var(--accent-terracotta)] first-letter:uppercase">
+                {rawEatery.vibeMatch}
               </span>
-            </div>
-          )}
-          {rawEatery.cuisine && (
-            <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
-              <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Kitchen</span>
-              <span className="inline-flex items-center gap-2 font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
-                {React.createElement(cuisineIcon(rawEatery.cuisine), {
-                  'aria-hidden': 'true',
-                  strokeWidth: 1.75,
-                  className: 'w-[15px] h-[15px] flex-shrink-0 text-[var(--accent-terracotta)]',
-                })}
-                {rawEatery.cuisine}
-              </span>
-            </div>
-          )}
-          <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
-            <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Typical spend</span>
-            <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
-              {formatPriceTier(rawEatery.priceSymbol, currency)}
             </span>
           </div>
-        </div>
+        )}
+
+        {/* ── UTILITY BLOCK ────────────────────────────────────────────────────────
+            The three facts that decide whether you walk there now: how far, what it
+            costs, whether the door is open. Tiles are built from the real fields only —
+            `utilityTiles` is filtered before render, so a venue missing distance shows
+            two tiles rather than a tile containing nothing. Fixed tile height keeps the
+            row from reflowing when a longer value lands. */}
+        {utilityTiles.length > 0 && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              At a glance
+            </p>
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
+              {utilityTiles.map((t) => (
+                <div
+                  key={t.label}
+                  className="surface-quiet rounded-2xl px-3 py-3.5 min-h-[84px] flex flex-col justify-between"
+                >
+                  <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
+                    {React.createElement(t.icon, { 'aria-hidden': 'true', className: 'w-3 h-3 flex-shrink-0' })}
+                    {t.label}
+                  </span>
+                  <span className={`font-sans text-[14px] font-semibold leading-tight ${t.tone ?? 'text-[var(--charcoal)]'}`}>
+                    {t.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {rawEatery.hoursToday && (
+              <p className="mt-2.5 font-mono text-xs text-[var(--text-muted)]">
+                Today: {rawEatery.hoursToday}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── SIGNATURE DIRECTIVE ──────────────────────────────────────────────────
+            What to actually order, and what is in it. Every field here is authored on the
+            venue record; nothing is inferred from the venue id (see the note above about
+            the synthesised menu this replaced). The whole module collapses when the venue
+            has no confirmed dish, which is the case for every Places-sourced result. */}
+        {(rawEatery.signatureOrder || rawEatery.signatureDescription || rawEatery.signatureIngredients.length > 0) && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              What to order
+            </p>
+
+            {rawEatery.signatureOrder && (
+              <h3 className="font-serif text-2xl sm:text-3xl leading-tight text-[var(--heading-color)] mb-3">
+                {rawEatery.signatureOrder}
+              </h3>
+            )}
+
+            {rawEatery.signatureDescription && (
+              <p className="font-sans text-[15px] leading-relaxed text-[var(--charcoal)] max-w-[62ch] mb-5">
+                {rawEatery.signatureDescription}
+              </p>
+            )}
+
+            {rawEatery.signatureIngredients.length > 0 && (
+              <>
+                <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-2.5">
+                  Check before you order
+                </p>
+                <ul className="flex flex-wrap gap-2">
+                  {rawEatery.signatureIngredients.map((ing) => (
+                    <li
+                      key={ing}
+                      className="rounded-full border border-[var(--rule)] px-3 py-1.5 font-sans text-[13px] text-[var(--charcoal)]"
+                    >
+                      {ing}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Kitchen — always true, always available. */}
+        {rawEatery.cuisine && (
+          <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
+            <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Kitchen</span>
+            <span className="inline-flex items-center gap-2 font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
+              {React.createElement(cuisineIcon(rawEatery.cuisine), {
+                'aria-hidden': 'true',
+                strokeWidth: 1.75,
+                className: 'w-[15px] h-[15px] flex-shrink-0 text-[var(--accent-terracotta)]',
+              })}
+              {rawEatery.cuisine}
+            </span>
+          </div>
+        )}
+        {hasRealWait && (
+          <div className="flex items-baseline justify-between gap-4 py-3.5 border-b border-[var(--row-border)]">
+            <span className="text-[13px] text-[var(--text-muted)] flex-shrink-0">Estimated wait</span>
+            <span className="font-sans text-[14px] font-semibold text-[var(--charcoal)] text-right">
+              {rawEatery.estimatedWait}
+            </span>
+          </div>
+        )}
 
         {/* The menu itself lives with the venue. Send people there properly, as a real
             action, instead of burying it in a footnote under fake prices. */}
@@ -337,64 +452,23 @@ export const EateryView: React.FC<EateryViewProps> = ({
       </div>{/* /MAIN */}
       </div>{/* /two-column grid */}
 
-      {/* Rule */}
-      <div className="mx-6 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
-
-      {/* Visit Details — pure typography, no container */}
-      <div className="px-6 sm:px-10 pb-10">
-        <p className="font-mono text-xs uppercase tracking-[0.09em] text-[var(--text-subtle)] mb-5">Visit Details</p>
-        <div className="flex flex-col">
-          {rawEatery.openNow !== undefined && (
-            <div className="flex items-center justify-between py-3.5 border-b border-[var(--row-border)]">
-              <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
-                <Clock className="w-3.5 h-3.5" /> {rawEatery.openNow ? 'Open Now' : 'Closed Now'}
-              </span>
-              <span className={`font-mono text-xs font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--text-subtle)]'}`}>
-                {rawEatery.hoursToday ?? (rawEatery.openNow ? 'Open' : 'Closed')}
-              </span>
-            </div>
-          )}
-          {hasRealWait && (
-            <div className="flex items-center justify-between py-3.5 border-b border-[var(--row-border)]">
-              <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
-                <Clock className="w-3.5 h-3.5" /> Estimated Wait
-              </span>
-              <span className="font-mono text-xs font-bold text-[var(--charcoal)]">{rawEatery.estimatedWait}</span>
-            </div>
-          )}
-          {hasRealDistance && (
-            <div className="flex items-center justify-between py-3.5 border-b border-[var(--row-border)]">
-              <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
-                <MapPin className="w-3.5 h-3.5" /> Distance
-              </span>
-              <span className="font-mono text-xs font-bold text-[var(--accent-terracotta)]">{distanceLabel}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between py-3.5">
-            <span className="flex items-center gap-2 font-mono text-xs text-[var(--text-muted)]">
-              <Phone className="w-3.5 h-3.5" /> Phone
-            </span>
-            <a
-              href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
-              className="font-mono text-xs font-bold text-[var(--charcoal)] hover:text-[var(--accent-terracotta)] transition-colors"
-            >
-              {rawEatery.phone}
-            </a>
-          </div>
-        </div>
-      </div>
+      {/* The old "Visit Details" list lived here and repeated open status, distance, wait
+          and phone — all four of which are now either in the Utility Block above or in the
+          sidebar's contact pillars and the mobile action bar. Two renderings of the same
+          fact on one page is not depth, it's noise; the block is gone rather than
+          restyled. */}
 
       {/* Footer */}
-      <div className="px-6 sm:px-10 pt-6 pb-[140px] lg:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
+      <div className="px-5 sm:px-10 pt-6 pb-[140px] lg:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
         <button
           onClick={() => onSelectRecipe(null)}
-          className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"
+          className="font-mono text-xs uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"
         >
           <ChevronLeft className="w-3 h-3" /> Back to results
         </button>
         <button
           onClick={onRegenerate}
-          className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--accent-terracotta)] hover:opacity-60 cursor-pointer transition-opacity"
+          className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] hover:opacity-60 cursor-pointer transition-opacity"
         >
           Find other eateries
         </button>

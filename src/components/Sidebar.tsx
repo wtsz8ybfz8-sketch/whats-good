@@ -80,7 +80,7 @@ const FilterGroup: React.FC<{
  {optional && <span className="font-normal text-[var(--text-muted)]"> — optional</span>}
  </span>
  {scroll ? (
- <div className="chip-rail -mx-6 lg:-mx-8 px-6 lg:px-8 flex gap-2 overflow-x-auto pb-1">
+ <div className="chip-rail -mx-5 lg:-mx-8 px-5 lg:px-8 flex gap-2 overflow-x-auto pb-1">
  {children}
  </div>
  ) : (
@@ -182,21 +182,27 @@ const FilterSheet: React.FC<{
  className="flex-shrink-0 flex items-center gap-3 px-6 pt-4 border-t border-[var(--rule)]"
  style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
  >
- {activeCount > 0 && (
+ {/* Rendered unconditionally and hidden with `invisible`, not unmounted. Mounting it
+ on the first selection changed the row's contents mid-interaction and pushed Done
+ sideways under the thumb that had just moved there — the user's next tap landed
+ somewhere else. Reserving the slot costs nothing and makes Done a fixed target. */}
  <button
  type="button"
  onClick={onClear}
- className="tap-44 flex items-center px-1 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--accent-terracotta)] cursor-pointer transition-colors"
+ disabled={activeCount === 0}
+ aria-hidden={activeCount === 0}
+ className={`tap-44 flex items-center px-1 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--accent-terracotta)] cursor-pointer transition-colors ${
+ activeCount === 0 ? 'invisible pointer-events-none' : ''
+ }`}
  >
  Clear all
  </button>
- )}
  <button
  type="button"
  onClick={onClose}
  className="press tap-44 ml-auto px-7 rounded-full bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] text-sm font-semibold cursor-pointer"
  >
- Done
+ {activeCount > 0 ? `Done · ${activeCount}` : 'Done'}
  </button>
  </div>
  </div>
@@ -351,7 +357,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  .join(' · ');
 
  return (
- <aside className="bg-transparent px-6 py-5 lg:p-8 flex flex-col gap-7 overflow-y-visible">
+ <aside className="bg-transparent px-5 py-5 lg:p-8 flex flex-col gap-7 overflow-y-visible">
  <div>
  <h1 className="font-serif text-3xl lg:text-[38px] font-semibold leading-[1.12] text-[var(--heading-color)] tracking-tight">
  Where are we<br />

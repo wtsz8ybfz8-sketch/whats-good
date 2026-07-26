@@ -122,7 +122,7 @@ export const EmptyState: React.FC<EmptyProps> = ({
  <div className="w-12 h-12 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mb-6">
  <Compass className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
- <p className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
+ <p className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
  What's Good {city}
  </p>
  <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4 leading-tight">

@@ -88,10 +88,10 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
       {/* Status header — the focal element is the live count, nothing else competes */}
       <div className="pt-2 pb-7">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <p className="font-mono text-xs uppercase tracking-[0.09em] text-[var(--text-subtle)]">
+          <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
             Happy Hour
           </p>
-          <span className="font-mono text-xs uppercase tracking-[0.07em] px-2 py-0.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-bold">
+          <span className="font-mono text-xs uppercase tracking-wider px-2 py-0.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-bold">
             Real listings · Cape Town
           </span>
         </div>
@@ -134,12 +134,12 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
                         <span className="absolute inline-flex w-full h-full rounded-full bg-[var(--accent-terracotta)] opacity-60 motion-safe:animate-ping" />
                         <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
                       </span>
-                      <span className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--accent-terracotta)] font-bold">
+                      <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
                         Live
                       </span>
                     </span>
                   ) : (
-                    <span className={`font-mono text-xs uppercase tracking-[0.07em] ${isSoon ? 'text-[var(--charcoal)]' : 'text-[var(--text-subtle)]'}`}>
+                    <span className={`font-mono text-xs uppercase tracking-wider ${isSoon ? 'text-[var(--charcoal)]' : 'text-[var(--text-subtle)]'}`}>
                       {isSoon ? 'Soon' : status.state === 'later-today' ? 'Today' : 'Upcoming'}
                     </span>
                   )}
@@ -159,7 +159,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
                     </span>
                   </div>
 
-                  <p className="font-mono text-xs uppercase tracking-[0.07em] text-[var(--text-subtle)] mt-1.5 mb-2.5">
+                  <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mt-1.5 mb-2.5">
                     {hh.headline}
                   </p>
 

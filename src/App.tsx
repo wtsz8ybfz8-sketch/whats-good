@@ -958,11 +958,15 @@ export default function App() {
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
- className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto px-4 sm:px-6 ${
+ className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto px-5 ${
  activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >
- <div className="surface rounded-3xl p-2 mb-6">
+ {/* Single owner of the horizontal margin is the px-5 wrapper above. This card
+ carries no padding of its own; the Sidebar owns only its inner rhythm. The old
+ wrapper px-4 + card p-2 + aside px-6 stack put content 48px in on a 390px
+ device and starved the Cuisine rail. */}
+ <div className="surface rounded-3xl overflow-hidden mb-6">
  <Sidebar
  dimensions={dimensions}
  nearbyCuisines={nearbyCuisines}
@@ -992,7 +996,7 @@ export default function App() {
 )}
 
  {/* Right detailed journal screen content pane */}
- <main className="p-6 sm:p-10 lg:p-16 flex flex-col justify-start overflow-y-auto min-h-[calc(100vh-60px)] w-full max-w-7xl mx-auto relative overflow-x-hidden">
+ <main className="px-5 py-6 sm:p-10 lg:p-16 flex flex-col justify-start overflow-y-auto min-h-[calc(100vh-60px)] w-full max-w-7xl mx-auto relative overflow-x-hidden">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
@@ -1090,7 +1094,7 @@ export default function App() {
  // real recipes immediately and filters live; "Surprise me" is demoted to what it
  // actually is — a shortcut, not the product.
  <div className="w-full max-w-[1000px] mx-auto">
- <div className="px-2 sm:px-4 mb-8">
+ <div className="sm:px-4 mb-8">
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-[var(--heading-color)]">
  Cooking tonight
  </h2>
@@ -1168,7 +1172,7 @@ export default function App() {
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
  />
 ) : (
- <p className="px-2 sm:px-4 py-16 text-sm text-[var(--text-muted)]">
+ <p className="sm:px-4 py-16 text-sm text-[var(--text-muted)]">
  Nothing matched that combination. Try clearing the kitchen filter.
  </p>
 )}
@@ -1178,7 +1182,7 @@ export default function App() {
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black dark:border-[#444] pb-6 mb-8 gap-4">
  <div>
- <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
+ <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
  {activeTab ==='saved-recipes' ?'Your shortlist' :'Grocery basket'}
  </span>
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">
