@@ -109,7 +109,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  if (selectedRecipe) {
  const r = selectedRecipe;
  return (
- <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] px-6 sm:px-8 py-4">
+ <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] sm:px-8 py-4">
  {/* Back is UNCONDITIONAL. It used to be gated on `recipes.length > 1 || isSavedTab`,
  which meant every single-result path — the Stay In random recipe, the wildcard,
  any deep link that lands on one dish — rendered a detail page with no way out.
@@ -446,7 +446,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  // Showcase grid if multiple matches are returned and none are explicitly active
  return (
- <div className="max-w-[1000px] mx-auto w-full px-6 sm:px-8 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-[1000px] mx-auto w-full sm:px-8 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col gap-2 mb-8 sm:mb-12">
  <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold">
  Here's what we found

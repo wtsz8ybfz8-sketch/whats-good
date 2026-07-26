@@ -602,3 +602,33 @@ html.dark .shimmer::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* ─── Full-bleed page grid ───────────────────────────── */
+/* The one primitive that lets a photo touch both physical edges of the viewport
+   while body content stays in a readable, centred column.
+   Replaces the negative-margin breakout (which only reached the edge of the
+   content column) and the old `w-screen` + `-translate-x-1/2` trick (which
+   mis-centred whenever a scrollbar made 100vw ≠ the visible width, and got its
+   left overhang eaten by `overflow-x-hidden`).
+   Gutters are `minmax(0, 1fr)` on purpose: each child already owns its own
+   horizontal padding (px-5 / sm:px-10), so the grid must not add a second inset.
+   A `.bleed` child spans full-start → full-end, i.e. x === 0 and
+   width === the viewport's scrollWidth, at every breakpoint. */
+.page-grid {
+  display: grid;
+  grid-template-columns:
+    [full-start] minmax(0, 1fr)
+    [content-start] minmax(0, 1200px) [content-end]
+    minmax(0, 1fr) [full-end];
+  align-content: start;
+}
+
+.page-grid > * {
+  grid-column: content;
+  min-width: 0;
+}
+
+.page-grid > .bleed {
+  grid-column: full;
+  width: 100%;
+}

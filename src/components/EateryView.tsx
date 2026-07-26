@@ -89,7 +89,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="max-w-5xl mx-auto w-full"
+      className="page-grid bleed w-full"
     >
 
       {/* Colours here sit over a photo, not a theme surface — they stay mode-independent. */}
@@ -97,13 +97,13 @@ export const EateryView: React.FC<EateryViewProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
-        // True full bleed: the negative margins exactly cancel <main>'s padding at each
-        // breakpoint (px-5 / sm:p-10 / lg:p-16), so the photo touches the outer boundary
-        // of the content column with no dead margin. This is NOT the old
-        // left-1/2/-translate-x-1/2/w-screen viewport breakout — that mis-centred on wide
-        // desktop and clipped the title and Back button off the left edge. Staying inside
-        // the column keeps the overlay controls addressable at every width.
-        className="relative -mx-5 sm:-mx-10 lg:-mx-16 -mt-6 sm:-mt-10 lg:-mt-16 w-[calc(100%+2.5rem)] sm:w-[calc(100%+5rem)] lg:w-[calc(100%+8rem)] h-[46vh] sm:h-[56vh] md:h-[60vh] rounded-b-[26px] md:rounded-b-[32px] overflow-hidden group"
+        // Full bleed means the physical edge of the viewport, not the edge of the content
+        // column. `.bleed` puts this in the grid's full-start → full-end track, so it
+        // measures x === 0 and width === the visible viewport at every breakpoint — no
+        // negative margins to keep in sync with an ancestor's padding, and no w-screen
+        // (which mis-centres against a scrollbar). The -mt cancels <main>'s top padding
+        // so the photo also runs up under the header.
+        className="bleed relative -mt-6 sm:-mt-10 lg:-mt-16 h-[46vh] sm:h-[56vh] md:h-[60vh] overflow-hidden group"
       >
         <motion.img
           src={r.image}

@@ -996,7 +996,13 @@ export default function App() {
 )}
 
  {/* Right detailed journal screen content pane */}
- <main className="px-5 py-6 sm:p-10 lg:p-16 flex flex-col justify-start overflow-y-auto min-h-[calc(100vh-60px)] w-full max-w-7xl mx-auto relative overflow-x-hidden">
+ {/* page-grid, not flex + padding + max-w-7xl. The horizontal inset now lives in
+ the grid's gutter columns and in each child's own px-5, never on <main> itself —
+ padding on <main> is exactly what stopped the hero photo from reaching the
+ viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
+ overhang (that's what ate the Back button), and a grid cannot overflow
+ horizontally, so it has nothing left to guard. */}
+ <main className="page-grid py-6 sm:py-10 lg:py-16 overflow-y-auto min-h-[calc(100vh-60px)] w-full relative">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
@@ -1026,7 +1032,10 @@ export default function App() {
 ) : (
  <div
  key={activeTab}
- className={`w-full flex-1 flex flex-col justify-start ${
+ // Sole owner of the mobile gutter for every tab's content now that <main> has
+ // none. One place, so RecipeView / HappyHourView / the Stay In pane / the status
+ // states all share a single left edge with the filter card above them.
+ className={`w-full flex-1 flex flex-col justify-start px-5 sm:px-0 ${
  isSlideRight ?'animate-ios-slide-in-right' :'animate-ios-slide-in-left'
  }`}
  >
