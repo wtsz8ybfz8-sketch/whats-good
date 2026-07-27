@@ -1264,7 +1264,7 @@ export default function App() {
 ) : (
  // SAVED RECIPES OR EATERIES COLLECTION TAB
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
- <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black dark:border-[#444] pb-6 mb-8 gap-4">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--rule)] pb-6 mb-8 gap-4">
  <div>
  <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
  {activeTab ==='saved-recipes' ?'Your shortlist' :'Grocery basket'}
@@ -1317,7 +1317,7 @@ export default function App() {
  className="surface surface-hover cursor-pointer rounded-2xl p-4 flex items-center gap-4 group transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(26,15,10,0.12)]"
  >
  {/* Thumbnail image */}
- <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[#F2F1EE] dark:bg-[#222222] flex-shrink-0 border border-black dark:border-[#444]">
+ <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[var(--surface-quiet-bg)] flex-shrink-0 border border-[var(--rule)]">
  <img
  src={r.image}
  alt={r.name}
