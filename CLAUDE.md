@@ -122,16 +122,47 @@ status. Check `${PIPESTATUS[0]}`.
 **Anything visible must be looked at before you claim it works.** Types passing has let
 broken layout reach the user in every session so far.
 
+**THE WAY TO SEE THIS APP — drive a real browser yourself. Never ask the user for a
+screenshot.** Verified working 2026-07-27. It takes about 90 seconds end to end.
+
+```bash
+npm install                                  # ~15s
+nohup npx vite --port 3000 > /tmp/dev.log 2>&1 &
+sleep 6 && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/   # expect 200
+
+# playwright-core goes in a scratch dir, NEVER in package.json (§9: deps stay small)
+cd "$SCRATCH" && npm init -y && npm i playwright-core
+```
+
+```js
+import { chromium } from 'playwright-core';
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',  // pre-installed
+  args: ['--no-sandbox'],                                                // required here
+});
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await page.goto('http://localhost:3000/');
+await page.screenshot({ path: `${SCRATCH}/view.png` });   // then Read the png — you can see it
+```
+
+This gives a **true 390px CSS viewport** — `innerWidth === 390`, `body.scrollWidth === 390`.
+It supersedes the old iframe workaround and its 384px correction; that was only needed
+because we did not own the browser. **Read the screenshot file** — do not reason about
+layout from `getBoundingClientRect` alone. Measure geometry AND look at the picture.
+
+- **Chromium is pre-installed** at `/opt/pw-browsers/`. Never run `playwright install`.
+- **This container cannot reach `themealdb.com` or Google Places** — outbound is proxied.
+  Recipe and venue lists render their empty state (`Nothing matched that combination`).
+  **That is a network artifact, not a bug.** Chrome shows `ERR_TUNNEL_CONNECTION_FAILED`.
+  Anything seeded from local constants — the Kitchen rail, chrome, tabs — renders fully
+  and IS measurable. Know which of the two you are looking at before drawing a conclusion.
+- Tab labels are **"Find a Place" / "Stay In" / "Happy Hour" / "Saved"**. The cooking tab
+  is `Stay In` — targeting `/cook/i` finds nothing.
 - **The in-app preview pane does not work in this project.** `preview_start` reports
   success, then every read returns "Policy check in progress for this tab; retry."
   forever. Don't attempt it.
 - **`resize_window` does not change the CSS viewport** — it resizes the OS window;
   `innerWidth` stays ~1440 and every media query stays desktop.
-- **What works: render the deployed or dev URL inside a 390×844 iframe** and query that
-  iframe's `contentDocument`. The iframe gets a ~6px scrollbar, so the real CSS viewport
-  is **384px**, not 390 — measure against `d.body.scrollWidth`, never `innerWidth`.
-- **Verify it yourself. Do not ask the user for screenshots.** (This supersedes older
-  guidance that told you to ask.)
 - **If the renderer times out, that is a hard stop — §3.** Do not re-probe.
 - **If you have not seen it, say you have not seen it.**
 
