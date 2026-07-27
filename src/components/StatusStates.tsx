@@ -140,12 +140,12 @@ export const EmptyState: React.FC<EmptyProps> = ({
  <div className="max-w-2xl mx-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="text-left py-10 sm:py-14 px-7 sm:px-9 surface rounded-3xl flex flex-col justify-center">
  <div className="w-12 h-12 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mb-6">
- <Compass className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
+ <Compass className="w-5 h-5 text-[var(--accent-terracotta)]" />
  </div>
- <p className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
+ <p className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold mb-3">
  What's Good{city ? ` ${city}` : ''}
  </p>
- <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4 leading-tight">
+ <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[var(--heading-color)] mb-4 leading-tight">
  Where are we eating?
  </h3>
  <p className="text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[420px] mb-8">
@@ -153,7 +153,7 @@ export const EmptyState: React.FC<EmptyProps> = ({
  </p>
  <button
  onClick={onSearchRandom}
- className="self-start px-6 py-3.5 bg-[#7C2D12] hover:bg-[#5E220E] text-white rounded-2xl font-sans text-xs font-bold transition-all shadow-md cursor-pointer hover:shadow-lg active:scale-95"
+ className="hit-44 self-start px-6 py-3.5 bg-[var(--accent-terracotta)] hover:opacity-90 text-[var(--accent-contrast)] rounded-2xl font-sans text-xs font-bold transition-all shadow-md cursor-pointer hover:shadow-lg active:scale-95"
  >
  Stay in tonight
  </button>

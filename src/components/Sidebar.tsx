@@ -80,7 +80,14 @@ const FilterGroup: React.FC<{
  {optional && <span className="font-normal text-[var(--text-muted)]"> — optional</span>}
  </span>
  {scroll ? (
- <div className="chip-rail -mx-5 lg:-mx-8 px-5 lg:px-8 flex gap-2 overflow-x-auto pb-1">
+ // Scroll on phones only. At 1440 the rail still scrolled inside a fixed-width
+ // card, so the last chip was sliced mid-word ("Burger…") against the card edge
+ // with no fade, no arrow and nothing suggesting more existed — hidden content
+ // with zero affordance. Two rules point the same way: prefer wrapping over
+ // truncation, and a swipe/scroll region must advertise itself. There is room to
+ // wrap at this width, so it wraps and nothing is hidden; below lg it stays the
+ // single horizontal rail the design permits, where a rail is the right pattern.
+ <div className="chip-rail -mx-5 lg:mx-0 px-5 lg:px-0 flex gap-2 overflow-x-auto lg:overflow-x-visible lg:flex-wrap pb-1">
  {children}
  </div>
  ) : (
