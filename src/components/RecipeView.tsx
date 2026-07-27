@@ -108,8 +108,15 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  // If a specific recipe is selected, show its glorious detailed page
  if (selectedRecipe) {
  const r = selectedRecipe;
+ // px-5 below is the BASE, not sm:. This shipped as `sm:px-8` alone, so padding only
+ // began at 640px and every phone got none — recipe title, back link, Save button and
+ // hero card all sat flush against the bezel (§11.5). Nothing above this element carries
+ // horizontal padding either: <main> is .page-grid (vertical padding only), and the
+ // tab-content wrapper that owns mobile px-5 is not an ancestor of the detail branch.
+ // This is the single owner of the horizontal margin here — don't pad a child, and don't
+ // remove it.
  return (
- <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] sm:px-8 py-4">
+ <div className="max-w-[820px] mx-auto w-full animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards] px-5 sm:px-8 py-4">
  {/* Back is UNCONDITIONAL. It used to be gated on `recipes.length > 1 || isSavedTab`,
  which meant every single-result path — the Stay In random recipe, the wildcard,
  any deep link that lands on one dish — rendered a detail page with no way out.
