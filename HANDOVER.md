@@ -2,8 +2,15 @@
 
 ## Status
 
-**Committed and pushed to `claude/docs-system-audit-emgpoj` at the user's explicit
-request.** Working tree clean.
+**Committed locally as `179f4aa` on `claude/docs-system-audit-emgpoj` at the user's
+explicit request. NOT PUSHED — the push is blocked.** Working tree clean.
+
+`git push -u origin claude/docs-system-audit-emgpoj` fails with **HTTP 403** from the
+session's local git proxy (`http://127.0.0.1:41729/git/...`). Attempted three times;
+re-attaching the repo with push access did not change it. The credentials this container
+holds are read-only. **The commit exists only in this container** — it is not on GitHub
+and therefore not on any Vercel deployment. Push it from a machine with write access, or
+re-run in a session granted push scope.
 
 Correction to session 8's handover, which was wrong: it claimed the `EateryView.tsx` hero
 fix was uncommitted. It was already in `6754d7c`, along with all four instruction files.
