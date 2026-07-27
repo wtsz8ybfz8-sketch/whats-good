@@ -113,8 +113,17 @@ your code. **A timed-out typecheck is not a pass and not a failure — report it
 "did not complete."** When it won't finish, rung 1 plus a stated caveat is the honest
 outcome. Never silently downgrade.
 
-**`npm run build` is `vite build`. It does not run `tsc`, so a deploy does not typecheck
-your work.** Do not tell the user that CI or Vercel will catch a type error. It won't.
+**`npm run build` is `vite build`. It does not run `tsc`, so a Vercel deploy does not
+typecheck your work.** But **GitHub Actions now does** — `.github/workflows/ci.yml` runs
+`tsc --noEmit` plus the build on every push, green in ~30s (first run 2026-07-27). So for
+**anything you have pushed**, read the Actions tab instead of guessing; the local
+"did not complete" caveat applies only to work still sitting in the tree.
+
+**Never diagnose an external service from inside this container.** The agent proxy returns
+**403 for every outbound URL** — `example.com` included. A 403 from a deployment tells you
+nothing about that deployment. A session burned real user trust reporting a proxy 403 as
+"Vercel Deployment Protection is on" and sending the user to change a setting that may
+never have been set. Reachability is checked from a real device, or not at all.
 
 **Don't let a pipe swallow an exit code.** `npm run build | tail -20` reports `tail`'s
 status. Check `${PIPESTATUS[0]}`.
