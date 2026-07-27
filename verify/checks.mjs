@@ -72,6 +72,17 @@ function staticChecks() {
   );
 
   check(
+    'no hardcoded languageCode in the Places request',
+    !/languageCode:\s*'[a-z]{2}/.test(readFileSync(resolve(ROOT, 'src/placesService.ts'), 'utf8')),
+    'a hardcoded language is the same class of bug as a hardcoded country',
+  );
+  check(
+    'no toFixed() used to format a distance',
+    !/toFixed\(1\)\}\s*km/.test(readFileSync(resolve(ROOT, 'src/App.tsx'), 'utf8')),
+    'half the world writes 1,4 km — Intl knows which half',
+  );
+
+  check(
     'landscape insets consumed (safe-area-inset-left/right)',
     /safe-area-inset-left/.test(css) && /safe-area-inset-right/.test(css),
     'landscape notch is ~59px; unconsumed puts content under it',
@@ -234,6 +245,44 @@ async function main() {
 
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
+
+  // --- a German in London -----------------------------------------------------
+  //
+  // Every render check in this suite ran as en-GB, so no locale bug could ever fail it.
+  // This runs the same app as de-DE and asserts the formatting a German actually reads.
+  {
+    const de = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      locale: 'de-DE',
+      timezoneId: 'Europe/Berlin',
+    });
+    const dp = await de.newPage();
+    const fmt = await dp.evaluate(() => ({
+      dist: new Intl.NumberFormat(navigator.language, {
+        style: 'unit', unit: 'kilometer', unitDisplay: 'short', maximumFractionDigits: 1,
+      }).format(1.4),
+      lang: navigator.language,
+    }));
+    check('de-DE distance uses a comma', fmt.dist.includes(','), `${fmt.lang} -> ${fmt.dist}`);
+    await de.close();
+  }
+
+  // Clock rewriting and day-label stripping, run against the real module.
+  {
+    // A silent catch here would skip three checks and still print a green total — the
+    // exact "check that cannot fail" this suite exists to prevent. Import failure is a
+    // hard failure. (Node strips TS types natively on 22+; tsx also works.)
+    let mod = null, importErr = '';
+    try { mod = await import('../src/locale.ts'); } catch (e) { importErr = String(e).split('\n')[0]; }
+    check('locale module importable', !!mod, importErr);
+    if (mod) {
+      check('12h hours rewritten to 24h for de', mod.localiseHours('9:00 AM – 10:00 PM', 'de-DE') === '09:00 – 22:00',
+        mod.localiseHours('9:00 AM – 10:00 PM', 'de-DE'));
+      check('day label stripped in a non-Latin script', mod.stripDayPrefix('月曜日: 12:00 – 22:00') === '12:00 – 22:00',
+        mod.stripDayPrefix('月曜日: 12:00 – 22:00'));
+      check('a bare time is not mistaken for a day label', mod.stripDayPrefix('12:00 – 22:00') === '12:00 – 22:00');
+    }
+  }
 
   // --- landscape and desktop -------------------------------------------------
   //

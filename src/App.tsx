@@ -17,6 +17,7 @@ import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon } from'lucide-react';
 import type { Venue } from'./venue';
 import { fetchVenues, detectCityFromCoords, formatPriceTier, isPlacesConfigured } from'./placesService';
+import { formatDistance } from'./locale';
 import { useSavedRecipes } from'./useSavedRecipes';
 import { cuisineIcon } from'./cuisineIcon';
 
@@ -82,7 +83,8 @@ function createEateryResult(
  // Only show a distance when the venue is plausibly local. Pinning a remote
  // destination (e.g. searching Paris from Cape Town) otherwise renders a
  // nonsensical "9341 km away"; past ~150km we drop it rather than mislead.
- distanceStr = Number.isFinite(dist) && dist <= 150 ? `${dist.toFixed(1)} km away` : '';
+ // Intl, not toFixed: half the world writes "1,4 km", not "1.4 km".
+ distanceStr = Number.isFinite(dist) && dist <= 150 ? `${formatDistance(dist)} away` : '';
  }
 
  const imgUrl = eatery.photoUrl || eateryPlaceholderImage(eatery.name);

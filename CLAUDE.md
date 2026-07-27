@@ -28,6 +28,13 @@ So is a wall of raw data with no judgement in it.
 
 ## 2. FAST MODE — the default operating mode
 
+**Baseline engineering is not a feature request.** The user should never have to ask for
+mobile AND desktop, light AND dark, portrait AND landscape, or a locale that is not the
+author's. These are the job, not an enhancement, and `verify/checks.mjs` enforces every
+one of them on every run — in CI as well, so it holds whether or not an agent remembers.
+If a request says "fix X", it means fix X across every viewport, both colour schemes and
+any locale. Do not ship half of that and wait to be told.
+
 One task = **one diagnosis, one focused implementation, one proportionate validation.**
 
 - Use the **cheapest check that can actually detect the changed behaviour.** A parse check
@@ -136,7 +143,7 @@ broken layout reach the user in every session so far.
 ```bash
 cd verify && npm install                      # playwright-core lives HERE, never in root
 cd .. && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &
-sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 24 checks; exit 0 = pass
+sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 31 checks; exit 0 = pass
 NO_PROXY='*' node driver.mjs && NO_PROXY='*' node driver.mjs --dark
 ```
 
@@ -197,6 +204,16 @@ could be shared, bookmarked or survive a refresh, and all nine history entries r
 and written with `replaceState` — never `pushState`, which would make the back gesture
 chew through tab switches before it could close a detail view. Venue ids come from a
 Places query and are not stable, so they are deliberately NOT addressable yet.
+
+**NEVER hardcode a locale, and never format a number, a date or a distance by hand.**
+`src/locale.ts` is the only place allowed to know how the user reads. The country
+assumptions (Cape Town, Rand) were removed and the same bug simply changed costume:
+`languageCode: 'en'` hardcoded into the Places request, `toFixed(1)` producing "1.4 km"
+for the half of the world that writes "1,4 km", 12-hour AM/PM hours shown to readers of a
+24-hour clock, and a day-label regex that only matched ASCII letters so any non-Latin
+script rendered "月曜日:" raw. Use `Intl`. Derive from `navigator.language`. And resolve
+"today" from the venue's `utcOffsetMinutes`, not the phone's clock — a phone still on
+Berlin time in London shows tomorrow's opening hours after 23:00.
 
 **Measure BOTH, EVERY TIME — mobile and desktop, portrait and landscape, light and dark.**
 That is 390×844, 844×390 and 1440×900, in both modes; `checks.mjs` runs all of them.

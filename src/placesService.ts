@@ -4,6 +4,7 @@
  */
 
 import { Venue } from './venue';
+import { localiseHours, placesLanguageCode, stripDayPrefix, venueDayIndex } from './locale';
 
 const PLACES_BASE = 'https://places.googleapis.com/v1';
 
@@ -37,6 +38,7 @@ interface Place {
   nationalPhoneNumber?: string;
   websiteUri?: string;
   regularOpeningHours?: PlaceOpeningHours;
+  utcOffsetMinutes?: number;
 }
 
 interface PlacesSearchResponse {
@@ -106,14 +108,14 @@ function priceLevelToTier(level?: string): 1 | 2 | 3 | 4 | undefined {
  * Extracts today's opening-hours line from Places' weekdayDescriptions array.
  * Google orders this Monday-first (index 0); JS Date.getDay() is Sunday-first (0).
  */
-function todaysHours(hours?: PlaceOpeningHours): string | undefined {
+function todaysHours(hours?: PlaceOpeningHours, utcOffsetMinutes?: number): string | undefined {
   const lines = hours?.weekdayDescriptions;
   if (!lines || lines.length !== 7) return undefined;
-  const jsDay = new Date().getDay(); // 0 = Sunday
-  const mondayFirstIndex = (jsDay + 6) % 7;
-  const line = lines[mondayFirstIndex];
-  // Lines look like "Monday: 9:00 AM – 10:00 PM" — strip the day prefix.
-  return line?.replace(/^[A-Za-z]+:\s*/, '');
+  // The day is resolved in the VENUE's timezone, not the phone's — see venueDayIndex.
+  const line = lines[venueDayIndex(utcOffsetMinutes)];
+  if (!line) return undefined;
+  // Day label stripped script-agnostically, clock rewritten to the reader's convention.
+  return localiseHours(stripDayPrefix(line));
 }
 
 /** Returns a direct photo URL for a Google Places photo reference. */
@@ -176,12 +178,17 @@ async function searchTextOnce(
         'places.nationalPhoneNumber',
         'places.websiteUri',
         'places.regularOpeningHours',
+        // Lets us resolve "today" where the venue is rather than where the phone is.
+        'places.utcOffsetMinutes',
       ].join(','),
     },
     body: JSON.stringify({
       textQuery,
       maxResultCount: 20,
-      languageCode: 'en',
+      // Was hardcoded 'en'. Google localises the venue type and the weekday lines from
+      // this, so it is the difference between "Italian restaurant" and
+      // "Italienisches Restaurant" for a phone set to German.
+      languageCode: placesLanguageCode(),
       ...(priceLevels ? { priceLevels } : {}),
     }),
   });
@@ -246,7 +253,7 @@ export async function fetchVenues(
         ? getPlacePhotoUrl(place.photos[0].name)
         : undefined;
       const openNow = place.regularOpeningHours?.openNow;
-      const hoursToday = todaysHours(place.regularOpeningHours);
+      const hoursToday = todaysHours(place.regularOpeningHours, place.utcOffsetMinutes);
 
       return {
         id: `eat-places-${place.id ?? index}`,
