@@ -75,7 +75,11 @@ jobs:
       # CTA bar). On a card it puts backdrop-filter cost on every row of a scrolling list
       # — the specific regression the .surface classes were introduced to prevent.
       # `.glass-range` is a different class (the Sidebar slider) and is excluded.
-      # Measured at 2 on 2026-07-27; this blocks a third from appearing.
+      # NOTE: the real count is 1, not 2 — only the header carries it; the mobile CTA bar
+      # dropped it (see index.css:124). The ceiling stays 2 because §7 still describes two
+      # legitimate chrome surfaces, but be aware it currently permits one new use. This
+      # counts surfaces, not placement: moving .glass from the header onto a card keeps
+      # the count at 1 and passes. §7's "never on a card" is agent discipline (§13.2).
       - name: .glass stays off cards
         run: |
           hits=$(grep -rnE '\bglass\b' src --include='*.tsx' | grep -v 'glass-range' || true)
@@ -131,7 +135,8 @@ jobs:
 
           # §6 — bottom chrome derives from --tabbar-h, never a number. A guessed offset
           # is how 7px of scrolling page ended up visible between two opaque bars.
-          # Baseline 5 (2026-07-27).
+          # All five real sites were migrated on 2026-07-27, so the ceiling is 0: any
+          # hit is a new violation.
           # Comment lines are excluded: index.css, EateryView and App all QUOTE the old
           # values while explaining the bug, and a check that counts its own
           # documentation as a violation trains people to raise the baseline.
@@ -140,13 +145,15 @@ jobs:
           ratchet "hardcoded bottom-chrome offsets (§6)" 0 "$c"
 
           # §6 — src/locale.ts is the ONLY module allowed to format for a human reader.
-          # toFixed elsewhere writes "1.5" to everyone who reads "1,5". Baseline 2.
+          # toFixed elsewhere writes "1.5" to everyone who reads "1,5". Both call sites
+          # moved to formatQuantity() on 2026-07-27, so the ceiling is 0.
           c=$(grep -rnoE 'toFixed\(' src --include='*.tsx' | grep -c . || true)
           ratchet "hand-formatted numbers outside locale.ts (§6)" 0 "$c"
 
-          # §7 — colour comes from tokens in index.css. Was reported as 233 and drifted
-          # down to 211 unnoticed, which is precisely why a bare report is not a gate.
+          # §7 — colour comes from tokens in index.css. Reported as 233, drifted down to
+          # 211 unnoticed, 203 after the RecipeView migration. A ceiling left above the
+          # real count is not a ratchet — it is 8 free regressions. Lower it every time.
           c=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
-          ratchet "hardcoded hex (§7)" 211 "$c"
+          ratchet "hardcoded hex (§7)" 203 "$c"
 
           exit $fail
