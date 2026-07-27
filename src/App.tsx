@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo, useRef } from'react';
 import { Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
+import { FALLBACK_AREAS, fetchAreas, orderAreasForCountry } from'./cuisineRail';
 import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
@@ -181,6 +182,25 @@ export default function App() {
  useEffect(() => {
  try { if (countryCode) localStorage.setItem('whats_good_country', countryCode); } catch {}
  }, [countryCode]);
+
+ // The Cooking tab's "Kitchen" rail. Derived, never hardcoded: the names come from
+ // TheMealDB's own area list so we can only offer a cuisine it can actually serve, and
+ // the order follows the detected country so a user in London leads with British and
+ // Indian rather than the app's original Cape Town defaults. See cuisineRail.ts.
+ // Seeded from the fallback so the rail has chips on first paint (CLAUDE.md §8: the
+ // primary content never waits on a network round trip), then replaced once resolved.
+ const [areas, setAreas] = useState<string[]>(FALLBACK_AREAS);
+ useEffect(() => {
+ let alive = true;
+ fetchAreas().then((a) => { if (alive) setAreas(a); });
+ return () => { alive = false; };
+ }, []);
+ // Six is the cap: enough to feel like a real choice, few enough to stay one wrapped
+ // row on a 384px viewport rather than becoming the carousel §11.4 forbids.
+ const kitchens = useMemo(
+ () => orderAreasForCountry(areas, countryCode).slice(0, 6),
+ [areas, countryCode],
+ );
  const [locState, setLocState] = useState<'idle' |'requesting' |'granted' |'denied'>('idle');
 
  // Trigger position query cleanly. `userInitiated` distinguishes the explicit
@@ -1139,7 +1159,7 @@ export default function App() {
 
  <div className="flex flex-wrap items-center gap-2">
  <span className="text-[12px] font-semibold text-[var(--charcoal)] mr-1">Kitchen</span>
- {['Italian','Middle Eastern','Pan-Asian','South African','Latin American'].map((c) => (
+ {kitchens.map((c) => (
  <button
  key={c}
  type="button"

@@ -8,6 +8,16 @@ you are.
 authoritative instruction file (operating mode, validation ladder, design system, hard
 rules). This README only covers running it.
 
+This folder is ONE project: the **What's Good** app. It is unrelated to the `work-os` /
+"Claude Code" folder, which is a separate app.
+
+| File | Holds |
+|---|---|
+| [CLAUDE.md](CLAUDE.md) | How to work on this project. Authoritative. Start and stay here. |
+| [HANDOVER.md](HANDOVER.md) | Live state of the last session only. A record, never a mandate. |
+| [IDEATION_BRIEF.md](IDEATION_BRIEF.md) | Original product intent. Background, not instruction. |
+| README.md | How to run it. |
+
 ## Run locally
 
 ```bash
@@ -39,7 +49,7 @@ lucide-react · motion v12. Deploys to Vercel. No test runner, no backend.
 src/
   App.tsx            main.tsx         index.css
   placesService.ts   campusData.ts    happyHourData.ts
-  recipeUtils.ts     useSavedRecipes.ts   types.ts
+  recipeUtils.ts     cuisineRail.ts   useSavedRecipes.ts   types.ts
   components/
     EateryView.tsx   RecipeView.tsx   HappyHourView.tsx
     Sidebar.tsx      StatusStates.tsx
