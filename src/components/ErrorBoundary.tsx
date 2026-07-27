@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!error) return this.props.children;
 
     return (
-      <div className="min-h-screen flex items-center justify-center px-5 py-16 bg-[var(--bg-warm)]">
+      <div className="min-h-dvh flex items-center justify-center px-5 py-16 bg-[var(--bg-warm)]">
         <div className="max-w-[420px] w-full text-center surface rounded-3xl px-7 py-12">
           <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-300 flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-6 h-6" />

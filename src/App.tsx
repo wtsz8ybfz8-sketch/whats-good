@@ -775,7 +775,7 @@ export default function App() {
  // SOUTH_AFRICAN_EATERIES[0] as everyone's recommendation. See StatusStates.tsx.
 
  return (
- <div className="min-h-screen flex flex-col relative text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
+ <div className="min-h-dvh flex flex-col relative text-[var(--charcoal)] antialiased">
  {/* Global Header */}
  {/* HIG: index.html sets apple-mobile-web-app-capable, so once this is added to the
  home screen the web view runs full-bleed and content sits UNDER the status bar /
@@ -1070,7 +1070,7 @@ export default function App() {
  viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
  overhang (that's what ate the Back button), and a grid cannot overflow
  horizontally, so it has nothing left to guard. */}
- <main className="page-grid py-6 sm:py-10 lg:py-16 overflow-y-auto min-h-[calc(100vh-60px)] w-full relative">
+ <main className="page-grid py-6 sm:py-10 lg:py-16 overflow-y-auto min-h-[calc(100dvh-60px)] w-full relative">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
