@@ -52,6 +52,24 @@ export function formatDistance(km: number, locale = userLocale()): string {
   }
 }
 
+/**
+ * A plain number for a human to read: ingredient quantities, scale multipliers.
+ *
+ * `toFixed` is a serialiser, not a formatter — it always emits a `.` and always pads to
+ * a fixed width, so a scaled recipe read "0.5 tsp" and "Scaled x1.5" to the half of the
+ * world that writes "0,5" and "x1,5". `Intl` picks the right decimal separator, and
+ * `maximumFractionDigits` drops the trailing zeros that the old `.replace(/\.0$/,'')`
+ * had to strip by hand.
+ */
+export function formatQuantity(n: number, maxDecimals = 2, locale = userLocale()): string {
+  if (!Number.isFinite(n)) return '';
+  try {
+    return new Intl.NumberFormat(locale, { maximumFractionDigits: maxDecimals }).format(n);
+  } catch {
+    return String(Math.round(n * 100) / 100);
+  }
+}
+
 /** True when this locale reads a 24-hour clock. Germany does; the US does not. */
 export function prefersH24(locale = userLocale()): boolean {
   try {

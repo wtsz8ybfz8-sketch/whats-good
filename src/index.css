@@ -204,7 +204,7 @@
   --border-color:       rgba(26, 26, 26, 0.07);
 
   /* Height of the mobile tab bar, as ONE source of truth.
-     The docked action bar used to be pinned at bottom-[64px] — a guess — while the tab
+     The docked action bar used to be pinned at a hardcoded 64px — a guess — while the tab
      bar actually renders 57px tall. The 7px difference was not padding: it was a strip
      of the scrolling page showing through between two pieces of opaque chrome, which is
      exactly what it looked like. Any hardcoded offset drifts the moment either bar's

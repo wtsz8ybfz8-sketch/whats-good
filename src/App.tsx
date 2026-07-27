@@ -1126,7 +1126,10 @@ export default function App() {
 
  {/* Main Layout Grid wrapper */}
  <div
- className="flex-1 flex flex-col relative w-full items-center pb-[76px] md:pb-0"
+ /* Content clearance for the fixed tab bar, from --tabbar-h + the home-indicator
+    inset. A hardcoded 76px was a guess against 57px of chrome; when it ran short the
+    last list row sat under the bar, unreachable. */
+ className="flex-1 flex flex-col relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0"
  style={{ paddingTop:'calc(60px + env(safe-area-inset-top))' }}
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}

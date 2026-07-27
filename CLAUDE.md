@@ -507,30 +507,39 @@ Found by grep against the rules in this file, on the commit that introduced this
 None of them fail any existing gate. They are recorded here rather than fixed in the same
 pass, so that the ledger and the fix are separately reviewable.
 
-1. **`openNow` truthiness — §8.3, a Trust defect.** `EateryView.tsx:70,72` and
-   `RecipeView.tsx:563,564` all read `rawEatery.openNow ? 'Open now' : 'Closed'`. When
-   Google publishes no opening hours the value is `undefined` and the app tells the user
-   the venue is **Closed** — asserting a fact it does not have, which is the exact failure
-   §8 exists to prevent. `App.tsx:596` does it correctly (`=== false`); the render sites
-   do not. The CI ratchet catches 3 of the 4 — `EateryView.tsx:72` wraps the `?` onto
-   its own line and the single-line grep cannot see it. Stated, not hidden.
-2. **Hardcoded bottom-chrome offsets — §6.** `EateryView.tsx:486` `bottom-[64px]`,
-   `RecipeView.tsx:446` and `:675` `bottom-[80px]`, `App.tsx:1129` `pb-[76px]`,
-   `index.css:207` `bottom-[64px]`. The rule is one token, all sites; five sites guess.
-   `checks.mjs` proves only the site it knows about.
-3. **Hand-formatted numbers outside `locale.ts` — §6.** `RecipeView.tsx:78`
-   (`toFixed(2)`, ingredient quantities) and `:253` (`toFixed(1)`, the plate multiplier)
-   render "0.5" and "x1.5" to readers who write "0,5" and "x1,5".
-4. **Hardcoded hex.** Count is **211** in `src/**/*.tsx` (CI baseline text says 233 — the
-   number moved and the comment did not). `RecipeView.tsx:253` alone hardcodes
-   `#7C2D12`, `#fca5a5` and `#FAF2F0` — three values that all have tokens.
-5. **Doc drift on `.glass`.** §7 says two surfaces; there is exactly **one** (`App.tsx:890`,
-   the header). The mobile CTA bar no longer carries it. The CI ceiling of 2 therefore
-   permits one new card to take it silently.
-6. **`pushState` at `App.tsx:831`.** §6's "never `pushState`" is about the `?tab=`/`?city=`
-   params; the detail view uses it deliberately so the back gesture closes the detail. The
-   code is right and the rule is written too broadly — **fixed by this clarification, not
-   by a code change.**
+1. ~~**`openNow` truthiness.**~~ **FALSE POSITIVE — the code was already correct.**
+   All four sites sit inside an outer `rawEatery.openNow !== undefined` guard; the grep
+   saw the inner ternary and not the guard. **Left unchanged, and no ratchet was added**,
+   because no grep can tell a guarded ternary from a bare one — it would have fired on
+   correct code forever. This is now the worked example for §13.2: read the site before
+   you believe the check.
+2. ~~Hardcoded bottom offsets.~~ **FIXED.** `EateryView.tsx` and `RecipeView.tsx` (×2)
+   now use `bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))]`, and `App.tsx`'s
+   content clearance derives from the same token. The safe-area inset lives in the
+   *offset* only — EateryView's own `paddingBottom` inset was removed, since counting it
+   in both places doubles it. `index.css:207` was a third false positive: the string
+   `bottom-[64px]` there is inside the comment explaining the original bug. Ratchet is
+   now **0**, with comment lines excluded so the docs don't count as violations.
+3. ~~Hand-formatted numbers.~~ **FIXED.** New `formatQuantity()` in `locale.ts` (Intl,
+   `maximumFractionDigits`) replaces both `toFixed` calls in `RecipeView.tsx`. Ingredient
+   quantities and the plate multiplier now read "0,5" and "x1,5" where that is correct.
+   `Intl` drops trailing zeros itself, so the `.replace(/\.0$/,'')` hacks are gone.
+   Ratchet is now **0** for `toFixed` in `src/**/*.tsx`.
+4. **Hardcoded hex: 211 → 203.** The Scaled chip's three hardcoded values
+   (`#7C2D12`/`#fca5a5`/`#FAF2F0`) and the toast's now use `--accent-terracotta`,
+   `--accent-tint`, `--accent-tint-border`, `--charcoal` and `--bg-warm`. The toast also
+   gains a real dark mode: it was `bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white`, i.e. dark
+   grey on dark with white text; the tokens invert it correctly in both schemes.
+   **Ratchet lowered to 203 — the remainder is Phase 2 and is still open.**
+5. **Doc drift on `.glass` — still open.** §7 says two surfaces; there is exactly one
+   (`App.tsx:890`, the header). The mobile CTA bar dropped it (see `index.css:124`).
+   The CI ceiling of 2 therefore still permits one card to take it silently.
+6. **`pushState` at `App.tsx:831`** — the code is right; §6's rule was written too
+   broadly. Fixed by the clarification in this file, not by a code change.
+
+**Three of the six were false positives.** That is the finding, not a footnote: a grep
+written from a rule catches the shape of a violation, never the fact of one. Every ratchet
+in `ci.yml` is a tripwire that tells you where to *look*; none of them is a verdict.
 
 ### 13.4 The honesty contract for reporting
 

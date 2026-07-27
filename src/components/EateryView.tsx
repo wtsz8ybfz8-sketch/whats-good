@@ -483,9 +483,12 @@ export const EateryView: React.FC<EateryViewProps> = ({
       {/* Mobile sticky action bar — the whole journey ends at "go there" or
           "call ahead", so those actions stay under the thumb while the user
           scrolls the menu. Desktop keeps the sidebar pillars; lg:hidden. */}
-      <div className="lg:hidden fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-2 pt-2 bg-[var(--bg-warm)]/90 backdrop-blur-md border-t border-[var(--rule)] flex gap-3"
-        style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
-      >
+      {/* Sits ON the tab bar, derived from --tabbar-h — never a number. Pinned at a
+          hardcoded 64px against a 57px bar this left a 7px strip of page visible between
+          two opaque bars. The safe-area inset belongs in the OFFSET (the bar it stacks
+          on already clears the home indicator), so the padding below is a flat 0.5rem —
+          counting the inset in both places would double it. */}
+      <div className="lg:hidden fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-40 px-4 pb-2 pt-2 bg-[var(--bg-warm)]/90 backdrop-blur-md border-t border-[var(--rule)] flex gap-3">
         <a
           href={directionsUrl}
           target="_blank"

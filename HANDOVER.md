@@ -2,6 +2,25 @@
 
 ## Status
 
+**Latest session — §13.3 violations fixed, shipped.** Three of the six flagged items were
+**false positives** and were left alone: `openNow` was already guarded by
+`!== undefined` at every site, and two "hardcoded offsets" were the comments *describing*
+the original bug. Fixed for real: the four bottom-chrome offsets now derive from
+`--tabbar-h` (`EateryView`, `RecipeView` ×2, `App` content clearance), both `toFixed`
+calls became `formatQuantity()` in `locale.ts` via `Intl`, and the Scaled chip + toast
+moved off hex onto tokens (211 → 203), which also gave the toast a real dark mode.
+CI ratchets updated to the measured truth: offsets 0, toFixed 0, hex 203, and the
+openNow ratchet deleted rather than left firing on correct code.
+
+**Verification actually run:** `verify/checks.mjs` **30/31**, and the one failure
+(`browser back restores list scroll position — no card to test`) was confirmed
+**pre-existing** by re-running with the changes stashed — identical 30/31. It is a
+fixture artifact: no venue cards render in this container. `driver.mjs` light + dark,
+6 views each, screenshots read. `npx esbuild` clean on all four touched files.
+**`tsc --noEmit` was NOT run** — read the Actions tab for the type verdict.
+**Not visually confirmed:** the Scaled chip's new tokens, which only render when
+`plates !== defaultPlates`, a state no screenshot in the sweep reaches.
+
 **This session (structural checks audit) — docs + CI only, no `src/` change.** Added
 CLAUDE.md **§13 (the structural check ledger)** and **§14 (skills policy)**, replaced the
 non-blocking hex report in `.github/workflows/ci.yml` with four **ratchets**, and extended

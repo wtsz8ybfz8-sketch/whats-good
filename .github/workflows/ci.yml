@@ -112,25 +112,27 @@ jobs:
           }
           echo "### Structural ratchets (§13)" >> "$GITHUB_STEP_SUMMARY"
 
-          # §8.3 — `openNow` is boolean|undefined. A truthy test renders "Closed" for a
-          # venue whose hours Google never published: a fact the app does not have.
-          # Baseline 3 = EateryView 70 + RecipeView 563,564 (2026-07-27). NOTE: the
-          # 4th known site, EateryView:72, wraps the `?` onto its own line and this
-          # single-line regex does NOT see it — a check that cannot fail on that form.
-          # Recorded rather than hidden; §13.3 item 1 lists all four.
-          c=$(grep -rnoE '\bopenNow\s*\?' src --include='*.tsx' | grep -c . || true)
-          ratchet "openNow truthiness (§8.3)" 3 "$c"
+          # NOTE: there is deliberately NO openNow ratchet. The audit that added this
+          # step flagged 4 sites, then reading them showed all 4 sit inside an outer
+          # `openNow !== undefined` guard — the code was already correct and the grep
+          # could not see the guard. A grep cannot distinguish a guarded ternary from a
+          # bare one, so this rule stays agent-discipline only (§13.2) rather than
+          # shipping a check that fires on correct code.
 
           # §6 — bottom chrome derives from --tabbar-h, never a number. A guessed offset
           # is how 7px of scrolling page ended up visible between two opaque bars.
           # Baseline 5 (2026-07-27).
-          c=$(grep -rnoE '(bottom|pb)-\[[0-9]+px\]' src | grep -c . || true)
-          ratchet "hardcoded bottom-chrome offsets (§6)" 5 "$c"
+          # Comment lines are excluded: index.css, EateryView and App all QUOTE the old
+          # values while explaining the bug, and a check that counts its own
+          # documentation as a violation trains people to raise the baseline.
+          c=$(grep -rnE '(bottom|pb)-\[[0-9]+px\]' src \
+                | grep -vE ':[[:space:]]*(\*|//|\{?/\*)' | grep -c . || true)
+          ratchet "hardcoded bottom-chrome offsets (§6)" 0 "$c"
 
           # §6 — src/locale.ts is the ONLY module allowed to format for a human reader.
           # toFixed elsewhere writes "1.5" to everyone who reads "1,5". Baseline 2.
           c=$(grep -rnoE 'toFixed\(' src --include='*.tsx' | grep -c . || true)
-          ratchet "hand-formatted numbers outside locale.ts (§6)" 2 "$c"
+          ratchet "hand-formatted numbers outside locale.ts (§6)" 0 "$c"
 
           # §7 — colour comes from tokens in index.css. Was reported as 233 and drifted
           # down to 211 unnoticed, which is precisely why a bare report is not a gate.

@@ -7,6 +7,7 @@ import React, { useState, useEffect } from'react';
 import { eateryPlaceholderImage } from '../App';
 import { formatPriceTier, priceTierLabel } from '../placesService';
 import { ParsedRecipe } from'../types';
+import { formatQuantity } from '../locale';
 import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, MapPin, Star } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
 
@@ -74,8 +75,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  
  if (!isNaN(val) && val > 0) {
  const scaled = val * ratio;
- // Format to max 2 decimal places if needed
- return Number.isInteger(scaled) ? scaled.toString() : scaled.toFixed(2).replace(/\.00$/,'');
+ // Intl, not toFixed: toFixed always emits a "." and pads to a fixed width, so a
+ // scaled recipe read "0.5 tsp" to everyone who writes "0,5". Intl drops the
+ // trailing zeros itself, so the old .replace() is gone with it.
+ return formatQuantity(scaled, 2);
  }
  return match;
  });
@@ -250,7 +253,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5]">
  Ingredients
  {plates !== defaultPlates && (
- <span className="ml-3 text-xs font-mono text-[#7C2D12] dark:text-[#fca5a5] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 px-2 py-0.5 rounded-md align-middle">Scaled x{(plates/defaultPlates).toFixed(1).replace(/\.0$/,'')}</span>
+ <span className="ml-3 text-xs font-mono text-[var(--accent-terracotta)] uppercase tracking-wider bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] px-2 py-0.5 rounded-md align-middle">Scaled x{formatQuantity(plates / defaultPlates, 1)}</span>
 )}
  </h3>
  <ChevronDown className="md:hidden w-4 h-4 text-[var(--charcoal)] opacity-50 ml-2 group-open:rotate-180 transition-transform flex-shrink-0" />
@@ -443,7 +446,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
  </div>
  {toastMsg && (
- <div className="fixed bottom-[80px] md:bottom-6 right-4 md:right-6 z-50 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-white/10 max-w-sm">
+ // Clears the tab bar via --tabbar-h + the home-indicator inset, never a guessed
+ // number: 80px was 23px of luck against a 57px bar, and would have sat UNDER it
+ // the moment the bar grew.
+ <div className="fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1rem)] md:bottom-6 right-4 md:right-6 z-50 bg-[var(--charcoal)] text-[var(--bg-warm)] py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-[var(--border-color)] max-w-sm">
  <div className="w-2.5 h-2.5 rounded-full bg-[#7C2D12] animate-pulse flex-shrink-0" />
  <span>{toastMsg}</span>
  </div>
@@ -672,7 +678,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </button>
  </div>
  {toastMsg && (
- <div className="fixed bottom-[80px] md:bottom-6 right-4 md:right-6 z-50 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-white/10 max-w-sm">
+ // Clears the tab bar via --tabbar-h + the home-indicator inset, never a guessed
+ // number: 80px was 23px of luck against a 57px bar, and would have sat UNDER it
+ // the moment the bar grew.
+ <div className="fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1rem)] md:bottom-6 right-4 md:right-6 z-50 bg-[var(--charcoal)] text-[var(--bg-warm)] py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-[var(--border-color)] max-w-sm">
  <div className="w-2.5 h-2.5 rounded-full bg-[#7C2D12] animate-pulse flex-shrink-0" />
  <span>{toastMsg}</span>
  </div>
