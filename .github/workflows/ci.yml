@@ -43,6 +43,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The regression suite. Every check in it corresponds to a defect that SHIPPED and
+      # was found by the user rather than by any check. Running it here means it runs
+      # whether or not an agent remembers to.
+      - name: Regression checks (verify/checks.mjs)
+        run: |
+          npm --prefix verify ci || npm --prefix verify install
+          VITE_GOOGLE_PLACES_KEY=ci-fixture-key npx vite --port 3000 &
+          npx wait-on -t 60000 http://localhost:3000/ || sleep 10
+          node verify/checks.mjs
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+
       # --- Guards for rules CLAUDE.md states as prose and nothing enforces ---
       #
       # These exist because a written rule that only an agent reads is a rule that gets

@@ -267,11 +267,52 @@ export default function App() {
  }
  });
 
- // Opening a venue used to leave you wherever you happened to be scrolled, so the
- // detail page appeared to "open in the middle". A pushed view always starts at its top.
+ /**
+  * Scroll restoration.
+  *
+  * This effect used to be `scrollTo(0)` on every change of `selectedRecipe?.id`, which
+  * includes the change TO null — so closing a detail, or swiping back in Safari, threw
+  * you to the top of the list every time. You would scroll through twenty venues, open
+  * the last one, come back, and start again from the first. That is the single thing
+  * that makes a web app feel like a web page instead of an app.
+  *
+  * Forward into a detail starts at the detail's top (a pushed view always does).
+  * Backward restores exactly where the list was. `scrollRestoration = 'manual'` stops
+  * the browser applying its own guess on popstate and fighting this.
+  */
+ const listScrollY = useRef(0);
+ const prevDetailId = useRef<string | null>(null);
+
+ useEffect(() => {
+ if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+ }, []);
+
+ useEffect(() => {
+ const id = selectedRecipe?.id ?? null;
+ const prev = prevDetailId.current;
+ prevDetailId.current = id;
+
+ if (id && !prev) {
+ // Entering a detail — remember the list position before the list unmounts.
+ listScrollY.current = window.scrollY;
+ window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
+ } else if (id && prev) {
+ // Detail to a different detail; still a forward move.
+ window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
+ } else if (!id && prev !== null) {
+ // Back to the list. Two frames: the first lets the list re-mount, the second runs
+ // after layout, so the target offset actually exists to scroll to.
+ const y = listScrollY.current;
+ requestAnimationFrame(() =>
+ requestAnimationFrame(() => window.scrollTo({ top: y, behavior:'instant' as ScrollBehavior })),
+);
+ }
+ }, [selectedRecipe?.id]);
+
+ // Switching tabs IS a fresh context, so it starts at the top — unlike going back.
  useEffect(() => {
  window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
- }, [selectedRecipe?.id, activeTab]);
+ }, [activeTab]);
 
  useEffect(() => {
  document.documentElement.classList.toggle('dark', isDark);

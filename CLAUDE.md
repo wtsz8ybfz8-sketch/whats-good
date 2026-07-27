@@ -131,6 +131,48 @@ status. Check `${PIPESTATUS[0]}`.
 **Anything visible must be looked at before you claim it works.** Types passing has let
 broken layout reach the user in every session so far.
 
+**BEFORE reporting anything as working, run the QA gate — `/qa-gate`, or by hand:**
+
+```bash
+cd verify && npm install                      # playwright-core lives HERE, never in root
+cd .. && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &
+sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 11 checks; exit 0 = pass
+NO_PROXY='*' node driver.mjs && NO_PROXY='*' node driver.mjs --dark
+```
+
+`NO_PROXY='*'` is required or localhost returns 000. **CI runs `checks.mjs` too**, so it
+runs whether or not an agent remembers. Every check in it exists because that bug
+shipped and *the user* found it.
+
+**A check that cannot fail is not evidence.** Before trusting a green result, name the
+result that would have been red. Rendering at 390px in headless Chromium cannot fail an
+iOS safe-area bug. `tsc` could not fail a React prop error while `@types/react` was
+missing — which it was, for this project's entire history.
+
+**Two platform truths that no local render can check:**
+
+- **`viewport-fit=cover` must stay in the viewport meta tag.** Without it iOS Safari
+  reports every `env(safe-area-inset-*)` as **0**, so every safe-area rule silently does
+  nothing — while rendering perfectly here, where 0 is the correct value. It was missing
+  for this project's whole life.
+- **Never use `100vh` or `min-h-screen`.** On iOS Safari `100vh` is the viewport with the
+  browser chrome *hidden*, so the layout is taller than the visible area whenever the URL
+  bar shows, and fixed bottom chrome separates from the browser edge. Use `dvh`.
+  `checks.mjs` fails the build if either regresses.
+
+**Bottom-chrome offsets come from `--tabbar-h`, never a number.** The action bar sat at a
+hardcoded `bottom-[64px]` against a 57px tab bar: 7px of scrolling page visible between
+two opaque bars. Content padding guessed too (`pb-[120px]` against 142px of chrome), so
+list rows sat under the bars unreachable. One token, all sites.
+
+**Back must restore, not reset.** `scrollTo(0)` keyed on the detail id fired when the id
+became `null`, so every browser/swipe back threw the user to the top of the list.
+Forward starts at top; back restores the saved offset; `history.scrollRestoration` is
+`'manual'` so the browser does not fight it.
+
+**Measure desktop too.** An entire session measured only 390px light and shipped a rail
+clipped mid-word, 36px tab targets and a duplicated headline to 1440.
+
 **THE WAY TO SEE THIS APP — drive a real browser yourself. Never ask the user for a
 screenshot.** Verified working 2026-07-27. It takes about 90 seconds end to end.
 
