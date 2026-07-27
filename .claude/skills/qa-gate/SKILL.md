@@ -21,7 +21,7 @@ npm install                                                   # once
 cd verify && npm install                                      # once — playwright-core lives HERE, never in root package.json
 cd /home/user/whats-good && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &
 sleep 5
-cd verify && NO_PROXY='*' node checks.mjs                     # 18 checks, exit 0 = pass
+cd verify && NO_PROXY='*' node checks.mjs                     # 24 checks, exit 0 = pass
 NO_PROXY='*' node driver.mjs                                  # 6 views, screenshots -> verify/out/
 NO_PROXY='*' node driver.mjs --dark                           # same, dark
 cd .. && npx tsc --noEmit && npx vite build
@@ -40,7 +40,7 @@ measurement and obvious in the screenshot. Measure geometry AND look at the pict
 
 ## Gate: do not report success unless all of these are true
 
-- [ ] `verify/checks.mjs` exits 0 (18/18)
+- [ ] `verify/checks.mjs` exits 0 (24/24)
 - [ ] `tsc --noEmit` exits 0 — and `@types/react` is installed, or it is checking nothing
 - [ ] `vite build` exits 0 (check `${PIPESTATUS[0]}`, not the tail's status)
 - [ ] All 6 views rendered, **light and dark**

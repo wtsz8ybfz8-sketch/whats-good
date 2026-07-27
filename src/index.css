@@ -304,6 +304,16 @@ html.dark {
  */
 html {
   background: var(--bg-warm);
+  /* Matches the meta tag; keeps UA furniture (scrollbars, controls, the iOS rubber-band
+     overscroll area) on the app's side of the theme instead of defaulting to light. */
+  color-scheme: light;
+  /* iOS rubber-band overscroll reveals whatever is behind the document. With a painted
+     canvas that is --bg-warm; without this the browser can show its own default. */
+  overscroll-behavior-y: none;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {

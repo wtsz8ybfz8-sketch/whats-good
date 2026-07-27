@@ -136,7 +136,7 @@ broken layout reach the user in every session so far.
 ```bash
 cd verify && npm install                      # playwright-core lives HERE, never in root
 cd .. && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &
-sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 18 checks; exit 0 = pass
+sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 24 checks; exit 0 = pass
 NO_PROXY='*' node driver.mjs && NO_PROXY='*' node driver.mjs --dark
 ```
 
@@ -182,6 +182,21 @@ comes out.** Never use `background-attachment: fixed`. `checks.mjs` fails on bot
 on a notched iPhone in landscape and 0 everywhere else. `.page-grid` absorbs it, and
 full-bleed fixed chrome uses `.safe-x` so the FILL stays edge-to-edge while the CONTENT
 clears the notch. The bug that made this visible was only ever reproducible in landscape.
+
+**The browser's own chrome is part of your app.** `theme-color` tints the bar iOS Safari
+draws around the page. It was one hardcoded terracotta, so a dark app sat inside brown
+browser chrome — another band of the wrong colour welded to the screen edge. Two tags with
+`prefers-color-scheme` media queries, PLUS a live one driven from the dark-mode class,
+because this app's dark mode is a manual toggle that can disagree with the system. And
+declare `color-scheme` (meta + CSS) or the UA renders scrollbars and the iOS rubber-band
+overscroll in light mode inside a dark app.
+
+**Every screen needs a URL and a title.** All navigation lived in React state, so nothing
+could be shared, bookmarked or survive a refresh, and all nine history entries read
+"What's Good". `?tab=` and `?city=` are seeded on load, validated against the known set,
+and written with `replaceState` — never `pushState`, which would make the back gesture
+chew through tab switches before it could close a detail view. Venue ids come from a
+Places query and are not stable, so they are deliberately NOT addressable yet.
 
 **Measure BOTH, EVERY TIME — mobile and desktop, portrait and landscape, light and dark.**
 That is 390×844, 844×390 and 1440×900, in both modes; `checks.mjs` runs all of them.

@@ -61,6 +61,17 @@ function staticChecks() {
     'iOS Safari paints it unreliably and leaves the safe area bare',
   );
   check(
+    'theme-color follows both colour schemes',
+    (html.match(/name="theme-color"/g) || []).length >= 2 && /theme-color[^>]*media=/.test(html),
+    'one hardcoded value tints the browser chrome the wrong colour in one mode',
+  );
+  check(
+    'color-scheme declared',
+    /name="color-scheme"/.test(html) && /color-scheme:/.test(css),
+    'otherwise scrollbars and overscroll render light inside a dark app',
+  );
+
+  check(
     'landscape insets consumed (safe-area-inset-left/right)',
     /safe-area-inset-left/.test(css) && /safe-area-inset-right/.test(css),
     'landscape notch is ~59px; unconsumed puts content under it',
@@ -203,6 +214,26 @@ async function main() {
     check(`${label}: no overflow, all targets >=44pt`, !r.over && r.miss.length === 0,
       r.miss.length ? r.miss.join(', ') : '');
   }
+
+  // --- deep links and titles --------------------------------------------------
+  //
+  // Nothing was in the URL, so no screen in this product could be shared, bookmarked or
+  // survive a refresh, and every history entry had the same title.
+  await page.goto(BASE + '?tab=happy-hour&city=Lisbon', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1800);
+  const deep = await page.evaluate(() => ({
+    title: document.title,
+    hh: /Happy Hour/i.test(document.body.innerText),
+    city: /Lisbon/.test(document.body.innerText),
+    theme: document.querySelector('meta[name="theme-color"]:not([media])')?.getAttribute('content'),
+  }));
+  check('?tab= opens that tab', deep.hh, deep.title);
+  check('?city= is honoured', deep.city);
+  check('document.title names the screen', /Happy hour/i.test(deep.title), deep.title);
+  check('live theme-color meta present', !!deep.theme, deep.theme || 'missing');
+
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1500);
 
   // --- landscape and desktop -------------------------------------------------
   //

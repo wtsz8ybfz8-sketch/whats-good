@@ -131,8 +131,18 @@ function createEateryResult(
 }
 
 export default function App() {
- const [activeTab, setActiveTab] = useState<ActiveTab>('mood');
- const [prevTab, setPrevTab] = useState<ActiveTab>('mood');
+ /* Seed from the URL so a shared or bookmarked link opens where it says it does.
+    Validated against the known set — a hand-edited ?tab=nonsense must land on Find,
+    not render an empty shell. */
+ const initialTab = ((): ActiveTab => {
+ try {
+ const t = new URLSearchParams(window.location.search).get('tab');
+ const valid: ActiveTab[] = ['mood','happy-hour','random','saved-recipes','saved-eateries'];
+ return valid.includes(t as ActiveTab) ? (t as ActiveTab) :'mood';
+ } catch { return 'mood'; }
+ })();
+ const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
+ const [prevTab, setPrevTab] = useState<ActiveTab>(initialTab);
  // City is auto-detected from the user's location, or typed. There is deliberately no
  // default city: this app began as a Cape Town product and 'Cape Town' sat here as the
  // seed value, so a user in London was greeted by another hemisphere and offered South
@@ -142,7 +152,10 @@ export default function App() {
  // fresh detection runs in the background.
  const [city, setCity] = useState<City>(() => {
  try {
- return localStorage.getItem('whats_good_city') || '';
+ // A ?city= in the link wins over this device's last city: the point of sending
+ // someone "what's good in Lisbon" is that they see Lisbon.
+ const fromUrl = new URLSearchParams(window.location.search).get('city');
+ return (fromUrl && fromUrl.trim()) || localStorage.getItem('whats_good_city') || '';
  } catch {
  return '';
  }
@@ -317,7 +330,56 @@ export default function App() {
  useEffect(() => {
  document.documentElement.classList.toggle('dark', isDark);
  localStorage.setItem('whats_good_dark_mode', String(isDark));
+
+ /* The two <meta name="theme-color"> tags key off prefers-color-scheme, but this app's
+    dark mode is a manual class — so a user on a light phone who taps the moon gets a
+    dark app and a light browser chrome, which is the same "band of the wrong colour at
+    the screen edge" by another route. Drive the live value from the actual state. */
+ const el = document.querySelector('meta[name="theme-color"]:not([media])')
+ ?? Object.assign(document.createElement('meta'), { name:'theme-color' });
+ el.setAttribute('content', isDark ?'#0F0C0A' :'#F4F2EF');
+ if (!el.parentNode) document.head.appendChild(el);
  }, [isDark]);
+
+ /**
+  * The document title never changed. Every screen, every venue, every recipe was
+  * "What's Good — Find your next great meal": in the tab bar, in browser history, in
+  * the iOS share sheet and in anything a user saves to their home screen. A real app
+  * names where you are. This is also what makes browser history usable at all — a back
+  * menu of nine identical entries is not navigation.
+  */
+ useEffect(() => {
+ const base = "What's Good";
+ const tabName: Record<string, string> = {
+'mood':'Find a place',
+'random':'Stay in',
+'happy-hour':'Happy hour',
+'saved-recipes':'Saved',
+'saved-eateries':'Saved',
+ };
+ document.title = selectedRecipe
+ ? `${selectedRecipe.name} · ${base}`
+ : `${tabName[activeTab] ?? base}${city ? ` in ${city}` : ''} · ${base}`;
+ }, [selectedRecipe, activeTab, city]);
+
+ /**
+  * Deep links. The app kept every bit of navigation in React state and nothing in the
+  * URL, so a refresh dropped you back on Find, and no screen in the product could be
+  * shared, bookmarked or reopened — the tab you sent someone was always the tab THEY
+  * last used. `?tab=` and `?city=` are the two pieces of state that are stable enough
+  * to be addressable (venue ids come from a Places query and are not).
+  *
+  * replaceState, not push: a tab switch should not add a history entry that the back
+  * gesture then has to chew through before it can close a detail view.
+  */
+ useEffect(() => {
+ const url = new URL(window.location.href);
+ activeTab ==='mood' ? url.searchParams.delete('tab') : url.searchParams.set('tab', activeTab);
+ city ? url.searchParams.set('city', city) : url.searchParams.delete('city');
+ if (url.toString() !== window.location.href) {
+ window.history.replaceState(window.history.state, '', url);
+ }
+ }, [activeTab, city]);
 
  useEffect(() => {
  localStorage.setItem('whats_good_city', city);

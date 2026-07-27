@@ -24,7 +24,26 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="What's Good" />
-    <meta name="theme-color" content="#7C2D12" />
+    <!--
+      theme-color tints the browser's own chrome — the bar iOS Safari draws above and
+      below the page. It was a single hardcoded terracotta, so in dark mode the app was
+      near-black (#0F0C0A) while Safari's chrome stayed a saturated brown: a band of a
+      completely different colour welded to the edge of the app, which is precisely the
+      seam a user reads as "the app does not reach the edge of the screen".
+
+      Two tags with media queries, matching the two canvases exactly, so the browser
+      chrome and the app become one continuous surface in either mode.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F2EF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F0C0A" />
+
+    <!--
+      Without color-scheme the UA renders its own furniture — scrollbars, form controls,
+      the overscroll/rubber-band area — in light mode regardless of the app's theme. In a
+      dark app that shows as a white scrollbar and a white flash when you overscroll past
+      the top: more edges that do not belong to the app.
+    -->
+    <meta name="color-scheme" content="light dark" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
