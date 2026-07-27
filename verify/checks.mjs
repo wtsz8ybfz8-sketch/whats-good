@@ -46,6 +46,26 @@ function staticChecks() {
   );
 
   const srcFiles = ['src/App.tsx', 'src/index.css', 'src/components/ErrorBoundary.tsx'];
+  // Strip comments before matching, or the note explaining why a pattern is banned
+  // trips the check that bans it — a false positive that teaches you to ignore the suite.
+  const cssRaw = readFileSync(resolve(ROOT, 'src/index.css'), 'utf8');
+  const css = cssRaw.replace(/\/\*[\s\S]*?\*\//g, '');
+  check(
+    'html has a background (canvas painted in every safe area)',
+    /(^|\n)html\s*\{[^}]*background\s*:/.test(css),
+    'unpainted canvas = see-through band against the browser chrome',
+  );
+  check(
+    'no background-attachment: fixed',
+    !/background-attachment:\s*fixed/.test(css),
+    'iOS Safari paints it unreliably and leaves the safe area bare',
+  );
+  check(
+    'landscape insets consumed (safe-area-inset-left/right)',
+    /safe-area-inset-left/.test(css) && /safe-area-inset-right/.test(css),
+    'landscape notch is ~59px; unconsumed puts content under it',
+  );
+
   const vh = srcFiles
     .filter((f) => existsSync(resolve(ROOT, f)))
     .flatMap((f) =>
@@ -182,6 +202,33 @@ async function main() {
     const r = await page.evaluate(MEASURE);
     check(`${label}: no overflow, all targets >=44pt`, !r.over && r.miss.length === 0,
       r.miss.length ? r.miss.join(', ') : '');
+  }
+
+  // --- landscape and desktop -------------------------------------------------
+  //
+  // Neither was ever measured. Landscape is where the notch insets become non-zero and
+  // where the unpainted-canvas bug was visible; desktop is where a clipped rail, 36px
+  // targets and a duplicated headline shipped unseen. Both run on every check now.
+  for (const [w, h, name] of [[844, 390, 'landscape 844x390'], [1440, 900, 'desktop 1440x900']]) {
+    const c = await browser.newContext({ viewport: { width: w, height: h }, locale: 'en-GB' });
+    await c.addInitScript(() => { try { localStorage.setItem('whats_good_city', 'London'); } catch {} });
+    const pg = await c.newPage();
+    await pg.route('**/*', (r) =>
+      r.request().url().startsWith('http://localhost') ? r.continue() : r.abort());
+    await pg.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await pg.waitForTimeout(1800);
+    const r = await pg.evaluate(() => {
+      const cs = getComputedStyle(document.documentElement);
+      return {
+        over: document.body.scrollWidth > innerWidth,
+        htmlBg: cs.backgroundColor,
+        painted: cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent',
+      };
+    });
+    check(`${name}: no overflow`, !r.over);
+    check(`${name}: canvas painted`, r.painted, r.htmlBg);
+    await pg.screenshot({ path: resolve(HERE, 'out', `${name.split(' ')[0]}.png`) });
+    await c.close();
   }
 
   await browser.close();

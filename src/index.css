@@ -140,6 +140,16 @@
   background: var(--bg-warm);
   border-top: 1px solid var(--rule);
   box-shadow: 0 -8px 24px rgba(26, 15, 10, 0.06);
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+}
+
+/* Full-bleed fixed chrome: keep the FILL edge to edge, push the CONTENT clear of the
+   notch. Applied to the header and the mobile tab bar. In portrait and on desktop both
+   insets are 0 and this is inert. */
+.safe-x {
+  padding-left: max(0px, env(safe-area-inset-left));
+  padding-right: max(0px, env(safe-area-inset-right));
 }
 
 .action-bar::before {
@@ -278,10 +288,27 @@ html.dark {
 }
 
 /* ─── Body ───────────────────────────────────────────── */
+/*
+ * The canvas MUST be painted, in every orientation.
+ *
+ * `html` carried no background at all — only `body` did, and with
+ * `background-attachment: fixed`, which iOS Safari paints unreliably. That was survivable
+ * while the layout stopped at the safe area. It stopped being survivable the moment
+ * viewport-fit=cover let the layout extend edge to edge: the safe-area regions (the
+ * notch sides in landscape, the status bar, the home indicator) had nothing painting
+ * them, so the user saw straight through the app to black at the screen edges — a band
+ * of nothing between Safari's chrome and the app's own content.
+ *
+ * html gets the flat base colour so no strip of the screen can ever be unpainted, in any
+ * orientation, on any device. body keeps the gradient on top of it.
+ */
+html {
+  background: var(--bg-warm);
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--body-gradient);
-  background-attachment: fixed;
   color: var(--charcoal);
   min-height: 100dvh;
   overflow-x: hidden;
@@ -685,6 +712,12 @@ html.dark .shimmer::after {
     [content-start] minmax(0, 1200px) [content-end]
     minmax(0, 1fr) [full-end];
   align-content: start;
+
+  /* Landscape on a notched iPhone reports ~59px of left/right inset. Nothing in this app
+     consumed them, so in landscape the content ran under the notch on one side. Zero in
+     portrait and on every desktop, so this costs nothing where it is not needed. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 .page-grid > * {

@@ -170,8 +170,24 @@ became `null`, so every browser/swipe back threw the user to the top of the list
 Forward starts at top; back restores the saved offset; `history.scrollRestoration` is
 `'manual'` so the browser does not fight it.
 
-**Measure desktop too.** An entire session measured only 390px light and shipped a rail
-clipped mid-word, 36px tab targets and a duplicated headline to 1440.
+**THE CANVAS MUST BE PAINTED — this one took four attempts to see.** `html` carried no
+`background` at all; only `body` did, and with `background-attachment: fixed`, which iOS
+Safari paints unreliably. Survivable until `viewport-fit=cover` let the layout reach the
+screen edges — then the safe-area regions had nothing painting them and the user looked
+straight through the app to black: a see-through band between Safari's chrome and the
+app's own background. **`html { background: var(--bg-warm); }` is not optional and never
+comes out.** Never use `background-attachment: fixed`. `checks.mjs` fails on both.
+
+**Landscape is a device, not an afterthought.** `env(safe-area-inset-left/right)` is ~59px
+on a notched iPhone in landscape and 0 everywhere else. `.page-grid` absorbs it, and
+full-bleed fixed chrome uses `.safe-x` so the FILL stays edge-to-edge while the CONTENT
+clears the notch. The bug that made this visible was only ever reproducible in landscape.
+
+**Measure BOTH, EVERY TIME — mobile and desktop, portrait and landscape, light and dark.**
+That is 390×844, 844×390 and 1440×900, in both modes; `checks.mjs` runs all of them.
+An entire session measured only 390px light and shipped a rail clipped mid-word, 36px tab
+targets and a duplicated headline to 1440. A viewport you do not measure is a viewport
+you are shipping blind.
 
 **THE WAY TO SEE THIS APP — drive a real browser yourself. Never ask the user for a
 screenshot.** Verified working 2026-07-27. It takes about 90 seconds end to end.

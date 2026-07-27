@@ -44,8 +44,11 @@ measurement and obvious in the screenshot. Measure geometry AND look at the pict
 - [ ] `tsc --noEmit` exits 0 — and `@types/react` is installed, or it is checking nothing
 - [ ] `vite build` exits 0 (check `${PIPESTATUS[0]}`, not the tail's status)
 - [ ] All 6 views rendered, **light and dark**
-- [ ] All 4 tabs measured at **390×844 AND 1440×900** — desktop was never checked for a
-      whole session and had a clipped rail, 36px tabs and a duplicated headline
+- [ ] All 4 tabs measured at **390×844 (portrait), 844×390 (landscape) AND 1440×900** —
+      desktop went unmeasured for a whole session (clipped rail, 36px tabs, duplicated
+      headline) and landscape was where the unpainted-canvas bug was actually visible
+- [ ] `html` has a background and nothing uses `background-attachment: fixed` — an
+      unpainted canvas shows as a see-through band against the browser's own chrome
 - [ ] Screenshots actually opened and read, not just written
 - [ ] For anything iOS-specific: stated plainly as unverifiable here, because Chromium
       reports `env(safe-area-inset-*)` as 0 regardless of the meta tag
