@@ -4,6 +4,7 @@
  */
 
 import { Meal, ParsedRecipe } from './types';
+import { AREA_TERMS } from './cuisineRail';
 
 /**
  * Maps the coordinates (Vibe + Regional Cuisine) to real search terms for TheMealDB
@@ -12,28 +13,22 @@ export function mapCoordinatesToQueries(vibe: string | null, regional: string | 
   const regionalTerms: string[] = [];
   const vibeTerms: string[] = [];
 
-  // Regional mapping
+  // Regional mapping.
+  //
+  // This was a switch over five invented labels ('Pan-Asian', 'South African', …), none
+  // of which TheMealDB actually indexes. The rail now comes from the API's own area list
+  // (see cuisineRail.ts), so the lookup has to be open: any area the API serves must map
+  // to something, including areas that did not exist when this line was written.
+  //
+  // An area with no curated terms falls back to its own name as the search term rather
+  // than to the generic list — searching 'Croatian' is a weak query but it is still a
+  // query about Croatian food, whereas 'chicken, salmon, beef' silently serves the user
+  // a different cuisine than the one they tapped.
   if (regional) {
-    switch (regional) {
-      case 'Italian':
-        regionalTerms.push('pasta', 'tomato', 'risotto', 'basil');
-        break;
-      case 'Middle Eastern':
-        regionalTerms.push('couscous', 'lamb', 'lentil', 'kebap', 'chickpea');
-        break;
-      case 'Pan-Asian':
-        regionalTerms.push('rice', 'noodle', 'stir', 'teriyaki', 'curry', 'ginger');
-        break;
-      case 'South African':
-        regionalTerms.push('stew', 'beef', 'curry', 'bobotie');
-        break;
-      case 'Latin American':
-        regionalTerms.push('taco', 'chili', 'lime', 'tortilla', 'fajitas');
-        break;
-      case 'surprise me':
-      default:
-        regionalTerms.push('chicken', 'salmon', 'beef', 'pie', 'soup', 'salad');
-        break;
+    if (regional === 'surprise me') {
+      regionalTerms.push('chicken', 'salmon', 'beef', 'pie', 'soup', 'salad');
+    } else {
+      regionalTerms.push(...(AREA_TERMS[regional] ?? [regional.toLowerCase()]));
     }
   }
 

@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo, useRef } from'react';
 import { Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
+import { FALLBACK_AREAS, fetchAreas, orderAreasForCountry } from'./cuisineRail';
 import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
@@ -181,6 +182,25 @@ export default function App() {
  useEffect(() => {
  try { if (countryCode) localStorage.setItem('whats_good_country', countryCode); } catch {}
  }, [countryCode]);
+
+ // The Cooking tab's "Kitchen" rail. Derived, never hardcoded: the names come from
+ // TheMealDB's own area list so we can only offer a cuisine it can actually serve, and
+ // the order follows the detected country so a user in London leads with British and
+ // Indian rather than the app's original Cape Town defaults. See cuisineRail.ts.
+ // Seeded from the fallback so the rail has chips on first paint (CLAUDE.md §8: the
+ // primary content never waits on a network round trip), then replaced once resolved.
+ const [areas, setAreas] = useState<string[]>(FALLBACK_AREAS);
+ useEffect(() => {
+ let alive = true;
+ fetchAreas().then((a) => { if (alive) setAreas(a); });
+ return () => { alive = false; };
+ }, []);
+ // Six is the cap: enough to feel like a real choice, few enough to stay one wrapped
+ // row on a 384px viewport rather than becoming the carousel §11.4 forbids.
+ const kitchens = useMemo(
+ () => orderAreasForCountry(areas, countryCode).slice(0, 6),
+ [areas, countryCode],
+ );
  const [locState, setLocState] = useState<'idle' |'requesting' |'granted' |'denied'>('idle');
 
  // Trigger position query cleanly. `userInitiated` distinguishes the explicit
@@ -821,7 +841,7 @@ export default function App() {
  // one bar that should sit still. State rides on the icon alone now: accent when
  // it's on, MapPinOff once denied, dimmed while it resolves. The full sentence
  // stays in the tooltip and the aria-label, where it costs nothing to read.
- className="flex w-10 h-10 items-center justify-center rounded-full transition-colors cursor-pointer flex-shrink-0 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:cursor-default"
+ className="hit-44 flex w-10 h-10 items-center justify-center rounded-full transition-colors cursor-pointer flex-shrink-0 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:cursor-default"
  >
  {locState ==='denied' ? (
  <MapPinOff className="w-4 h-4 text-[var(--text-muted)]" />
@@ -840,7 +860,7 @@ export default function App() {
 
  <button
  onClick={() => setIsDark((d) => !d)}
- className="flex w-10 h-10 items-center justify-center rounded-full text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
+ className="hit-44 flex w-10 h-10 items-center justify-center rounded-full text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
  aria-label={isDark ?'Switch to light mode' :'Switch to dark mode'}
  >
  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -1126,7 +1146,7 @@ export default function App() {
  type="button"
  aria-pressed={dimensions.capacity === t.value}
  onClick={() => setDimensions((p) => ({ ...p, capacity: t.value }))}
- className={`press px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
+ className={`press hit-44 px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
  dimensions.capacity === t.value
  ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
  :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
@@ -1139,13 +1159,13 @@ export default function App() {
 
  <div className="flex flex-wrap items-center gap-2">
  <span className="text-[12px] font-semibold text-[var(--charcoal)] mr-1">Kitchen</span>
- {['Italian','Middle Eastern','Pan-Asian','South African','Latin American'].map((c) => (
+ {kitchens.map((c) => (
  <button
  key={c}
  type="button"
  aria-pressed={dimensions.regional === c}
  onClick={() => setDimensions((p) => ({ ...p, regional: p.regional === c ? null : c }))}
- className={`press px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
+ className={`press hit-44 px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors cursor-pointer ${
  dimensions.regional === c
  ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
  :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
@@ -1157,7 +1177,7 @@ export default function App() {
  <button
  type="button"
  onClick={handleRandomWildcard}
- className="press ml-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--accent-terracotta)] cursor-pointer transition-colors"
+ className="press hit-44 ml-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--accent-terracotta)] cursor-pointer transition-colors"
  >
  <Dices className="w-4 h-4" /> Surprise me
  </button>

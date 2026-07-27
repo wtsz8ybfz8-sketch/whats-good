@@ -1,0 +1,94 @@
+# The type gate this project never actually had.
+#
+# `npm run lint` (tsc --noEmit) is pathologically slow on the author's machine — many
+# minutes at ~0% CPU, frequently never finishing — so in practice it was never run.
+# `npm run build` is `vite build`, which does no typechecking at all. The result: no
+# type error has ever been caught by anything, on any machine, before this file.
+#
+# A clean runner does the same work in well under a minute. That is the whole idea:
+# move the gate off the machine where it doesn't work, onto one where it does.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A new push to the same branch makes the previous run pointless — cancel it rather
+# than queue behind it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The gate. Runs tsc --noEmit — the check that has never completed locally.
+      - name: Typecheck
+        run: npm run lint
+
+      # Bundling is a separate failure mode from typing: vite can fail on a bad import
+      # or an asset path that tsc is perfectly happy with.
+      - name: Build
+        run: npm run build
+
+      # --- Guards for rules CLAUDE.md states as prose and nothing enforces ---
+      #
+      # These exist because a written rule that only an agent reads is a rule that gets
+      # broken on a tired afternoon. Each one below has actually been violated in this
+      # repo's history, which is why it earned a check rather than a paragraph.
+
+      # §7: .glass belongs on exactly two chrome surfaces (the fixed header and the mobile
+      # CTA bar). On a card it puts backdrop-filter cost on every row of a scrolling list
+      # — the specific regression the .surface classes were introduced to prevent.
+      # `.glass-range` is a different class (the Sidebar slider) and is excluded.
+      # Measured at 2 on 2026-07-27; this blocks a third from appearing.
+      - name: .glass stays off cards
+        run: |
+          hits=$(grep -rnE '\bglass\b' src --include='*.tsx' | grep -v 'glass-range' || true)
+          count=$(printf '%s' "$hits" | grep -c . || true)
+          if [ "$count" -gt 2 ]; then
+            echo "$hits"
+            echo "::error::.glass appears on $count surfaces; only the header and mobile CTA bar may use it (§7)."
+            exit 1
+          fi
+          echo "OK — .glass on $count surface(s)"
+
+      # §12: vite-plugin-pwa precached index.html, so three sessions of work deployed and
+      # were invisible on the live URL. public/sw.js is now a self-destructing kill switch
+      # and must stay. What must never come back is a plugin that registers a NEW worker.
+      # Matches real wiring only — an import or a VitePWA() call — so the explanatory
+      # comment currently sitting in vite.config.ts does not trip it.
+      - name: No service worker plugin in the build
+        run: |
+          if grep -nE "^[^/]*(from '.*vite-plugin-pwa'|VitePWA\()" vite.config.ts ; then
+            echo "::error::vite-plugin-pwa is wired into vite.config.ts. It precaches index.html and makes deploys invisible (§12)."
+            exit 1
+          fi
+          echo "OK — no PWA plugin wired into vite.config.ts"
+
+      # §7 says colour comes from tokens in index.css, but src/**/*.tsx currently carries
+      # 233 hardcoded hex occurrences (measured 2026-07-27). Blocking on that would make this
+      # pipeline permanently red on arrival, which teaches everyone to ignore it — the
+      # worst possible outcome for a new gate.
+      #
+      # So it reports and does not fail. When the count reaches zero, delete
+      # `continue-on-error` and it becomes a real gate. Until then it is a visible debt
+      # counter rather than a lie.
+      - name: Hardcoded hex report (advisory — see §7)
+        continue-on-error: true
+        run: |
+          count=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
+          echo "Hardcoded hex values in src/**/*.tsx: $count (baseline 233, target 0)"
+          echo "### Hardcoded hex: $count (baseline 233, target 0)" >> "$GITHUB_STEP_SUMMARY"

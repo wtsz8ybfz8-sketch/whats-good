@@ -113,8 +113,17 @@ your code. **A timed-out typecheck is not a pass and not a failure — report it
 "did not complete."** When it won't finish, rung 1 plus a stated caveat is the honest
 outcome. Never silently downgrade.
 
-**`npm run build` is `vite build`. It does not run `tsc`, so a deploy does not typecheck
-your work.** Do not tell the user that CI or Vercel will catch a type error. It won't.
+**`npm run build` is `vite build`. It does not run `tsc`, so a Vercel deploy does not
+typecheck your work.** But **GitHub Actions now does** — `.github/workflows/ci.yml` runs
+`tsc --noEmit` plus the build on every push, green in ~30s (first run 2026-07-27). So for
+**anything you have pushed**, read the Actions tab instead of guessing; the local
+"did not complete" caveat applies only to work still sitting in the tree.
+
+**Never diagnose an external service from inside this container.** The agent proxy returns
+**403 for every outbound URL** — `example.com` included. A 403 from a deployment tells you
+nothing about that deployment. A session burned real user trust reporting a proxy 403 as
+"Vercel Deployment Protection is on" and sending the user to change a setting that may
+never have been set. Reachability is checked from a real device, or not at all.
 
 **Don't let a pipe swallow an exit code.** `npm run build | tail -20` reports `tail`'s
 status. Check `${PIPESTATUS[0]}`.
@@ -122,18 +131,65 @@ status. Check `${PIPESTATUS[0]}`.
 **Anything visible must be looked at before you claim it works.** Types passing has let
 broken layout reach the user in every session so far.
 
+**THE WAY TO SEE THIS APP — drive a real browser yourself. Never ask the user for a
+screenshot.** Verified working 2026-07-27. It takes about 90 seconds end to end.
+
+```bash
+npm install                                  # ~15s
+nohup npx vite --port 3000 > /tmp/dev.log 2>&1 &
+sleep 6 && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/   # expect 200
+
+# playwright-core goes in a scratch dir, NEVER in package.json (§9: deps stay small)
+cd "$SCRATCH" && npm init -y && npm i playwright-core
+```
+
+```js
+import { chromium } from 'playwright-core';
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',  // pre-installed
+  args: ['--no-sandbox'],                                                // required here
+});
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await page.goto('http://localhost:3000/');
+await page.screenshot({ path: `${SCRATCH}/view.png` });   // then Read the png — you can see it
+```
+
+This gives a **true 390px CSS viewport** — `innerWidth === 390`, `body.scrollWidth === 390`.
+It supersedes the old iframe workaround and its 384px correction; that was only needed
+because we did not own the browser. **Read the screenshot file** — do not reason about
+layout from `getBoundingClientRect` alone. Measure geometry AND look at the picture.
+
+- **Chromium is pre-installed** at `/opt/pw-browsers/`. Never run `playwright install`.
+- **This container cannot reach `themealdb.com` or Google Places** — outbound is proxied.
+  Recipe and venue lists render their empty state (`Nothing matched that combination`).
+  **That is a network artifact, not a bug.** Chrome shows `ERR_TUNNEL_CONNECTION_FAILED`.
+  Anything seeded from local constants — the Kitchen rail, chrome, tabs — renders fully
+  and IS measurable. Know which of the two you are looking at before drawing a conclusion.
+- Tab labels are **"Find a Place" / "Stay In" / "Happy Hour" / "Saved"**. The cooking tab
+  is `Stay In` — targeting `/cook/i` finds nothing.
 - **The in-app preview pane does not work in this project.** `preview_start` reports
   success, then every read returns "Policy check in progress for this tab; retry."
   forever. Don't attempt it.
 - **`resize_window` does not change the CSS viewport** — it resizes the OS window;
   `innerWidth` stays ~1440 and every media query stays desktop.
-- **What works: render the deployed or dev URL inside a 390×844 iframe** and query that
-  iframe's `contentDocument`. The iframe gets a ~6px scrollbar, so the real CSS viewport
-  is **384px**, not 390 — measure against `d.body.scrollWidth`, never `innerWidth`.
-- **Verify it yourself. Do not ask the user for screenshots.** (This supersedes older
-  guidance that told you to ask.)
 - **If the renderer times out, that is a hard stop — §3.** Do not re-probe.
 - **If you have not seen it, say you have not seen it.**
+
+**Auditing hit targets: probe, never measure.** `.hit-44` (§11.3) puts the 44px target on
+an invisible `::before`, so the element's own `getBoundingClientRect().height` stays 42
+and a rect-based audit reports a false failure — then "fixes" it with padding, which grows
+the visual ink and breaks the rule. Probe the point instead:
+
+```js
+const r = el.getBoundingClientRect(), cx = r.left + r.width / 2;
+const hits = (y) => { const h = document.elementFromPoint(cx, y); return h === el || el.contains(h); };
+hits(r.top - 1) && hits(r.bottom + 1);   // true => the 44px target is live
+```
+
+A `false` on one side where another control sits directly adjacent is normal — the
+neighbour legitimately owns that pixel. Also: an audit that reads only `textContent` /
+`aria-label` will wrongly flag inputs labelled by `<label htmlFor>`. Check for an
+associated label before adding an `aria-label`.
 
 ---
 
