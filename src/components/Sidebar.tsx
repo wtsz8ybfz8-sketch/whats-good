@@ -80,7 +80,14 @@ const FilterGroup: React.FC<{
  {optional && <span className="font-normal text-[var(--text-muted)]"> — optional</span>}
  </span>
  {scroll ? (
- <div className="chip-rail -mx-5 lg:-mx-8 px-5 lg:px-8 flex gap-2 overflow-x-auto pb-1">
+ // Scroll on phones only. At 1440 the rail still scrolled inside a fixed-width
+ // card, so the last chip was sliced mid-word ("Burger…") against the card edge
+ // with no fade, no arrow and nothing suggesting more existed — hidden content
+ // with zero affordance. Two rules point the same way: prefer wrapping over
+ // truncation, and a swipe/scroll region must advertise itself. There is room to
+ // wrap at this width, so it wraps and nothing is hidden; below lg it stays the
+ // single horizontal rail the design permits, where a rail is the right pattern.
+ <div className="chip-rail -mx-5 lg:mx-0 px-5 lg:px-0 flex gap-2 overflow-x-auto lg:overflow-x-visible lg:flex-wrap pb-1">
  {children}
  </div>
  ) : (
@@ -471,12 +478,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--charcoal)]">Budget</span>
  <GlassSlider
  ariaLabel="Budget"
+ // Bands, not currency. These were 'R' | 'RR' | 'RRR' | 'RRRR' — the Rand glyph
+ // repeated — which survived the regional pass because this file never says
+ // "Rand" or "Cape Town" anywhere. The value is the Places tier (1-4); the dots
+ // are how it is drawn, and they mean the same thing in every country.
  stops={[
  { label:'Any', value: null },
- { label:'R', sub:'Budget', value:'R' },
- { label:'RR', sub:'Moderate', value:'RR' },
- { label:'RRR', sub:'Fine', value:'RRR' },
- { label:'RRRR', sub:'Luxury', value:'RRRR' },
+ { label:'\u25CF\u25CB\u25CB\u25CB', sub:'Inexpensive', value:'1' },
+ { label:'\u25CF\u25CF\u25CB\u25CB', sub:'Moderate', value:'2' },
+ { label:'\u25CF\u25CF\u25CF\u25CB', sub:'Expensive', value:'3' },
+ { label:'\u25CF\u25CF\u25CF\u25CF', sub:'Very expensive', value:'4' },
  ]}
  selectedValue={dimensions.capacity}
  onSelect={(value) => onChange({ ...dimensions, capacity: value })}

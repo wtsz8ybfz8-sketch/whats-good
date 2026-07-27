@@ -15,8 +15,9 @@ import { HappyHourView, hasHappyHourData } from'./components/HappyHourView';
 import { getHappyHourStatus } from'./venueExtras';
 import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon } from'lucide-react';
-import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
-import { fetchCapeTownEateries, detectCityFromCoords, currencyForCountry } from'./placesService';
+import type { Venue } from'./venue';
+import { fetchVenues, detectCityFromCoords, formatPriceTier, isPlacesConfigured } from'./placesService';
+import { formatDistance } from'./locale';
 import { useSavedRecipes } from'./useSavedRecipes';
 import { cuisineIcon } from'./cuisineIcon';
 
@@ -69,20 +70,21 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
 }
 
 function createEateryResult(
- eatery: SouthAfricanEatery,
+ eatery: Venue,
  city: City,
  userCoords: { latitude: number; longitude: number } | null,
 ): ParsedRecipe {
  let distanceStr = eatery.fallbackDistance;
  let distVal = 999999;
 
- if (userCoords) {
+ if (userCoords && typeof eatery.latitude === 'number' && typeof eatery.longitude === 'number') {
  const dist = getDistance(userCoords.latitude, userCoords.longitude, eatery.latitude, eatery.longitude);
- distVal = dist;
+ distVal = Number.isFinite(dist) ? dist : 999999;
  // Only show a distance when the venue is plausibly local. Pinning a remote
  // destination (e.g. searching Paris from Cape Town) otherwise renders a
  // nonsensical "9341 km away"; past ~150km we drop it rather than mislead.
- distanceStr = dist <= 150 ? `${dist.toFixed(1)} km away` : '';
+ // Intl, not toFixed: half the world writes "1,4 km", not "1.4 km".
+ distanceStr = Number.isFinite(dist) && dist <= 150 ? `${formatDistance(dist)} away` : '';
  }
 
  const imgUrl = eatery.photoUrl || eateryPlaceholderImage(eatery.name);
@@ -105,7 +107,7 @@ function createEateryResult(
  tags: [
  eatery.vibeMatch,
  distanceStr,
- eatery.priceSymbol,
+ formatPriceTier(eatery.priceTier),
  'Restaurant'
  ],
  ingredients: eatery.signatureIngredients,
@@ -121,26 +123,43 @@ function createEateryResult(
  : '',
  ].filter(Boolean),
  prepTime: eatery.estimatedWait,
- cookTime: eatery.priceSymbol,
+ cookTime: formatPriceTier(eatery.priceTier),
  serves:'Table booking',
  source: eatery.externalLink,
  distanceVal: distVal,
  rawEatery: eatery,
  distanceStr,
- } as ParsedRecipe & { distanceVal: number; rawEatery: SouthAfricanEatery; distanceStr: string };
+ } as ParsedRecipe & { distanceVal: number; rawEatery: Venue; distanceStr: string };
 }
 
 export default function App() {
- const [activeTab, setActiveTab] = useState<ActiveTab>('mood');
- const [prevTab, setPrevTab] = useState<ActiveTab>('mood');
- // City is auto-detected from the user's location, never manually picked.
- // Cached in localStorage so the header doesn't flash back to Cape Town on reload
- // while a fresh detection runs in the background.
+ /* Seed from the URL so a shared or bookmarked link opens where it says it does.
+    Validated against the known set — a hand-edited ?tab=nonsense must land on Find,
+    not render an empty shell. */
+ const initialTab = ((): ActiveTab => {
+ try {
+ const t = new URLSearchParams(window.location.search).get('tab');
+ const valid: ActiveTab[] = ['mood','happy-hour','random','saved-recipes','saved-eateries'];
+ return valid.includes(t as ActiveTab) ? (t as ActiveTab) :'mood';
+ } catch { return 'mood'; }
+ })();
+ const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
+ const [prevTab, setPrevTab] = useState<ActiveTab>(initialTab);
+ // City is auto-detected from the user's location, or typed. There is deliberately no
+ // default city: this app began as a Cape Town product and 'Cape Town' sat here as the
+ // seed value, so a user in London was greeted by another hemisphere and offered South
+ // African cuisine before they had touched anything. An empty string renders as
+ // "Set location" and asks — which is honest, and one tap from correct (§5, Orient).
+ // Cached in localStorage so a resolved city doesn't flash away on reload while a
+ // fresh detection runs in the background.
  const [city, setCity] = useState<City>(() => {
  try {
- return localStorage.getItem('whats_good_city') ||'Cape Town';
+ // A ?city= in the link wins over this device's last city: the point of sending
+ // someone "what's good in Lisbon" is that they see Lisbon.
+ const fromUrl = new URLSearchParams(window.location.search).get('city');
+ return (fromUrl && fromUrl.trim()) || localStorage.getItem('whats_good_city') || '';
  } catch {
- return 'Cape Town';
+ return '';
  }
  });
  // When the user types a destination ("Paris while in CPT"), we pin the city and
@@ -169,6 +188,14 @@ export default function App() {
  const [selectedRecipe, setSelectedRecipe] = useState<ParsedRecipe | null>(null);
  const [isLoading, setIsLoading] = useState(false);
  const [error, setError] = useState<string | null>(null);
+ /**
+  * A state the user can act on but cannot retry away — no API key, no location. Kept
+  * separate from `error` because they read differently on screen: an error says
+  * something failed, a notice says something has not been set up yet. Collapsing the
+  * two shipped "Something went wrong / Try again" over a missing configuration, where
+  * pressing the button provably changes nothing.
+  */
+ const [notice, setNotice] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
  const [filtersOpen, setFiltersOpen] = useState(true);
 
  // Premium tactical geolocation tracking
@@ -178,7 +205,6 @@ export default function App() {
  const [countryCode, setCountryCode] = useState<string | null>(() => {
  try { return localStorage.getItem('whats_good_country'); } catch { return null; }
  });
- const currency = currencyForCountry(countryCode);
  useEffect(() => {
  try { if (countryCode) localStorage.setItem('whats_good_country', countryCode); } catch {}
  }, [countryCode]);
@@ -256,16 +282,106 @@ export default function App() {
  }
  });
 
- // Opening a venue used to leave you wherever you happened to be scrolled, so the
- // detail page appeared to "open in the middle". A pushed view always starts at its top.
+ /**
+  * Scroll restoration.
+  *
+  * This effect used to be `scrollTo(0)` on every change of `selectedRecipe?.id`, which
+  * includes the change TO null — so closing a detail, or swiping back in Safari, threw
+  * you to the top of the list every time. You would scroll through twenty venues, open
+  * the last one, come back, and start again from the first. That is the single thing
+  * that makes a web app feel like a web page instead of an app.
+  *
+  * Forward into a detail starts at the detail's top (a pushed view always does).
+  * Backward restores exactly where the list was. `scrollRestoration = 'manual'` stops
+  * the browser applying its own guess on popstate and fighting this.
+  */
+ const listScrollY = useRef(0);
+ const prevDetailId = useRef<string | null>(null);
+
+ useEffect(() => {
+ if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+ }, []);
+
+ useEffect(() => {
+ const id = selectedRecipe?.id ?? null;
+ const prev = prevDetailId.current;
+ prevDetailId.current = id;
+
+ if (id && !prev) {
+ // Entering a detail — remember the list position before the list unmounts.
+ listScrollY.current = window.scrollY;
+ window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
+ } else if (id && prev) {
+ // Detail to a different detail; still a forward move.
+ window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
+ } else if (!id && prev !== null) {
+ // Back to the list. Two frames: the first lets the list re-mount, the second runs
+ // after layout, so the target offset actually exists to scroll to.
+ const y = listScrollY.current;
+ requestAnimationFrame(() =>
+ requestAnimationFrame(() => window.scrollTo({ top: y, behavior:'instant' as ScrollBehavior })),
+);
+ }
+ }, [selectedRecipe?.id]);
+
+ // Switching tabs IS a fresh context, so it starts at the top — unlike going back.
  useEffect(() => {
  window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
- }, [selectedRecipe?.id, activeTab]);
+ }, [activeTab]);
 
  useEffect(() => {
  document.documentElement.classList.toggle('dark', isDark);
  localStorage.setItem('whats_good_dark_mode', String(isDark));
+
+ /* The two <meta name="theme-color"> tags key off prefers-color-scheme, but this app's
+    dark mode is a manual class — so a user on a light phone who taps the moon gets a
+    dark app and a light browser chrome, which is the same "band of the wrong colour at
+    the screen edge" by another route. Drive the live value from the actual state. */
+ const el = document.querySelector('meta[name="theme-color"]:not([media])')
+ ?? Object.assign(document.createElement('meta'), { name:'theme-color' });
+ el.setAttribute('content', isDark ?'#0F0C0A' :'#F4F2EF');
+ if (!el.parentNode) document.head.appendChild(el);
  }, [isDark]);
+
+ /**
+  * The document title never changed. Every screen, every venue, every recipe was
+  * "What's Good — Find your next great meal": in the tab bar, in browser history, in
+  * the iOS share sheet and in anything a user saves to their home screen. A real app
+  * names where you are. This is also what makes browser history usable at all — a back
+  * menu of nine identical entries is not navigation.
+  */
+ useEffect(() => {
+ const base = "What's Good";
+ const tabName: Record<string, string> = {
+'mood':'Find a place',
+'random':'Stay in',
+'happy-hour':'Happy hour',
+'saved-recipes':'Saved',
+'saved-eateries':'Saved',
+ };
+ document.title = selectedRecipe
+ ? `${selectedRecipe.name} · ${base}`
+ : `${tabName[activeTab] ?? base}${city ? ` in ${city}` : ''} · ${base}`;
+ }, [selectedRecipe, activeTab, city]);
+
+ /**
+  * Deep links. The app kept every bit of navigation in React state and nothing in the
+  * URL, so a refresh dropped you back on Find, and no screen in the product could be
+  * shared, bookmarked or reopened — the tab you sent someone was always the tab THEY
+  * last used. `?tab=` and `?city=` are the two pieces of state that are stable enough
+  * to be addressable (venue ids come from a Places query and are not).
+  *
+  * replaceState, not push: a tab switch should not add a history entry that the back
+  * gesture then has to chew through before it can close a detail view.
+  */
+ useEffect(() => {
+ const url = new URL(window.location.href);
+ activeTab ==='mood' ? url.searchParams.delete('tab') : url.searchParams.set('tab', activeTab);
+ city ? url.searchParams.set('city', city) : url.searchParams.delete('city');
+ if (url.toString() !== window.location.href) {
+ window.history.replaceState(window.history.state, '', url);
+ }
+ }, [activeTab, city]);
 
  useEffect(() => {
  localStorage.setItem('whats_good_city', city);
@@ -367,14 +483,54 @@ export default function App() {
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
  setIsLoading(true);
  setError(null);
+ setNotice(null);
  setRecipes([]);
  setSelectedRecipe(null);
 
  try {
  const activeMode = customMode || dimensions.locationMode;
  if (activeMode ==='dineout') {
+ // Two failures used to look identical on screen: "we searched and found nothing"
+ // and "we never searched at all". Both rendered the generic empty state under a
+ // heading promising real places nearby, which is the Recover stage skipped (§5).
+ // Name them instead — each one has a different next step for the user.
+ if (!isPlacesConfigured()) {
+ setRecipes([]);
+ setNotice({
+ title:'Venue search is not switched on',
+ message:
+'This deployment has no Google Places key, so there are no places to look through. ' +
+'Nothing is broken and retrying will not help. Stay In needs no key and works now.',
+ canRetry: false,
+ });
+ setIsLoading(false);
+ return;
+ }
+ if (!city && !userCoords) {
+ // The query would have been "best restaurants in " — a real request, sent to a
+ // real API, guaranteed to be meaningless. Ask for the one thing that is missing.
+ setRecipes([]);
+ setNotice({
+ title:'Where are you?',
+ message:
+'Tap "Set location" in the header, or allow location access, and we will find ' +
+'places near you.',
+ canRetry: true,
+ });
+ setIsLoading(false);
+ return;
+ }
  const searchQuery = (customQuery !== undefined ? customQuery : dimensions.searchQuery).trim().toLowerCase();
- const priceFilter = customQuery ? null : dimensions.capacity;
+ // `capacity` carries the price band here and a cook-effort string on Stay In, so it
+ // is parsed rather than trusted: anything non-numeric is "no price filter", never a
+ // NaN handed to the API. Until React types were installed this string was passed
+ // straight into a `number` parameter and compared with `!==` against a number — both
+ // silently always-false, so the budget filter did nothing at all.
+ const parsedTier = Number(dimensions.capacity);
+ const priceFilter =
+ customQuery || !Number.isInteger(parsedTier) || parsedTier < 1 || parsedTier > 4
+ ? null
+ : parsedTier;
 
  // Build a Places API search string from available filters.
  // Vibe is translated to a dining keyword; price is passed separately so
@@ -386,13 +542,18 @@ export default function App() {
  customQuery === undefined ? dimensions.diet : null,
  ].filter(Boolean).join(' ');
 
- // Try Places API first; fall back to local Cape Town data when that is the selected city.
- let eateryList: typeof SOUTH_AFRICAN_EATERIES = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES : [];
+ // No local fallback venue set. This used to seed the list with the app's original
+ // South African venues whenever the city happened to be Cape Town, which meant the
+ // fallback path served real-looking venues from one specific country while the rest
+ // of the world got nothing. An empty list lands on the honest empty state, which
+ // tells the user what went wrong and offers a way forward (§5, Recover). Showing
+ // someone a venue 9,000 km away is worse than showing them none.
+ let eateryList: Venue[] = [];
  let usingPlacesApi = false;
  try {
- const placesResults = await fetchCapeTownEateries(placesSearchTerms, city, priceFilter);
+ const placesResults = await fetchVenues(placesSearchTerms, city, priceFilter);
  if (placesResults.length > 0) {
- eateryList = placesResults as typeof SOUTH_AFRICAN_EATERIES;
+ eateryList = placesResults;
  usingPlacesApi = true;
  }
  } catch {
@@ -403,7 +564,7 @@ export default function App() {
  eateryList.forEach((eatery) => {
  // Price filter client-side only for the hardcoded list — Places results
  // were already filtered server-side via priceLevels.
- if (!usingPlacesApi && priceFilter && eatery.priceSymbol !== priceFilter) return;
+ if (!usingPlacesApi && priceFilter && eatery.priceTier !== priceFilter) return;
 
  // Cuisine, vibe, and text filters only apply to hardcoded list
  // (Places API already scoped the results via the search query)
@@ -612,47 +773,19 @@ export default function App() {
  const handleRandomWildcard = async () => {
  setIsLoading(true);
  setError(null);
+ setNotice(null);
  setRecipes([]);
  setSelectedRecipe(null);
 
  try {
  if (dimensions.locationMode ==='dineout') {
- const randomEatery = SOUTH_AFRICAN_EATERIES[Math.floor(Math.random() * SOUTH_AFRICAN_EATERIES.length)];
- 
- const imgUrl = randomEatery.photoUrl || eateryPlaceholderImage(randomEatery.name);
-
- let distanceStr = randomEatery.fallbackDistance;
- if (userCoords) {
- const dist = getDistance(userCoords.latitude, userCoords.longitude, randomEatery.latitude, randomEatery.longitude);
- distanceStr = `${dist.toFixed(1)} km away`;
- }
-
- const parsed: ParsedRecipe = {
- id: randomEatery.id,
- name: randomEatery.name,
- category: randomEatery.cuisine,
- area: city,
- instructions: `${randomEatery.signatureDescription}\n\nRecommended Order: ${randomEatery.signatureOrder}`,
- image: imgUrl,
- tags: [
- randomEatery.vibeMatch,
- distanceStr,
- randomEatery.priceSymbol,
-'Eatery'
- ],
- ingredients: randomEatery.signatureIngredients,
- steps: [
- `Head to ${randomEatery.address} (${distanceStr}).`,
- `Try the recommended order: ${randomEatery.signatureOrder}`
- ],
- prepTime: randomEatery.estimatedWait,
- cookTime: randomEatery.priceSymbol,
- serves:'Custom Plate',
- source: randomEatery.externalLink,
- };
-
- setRecipes([parsed]);
- setSelectedRecipe(parsed);
+ // "Surprise me" used to roll a die over the hardcoded South African venue list, so
+ // on this tab it returned a Cape Town restaurant to everyone, everywhere, regardless
+ // of the city in the header. With no local list there is nothing to roll against and
+ // nothing to invent: re-run the real search and let the live results answer.
+ setIsLoading(false);
+ handleTriggerMatch(undefined,'dineout');
+ return;
  } else {
  // Gourmet Wildcard Search
  const res = await fetch('https://www.themealdb.com/api/json/v1/1/random.php');
@@ -747,49 +880,69 @@ export default function App() {
  // SOUTH_AFRICAN_EATERIES[0] as everyone's recommendation. See StatusStates.tsx.
 
  return (
- <div className="min-h-screen flex flex-col relative text-[#1A1A1A] dark:text-[#f5f5f5] antialiased">
+ <div className="min-h-dvh flex flex-col relative text-[var(--charcoal)] antialiased">
  {/* Global Header */}
  {/* HIG: index.html sets apple-mobile-web-app-capable, so once this is added to the
  home screen the web view runs full-bleed and content sits UNDER the status bar /
  Dynamic Island. Padding the fixed header by the top inset keeps the logo and the
  controls clear of it; in a normal browser tab the inset is 0 and nothing moves. */}
  <header
- className="glass flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none !rounded-none"
+ className="glass safe-x flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none !rounded-none"
  style={{ height:'calc(60px + env(safe-area-inset-top))', paddingTop:'env(safe-area-inset-top)' }}
  >
  {/* Logo */}
  <div 
- className="flex items-center gap-2.5 cursor-pointer group hover:opacity-80 transition-opacity" 
- onClick={resetHome}
- role="button"
- tabIndex={0}
+ className="flex items-center gap-2.5 group"
  >
- <div className="w-6.5 h-6.5 bg-[#1A1A1A] dark:bg-[#2a2a2a] rounded-full flex items-center justify-center transform transition-transform group-hover:scale-105">
- <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">
+ {/*
+   This whole row used to be one `div role="button" tabIndex={0}` with an onClick and
+   no aria-label — and the city button lived INSIDE it. Three defects in one element:
+   a button nested in a button, which is invalid and makes a tap near the badge
+   ambiguous; a control announced to screen readers as an unlabelled "button"; and a
+   28px target that no amount of .hit-44 could fix, because its own child was
+   stopPropagation-ing the clicks back out.
+
+   The home affordance is now a real <button> around the mark and wordmark only. The
+   city badge is its sibling, not its descendant, so each owns its own hit area.
+ */}
+ <button
+ type="button"
+ onClick={resetHome}
+ aria-label="What's Good — back to the start"
+ className="tap-44 flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0"
+ >
+ <span className="w-6.5 h-6.5 bg-[var(--charcoal)] dark:bg-[#2a2a2a] rounded-full flex items-center justify-center transform transition-transform group-hover:scale-105">
+ <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5" aria-hidden="true">
  <path
  d="M12 3C8 3 5 7 5 11c0 3 1.5 5.5 4 7v2h6v-2c2.5-1.5 4-4 4-7 0-4-3-8-7-8z"
  fill="white"
  />
  </svg>
- </div>
+ </span>
+ <span className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
+ <span>What's</span> <span className="text-[var(--accent-terracotta)] italic font-normal">Good</span>
+ </span>
+ </button>
+
  <div className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
- <span>What's</span> <span className="text-[#7C2D12] dark:text-[#fca5a5] italic font-normal">Good</span>
  {/* City badge doubles as a destination picker — search a city you're not in. */}
  <span className="relative ml-1" onClick={(e) => e.stopPropagation()}>
  <button
  type="button"
  onClick={() => setCityMenuOpen((o) => !o)}
  title="Search another city"
- aria-label={`Location: ${city}. Tap to search another city.`}
- // Was ~20px tall at 10px mono — a control you are meant to tap to change
- // city, drawn at caption size. Deliberately NOT given `tap-44`: a 44px-tall
- // black slab in a 60px header would dominate the wordmark next to it. Grown
- // to a ~32px target instead, which is the honest compromise for a badge that
- // doubles as a button. Flagged rather than silently left at 20px.
- className="flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
+ aria-label={city ? `Location: ${city}. Tap to search another city.` : 'No location set. Tap to choose a city.'}
+ // Measured 28px. The note that used to sit here called that "the honest
+ // compromise" for a badge that doubles as a button — fair when the app
+ // defaulted to a city and this was a nicety. It is not a nicety now: with no
+ // default city, this is the primary control for the one piece of state the
+ // whole Find journey depends on, and it was the smallest target on screen.
+ // `.hit-44` buys the reach without drawing a 44px slab beside the wordmark,
+ // which is the thing that note was right to refuse.
+ className="hit-44 flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
  >
  {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
- <span>{city}</span>
+ <span>{city || 'Set location'}</span>
  <ChevronRight className={`w-2.5 h-2.5 opacity-70 transition-transform ${cityMenuOpen ?'rotate-90' :''}`} />
  </button>
  {cityMenuOpen && (
@@ -871,7 +1024,7 @@ export default function App() {
  <nav className="hidden md:flex surface-quiet p-1 rounded-full gap-0.5 whitespace-nowrap">
  <button
  onClick={() => handleTabSwitch('mood')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='mood'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
@@ -884,7 +1037,7 @@ export default function App() {
  setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
  handleTabSwitch('random');
  }}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
@@ -894,7 +1047,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('happy-hour')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='happy-hour'
  ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] shadow-sm'
  :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
@@ -910,7 +1063,7 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
- className={`px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='saved-recipes'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
  :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
@@ -926,7 +1079,7 @@ export default function App() {
  {/* Mobile tab bar — this is an app, so navigation lives at the thumb, not the
  forehead. Safe-area padding keeps it clear of the iOS home indicator. */}
  <nav
- className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--bg-warm)] border-t border-[var(--rule)]"
+ className="md:hidden safe-x fixed bottom-0 left-0 right-0 z-50 min-h-[var(--tabbar-h)] bg-[var(--bg-warm)] border-t border-[var(--rule)]"
  style={{ paddingBottom:'env(safe-area-inset-bottom)' }}
  aria-label="Primary"
  >
@@ -973,7 +1126,10 @@ export default function App() {
 
  {/* Main Layout Grid wrapper */}
  <div
- className="flex-1 flex flex-col relative w-full items-center pb-[76px] md:pb-0"
+ /* Content clearance for the fixed tab bar, from --tabbar-h + the home-indicator
+    inset. A hardcoded 76px was a guess against 57px of chrome; when it ran short the
+    last list row sat under the bar, unreachable. */
+ className="flex-1 flex flex-col relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0"
  style={{ paddingTop:'calc(60px + env(safe-area-inset-top))' }}
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
@@ -1022,12 +1178,11 @@ export default function App() {
  viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
  overhang (that's what ate the Back button), and a grid cannot overflow
  horizontally, so it has nothing left to guard. */}
- <main className="page-grid py-6 sm:py-10 lg:py-16 overflow-y-auto min-h-[calc(100vh-60px)] w-full relative">
+ <main className="page-grid py-6 sm:py-10 lg:py-16 overflow-y-auto min-h-[calc(100dvh-60px)] w-full relative">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
  <EateryView
- currency={currency}
  recipes={recipes.length > 0 ? recipes : savedRecipes}
  selectedRecipe={selectedRecipe}
  onSelectRecipe={setSelectedRecipe}
@@ -1063,6 +1218,14 @@ export default function App() {
  // MOOD CORNER CANVAS
  isLoading ? (
  <LoadingState />
+) : notice ? (
+ <ErrorState
+ tone="notice"
+ title={notice.title}
+ message={notice.message}
+ showRetry={notice.canRetry}
+ onRetry={() => handleTriggerMatch()}
+ />
 ) : error ? (
  <ErrorState title="Something went wrong" message={error} onRetry={() => handleTriggerMatch()} />
 ) : recipes.length > 0 ? (
@@ -1107,7 +1270,7 @@ export default function App() {
  <LoadingState count={4} />
 ) : (
  <HappyHourView
- recipes={recipes.length > 0 ? recipes : (city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES.map((e) => createEateryResult(e, city, userCoords)) : [])}
+ recipes={recipes}
  onSelectRecipe={(r) => setSelectedRecipe(r)}
  city={city}
  />
@@ -1209,7 +1372,7 @@ export default function App() {
 ) : (
  // SAVED RECIPES OR EATERIES COLLECTION TAB
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
- <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-black dark:border-[#444] pb-6 mb-8 gap-4">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--rule)] pb-6 mb-8 gap-4">
  <div>
  <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
  {activeTab ==='saved-recipes' ?'Your shortlist' :'Grocery basket'}
@@ -1248,7 +1411,7 @@ export default function App() {
  </p>
  <button
  onClick={() => activeTab ==='saved-recipes' ? handleTabSwitch('mood') : handleTabSwitch('random')}
- className="inline-flex items-center gap-2 px-6 py-3 bg-[#7C2D12] hover:bg-[#5E220E] text-white rounded-xl font-sans text-xs font-bold shadow-md transition-all cursor-pointer"
+ className="hit-44 inline-flex items-center gap-2 px-6 py-3 bg-[var(--accent-terracotta)] hover:opacity-90 text-[var(--accent-contrast)] rounded-xl font-sans text-xs font-bold shadow-md transition-all cursor-pointer"
  >
  {activeTab ==='saved-recipes' ?'Find a Place' :'Go to Stay In'}
  </button>
@@ -1262,7 +1425,7 @@ export default function App() {
  className="surface surface-hover cursor-pointer rounded-2xl p-4 flex items-center gap-4 group transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(26,15,10,0.12)]"
  >
  {/* Thumbnail image */}
- <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[#F2F1EE] dark:bg-[#222222] flex-shrink-0 border border-black dark:border-[#444]">
+ <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[var(--surface-quiet-bg)] flex-shrink-0 border border-[var(--rule)]">
  <img
  src={r.image}
  alt={r.name}
@@ -1326,7 +1489,7 @@ export default function App() {
  // Pinned to the thumb on mobile; on desktop a permanently-docked bar over a
  // half-empty viewport is a phone pattern wearing a desktop costume — there it
  // sits inline under the filters where the eye already is.
- <div className="fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-4 pt-3 glass border-t border-black/5 flex justify-center !rounded-none md:static md:bg-none md:backdrop-blur-none md:border-0 md:shadow-none md:px-0 md:pt-8 md:pb-4 md:z-auto">
+ <div className="action-bar fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-40 px-5 pb-4 pt-3 flex justify-center md:static md:bottom-auto md:bg-transparent md:border-0 md:shadow-none md:px-0 md:pt-8 md:pb-4 md:z-auto md:before:hidden">
  <button
  onClick={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  className="w-full max-w-md py-4 rounded-2xl font-sans font-semibold text-base tracking-[-0.01em] transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] hover:opacity-90 hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-[0.97]"

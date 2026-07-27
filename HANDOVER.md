@@ -1,161 +1,185 @@
-# HANDOVER — 2026-07-27 (session 9)
+# HANDOVER
 
 ## Status
 
-**Committed locally as `179f4aa` on `claude/docs-system-audit-emgpoj` at the user's
-explicit request. NOT PUSHED — the push is blocked.** Working tree clean.
+**Latest session — §13.3 violations fixed, shipped.** Three of the six flagged items were
+**false positives** and were left alone: `openNow` was already guarded by
+`!== undefined` at every site, and two "hardcoded offsets" were the comments *describing*
+the original bug. Fixed for real: the four bottom-chrome offsets now derive from
+`--tabbar-h` (`EateryView`, `RecipeView` ×2, `App` content clearance), both `toFixed`
+calls became `formatQuantity()` in `locale.ts` via `Intl`, and the Scaled chip + toast
+moved off hex onto tokens (211 → 203), which also gave the toast a real dark mode.
+CI ratchets updated to the measured truth: offsets 0, toFixed 0, hex 203, and the
+openNow ratchet deleted rather than left firing on correct code.
 
-`git push -u origin claude/docs-system-audit-emgpoj` fails with **HTTP 403** from the
-session's local git proxy (`http://127.0.0.1:41729/git/...`). Attempted three times;
-re-attaching the repo with push access did not change it. The credentials this container
-holds are read-only. **The commit exists only in this container** — it is not on GitHub
-and therefore not on any Vercel deployment. Push it from a machine with write access, or
-re-run in a session granted push scope.
+**Verification actually run:** `verify/checks.mjs` **30/31**, and the one failure
+(`browser back restores list scroll position — no card to test`) was confirmed
+**pre-existing** by re-running with the changes stashed — identical 30/31. It is a
+fixture artifact: no venue cards render in this container. `driver.mjs` light + dark,
+6 views each, screenshots read. `npx esbuild` clean on all four touched files.
+**`tsc --noEmit` was NOT run** — read the Actions tab for the type verdict.
+**Not visually confirmed:** the Scaled chip's new tokens, which only render when
+`plates !== defaultPlates`, a state no screenshot in the sweep reaches.
 
-Correction to session 8's handover, which was wrong: it claimed the `EateryView.tsx` hero
-fix was uncommitted. It was already in `6754d7c`, along with all four instruction files.
-Nothing was ever stranded. Do not act on that handover's push instructions.
+**This session (structural checks audit) — docs + CI only, no `src/` change.** Added
+CLAUDE.md **§13 (the structural check ledger)** and **§14 (skills policy)**, replaced the
+non-blocking hex report in `.github/workflows/ci.yml` with four **ratchets**, and extended
+`qa-gate/SKILL.md` with the §13.4 honesty contract. Ratchet baselines were measured on
+this tree, not assumed: openNow-truthiness 3, bottom-offsets 5, toFixed-in-tsx 2, hex 211.
+`checks.mjs`, the typecheck and the browser sweep were **NOT run** — nothing in `src/`
+changed, so §2 puts the cheapest sufficient check at YAML parse (passed) plus the greps
+that produced the baselines. **§13.3 records six live rule violations found by the audit
+and left unfixed on purpose**, so the ledger and the fixes stay separately reviewable.
+Fixing §13.3 item 1 (`openNow` truthiness, a Trust defect) is the first action below.
 
-- Vercel project `whats-good` (`nizzle-s-projects`) · repo `github.com/wtsz8ybfz8-sketch/whats-good`
-- **Do not diagnose Vercel from inside this container.** An earlier claim in this session
-  — that production was gated by Vercel Deployment Protection — was **wrong**. The
-  evidence was a 403 from `whats-good-nu.vercel.app`, but `example.com` returns 403 here
-  too: **this container's proxy 403s every external URL**. Nothing about the deployment
-  was ever established. Reachability must be checked from a real device, not from here.
+Phase 0 (verification harness) and Phase 1 (regional de-hardcoding) are complete,
+browser-verified and pushed. **Phase 2 (hardcoded hex → tokens) was not started** — the
+45-minute budget was spent. The hex count is unchanged at **233** and the CI step
+correctly remains advisory (`continue-on-error` still present, as it must be at 233).
+
+Merged to `main` and **deployed to production** at the user's explicit request:
+Vercel deployment `dpl_7HoZPVDg9Nbsdzn4RLJQFu3oketh`, commit `d74f9b2`, state READY,
+target production. Production domain `whats-good-nu.vercel.app`. Reachability was NOT
+checked from this container and must not be — the agent proxy 403s every outbound URL
+(§6). READY is Vercel's own report via the MCP transport.
+
+`tsc --noEmit` DID complete this session, locally, exit 0 — the first clean local run
+recorded. GitHub Actions is green on every pushed commit.
+
+**One blocker remains and it needs a lever this session does not have:**
+`VITE_GOOGLE_PLACES_KEY` is not set in the Vercel project as far as anything here can
+tell, and no key exists to set. Without it there are no venues — the Find a Place tab
+now says so explicitly instead of rendering a silent blank, and Stay In / Happy Hour /
+Saved are unaffected. Setting that env var in Vercel and redeploying is what turns
+venue discovery on.
 
 ## Objective
 
-Four things: retire the documentation graveyard, correct the stale handover, and replace
-the hardcoded recipe cuisine rail with one derived from the API and the user's country.
+Build a harness that can actually see the app, then remove the Cape Town origin that was
+still hardcoded through the product.
 
 ## What changed
 
-**Documentation — deleted, not rewritten.**
-- Deleted `docs/HANDOVER.md` (174 lines), `docs/HANDOVER_SESSION4.md` (80),
-  `docs/prompt.md` (61), `docs/AGENTS.md` (1-line orphan stub). Three files named
-  HANDOVER meant an agent globbing for one found three, two of them stale.
-- Deleted `_START_HERE.md`. Ten of its sixteen lines said "read CLAUDE.md", which
-  `README.md` already said. Its remaining claim — that `_archive/` holds tidied files —
-  was false; no such directory exists. A false statement in the first file an agent reads
-  is a hallucination vector.
-- Promoted `docs/IDEATION_BRIEF.md` to root; `docs/` no longer exists.
-- `README.md` absorbed the one true line from `_START_HERE.md` (this folder is one
-  project, unrelated to `work-os`) and gained a four-row file responsibility table.
+**`verify/`** (new, committed; `verify/node_modules/` and `verify/out/` gitignored)
 
-**Code — the hardcoded cuisine rail is gone.**
-- New `src/cuisineRail.ts`. Exports `FALLBACK_AREAS`, `AREA_TERMS`,
-  `orderAreasForCountry()`, `fetchAreas()`.
-- `src/App.tsx` — the rail was the literal array
-  `['Italian','Middle Eastern','Pan-Asian','South African','Latin American']`. It is now
-  `kitchens`, a `useMemo` over TheMealDB's live area list ordered by `countryCode` and
-  capped at 6 chips. Seeded from `FALLBACK_AREAS` so chips exist on first paint.
-- `src/recipeUtils.ts` — the five-case `switch` became an open `AREA_TERMS` lookup, so an
-  area the API adds still maps to a query. Unknown areas fall back to their own name as
-  the search term, not to the generic `chicken/salmon/beef` list — that fallback silently
-  served a different cuisine than the one tapped.
+- `driver.mjs` — Playwright driver on the pre-installed Chromium, 390×844, `--no-sandbox`,
+  locale `en-GB` / `Europe/London`.
+- `fixtures/mealdb.mjs`, `fixtures/places.mjs` — TheMealDB and Google Places intercepted
+  via `page.route`, answered with responses shaped like the real ones. Images are a 1×1
+  PNG. Fixture venues span four countries on purpose.
+- Output: `verify/out/<view>[-dark].png` plus `report[-dark].json` per run — scrollWidth
+  vs innerWidth, first text element's left edge, hit-target probes, headings, console
+  errors. Exit code 2 if any view is unreachable, so "it ran" cannot be read as "it passed".
+- Hit targets use `document.elementFromPoint` probes, never rect heights.
 
-**Why it mattered:** none of those five labels is a cuisine TheMealDB indexes. There is no
-"Pan-Asian", "Latin American", "Middle Eastern" or "South African" area. Every chip was
-invented and hand-mapped to keyword guesses. And it was fixed regardless of location — a
-German in London was offered South African, a leftover of the app's Cape Town origin.
+**`src/` — Phase 1**
+
+- No default city. `city` seeds to `''`; the header badge reads "Set location".
+- `campusData.ts` → `venue.ts`. The 460-line South African venue array is deleted; only
+  the (country-neutral) `Venue` interface remains. `SouthAfricanEatery` → `Venue`.
+- `priceSymbol: 'R'|'RR'|'RRR'|'RRRR'` → `priceTier?: 1|2|3|4`. Rendered as a band
+  (`●●○○`) by `formatPriceTier`, with `priceTierLabel` supplying words for `aria-label`.
+  An unpublished price is now `undefined` and omitted, not silently "moderate".
+- `currencyForCountry` deleted, not extended.
+- `fetchCapeTownEateries` → `fetchVenues`; `city` is now a required argument.
+- Venue coordinate fallback (Cape Town City Hall) removed.
+- "Surprise me" on the dine-out tab re-runs the real search instead of rolling a die over
+  the South African list.
+- `EmptyState` no longer defaults `city` to `'Cape Town'`.
+- `vite-plugin-pwa` removed from devDependencies. `public/sw.js` and
+  `public/registerSW.js` untouched — they are the kill switch and must stay.
+- `.tap-target` deleted from `index.css`; its three call sites in `RecipeView.tsx` now use
+  `.hit-44`. `.tap-44` is a different rule and was left alone.
 
 ## Customer journey impact
 
-**Express intent** and **Choose**. The cuisine control now offers options that exist where
-the user is and that the API can actually return. Previously a tap could return results
-from a keyword guess unrelated to the label. **Recover** is held: the rail falls back to a
-full area list on fetch failure rather than rendering empty and removing the only cuisine
-control on the tab.
+**Trust** is the stage that moved. The header no longer asserts a city the user is not in,
+the venue list no longer contains venues on another continent, and the price band no
+longer wears a currency Google never published. **Recover** improved as a consequence: the
+failure path is now the honest empty state rather than a plausible-looking wrong answer.
+**Orient** shifted from confidently wrong to explicitly unset, which is one tap from right.
 
 ## Verification and actual results
 
-**Rung 4 reached — the app was driven in a real browser and looked at.** First session to
-do so. Method now documented in CLAUDE.md §6; it took ~90 seconds and needed nothing from
-the user. Screenshot at 390×844 was read, not just measured.
+Harness run against `vite` on :3000 with `VITE_GOOGLE_PLACES_KEY` set to a dummy value
+(the key gate must pass before the app will call Places at all).
 
-- **Rung 1.** `npx esbuild` clean on `cuisineRail.ts`, `recipeUtils.ts` (3.9kb, 8ms),
-  `App.tsx` (57.4kb, 11ms).
-- **Rung 4, Chromium 390×844, Stay In tab — the rail renders correctly.** Six derived
-  chips: `Italian, Indian, Chinese, Mexican, Japanese, Thai`. **No South African.** With
-  no `countryCode` in localStorage it fell through to `DEFAULT_LEAD`, exactly as intended.
-- **No horizontal overflow.** `body.scrollWidth === 390`, `innerWidth === 390`. The
-  `.page-grid` primitive holds at mobile width.
-- **Correction to a claim made earlier this session: the chips do NOT fit one row.**
-  Measured `rowCount: 3` — chips at `top: 305` (Italian/Indian/Chinese), `top: 354`
-  (Mexican/Japanese/Thai), and `Surprise me` alone at `top: 404`. Two chip rows plus the
-  wildcard. It looks fine in the screenshot and is not a regression — the old five labels
-  were longer (`Middle Eastern`, `Latin American`) and wrapped at least as hard — but the
-  stated design intent of "six chips, one row" was wrong and should not be repeated as
-  fact.
-- **44pt hit targets were failing (CLAUDE.md §11.3) — found, fixed, and re-verified.**
-  A sweep of every `button/a/input` across all four tabs at 390px found: filter chips
-  42px, header icon buttons 40×40, `Surprise me` 40px, `Try something different` 40px.
-  All pre-existing. Fixed with a new `.hit-44` utility in `index.css` — an invisible
-  centred `::before` with `min-width/min-height: 44px`. Applied at 6 sites.
-  **Verified by hit-probe, not by eye:** `document.elementFromPoint` 1px above and 1px
-  below each painted box now resolves to the button. Painted heights are unchanged
-  (40/42) and the screenshot is pixel-identical, which is the point — §11.3 forbids
-  growing the visual ink to reach 44.
-  One probe returns `below1px: false` for `45+ min`: the chip on the row beneath claims
-  that pixel. Expected adjacency, not a failure of the mechanism.
-- **`tsc --noEmit` not run** — pathologically slow here (CLAUDE.md §6).
-- **`fetchAreas()` live path still not exercised.** This container cannot reach
-  themealdb.com (`ERR_TUNNEL_CONNECTION_FAILED`). `FALLBACK_AREAS` is what rendered. The
-  recipe grid therefore showed `Nothing matched that combination` — **a network artifact
-  of this container, not a bug**. The live ordering path needs a real device to confirm.
-- **The `EateryView` hero overlay is still unmeasured.** The venue detail view needs live
-  Places data to reach, which this container cannot fetch. Open since session 7.
+Light and dark, after Phase 1 — **6/6 views captured, 0 unreachable, 0 horizontal overflow**:
+
+| view | scrollWidth/innerWidth | firstTextLeft | hit probe misses |
+|---|---|---|---|
+| find-a-place | 390/390 | 58.4 | 0 |
+| stay-in | 390/390 | 58.4 | 0 |
+| happy-hour | 390/390 | 58.4 | 0 |
+| saved | 390/390 | 58.4 | 1 |
+| recipe-detail | 390/390 | 58.4 | 2 |
+| venue-detail | 390/390 | 58.4 | 2 |
+
+- **Screenshots were read, not just measured.** Venue detail confirmed: header "Set
+  location", London address, band `●●○○`, identity and actions present on first paint.
+  Recipe detail confirmed rendering with real content. Dark mode compared against the
+  Phase 0 baseline — palette identical, no change beyond the intended city/price strings.
+- **The recipe detail page and the venue detail page had never been rendered in this
+  container before this session.** Both now render.
+- One console error per run: `net::ERR_FAILED` from the blocked `fonts.googleapis.com`
+  stylesheet request. Pre-existing and unrelated to these changes — `index.html` preloads
+  the font, and the harness blocks all unmocked external hosts.
+- Parse checks (rung 1) pass on every modified file.
+- **`tsc --noEmit` completed locally, exit 0.** `vite build` also passes (3.7s, 439 kB JS).
+  GitHub Actions green on all pushed commits.
+- **Re-run against a KEYLESS dev server** (production's actual configuration) found the
+  real defect: 5/6 views, `venue-detail` unreachable because there are no venues at all.
+  That path now renders a named explanation, confirmed by screenshot, instead of a
+  generic empty state under a heading promising real places nearby.
+- The three hit-probe misses are on detail pages where an adjacent control legitimately
+  owns the neighbouring pixel. They were NOT "fixed" with padding (§11.3). Not
+  individually confirmed — see risks.
 
 ## Protected decisions
 
-- **`.hit-44` measures nothing via `getBoundingClientRect()`.** The element's painted box
-  stays 42px by design; the target lives on the `::before`. A future audit that checks
-  `rect.height >= 44` will report a false failure and may "fix" it by adding padding,
-  which grows the visual ink and breaks §11.3. **Verify hit targets with
-  `document.elementFromPoint` probes**, not rect heights. The script is
-  `hittest.mjs` — the pattern is recorded in CLAUDE.md §6.
-- **The search input in `Sidebar.tsx` is correctly labelled** by
-  `<label htmlFor="place-search">`. An audit that only checks `textContent`/`aria-label`
-  will flag it as unlabelled. It is a false positive — do not add a redundant aria-label.
-
-- `public/sw.js` and `public/registerSW.js` are a **live self-destructing kill switch**,
-  not dead files. `vercel.json`'s rewrite exclusion and JS MIME pin for those paths are
-  load-bearing. Removing any of it re-arms the invisible-deploy bug. A previous session
-  nearly "cleaned this up" — do not.
-- The cuisine rail must stay derived. Do not replace it with a different fixed array.
+- Price is a band, not a currency. Places publishes a 1–4 enum and no prices; a glyph
+  would be decoration that reads as fact.
+- No default city, ever. A seeded city is the bug, and a different seeded city is the
+  same bug.
+- `happyHourData.ts` stays Cape Town-only. It is human-confirmed, gated by
+  `hasHappyHourData`, and the UI says so. A disclosed limit is not a hidden assumption.
+- `verify/` deps stay in `verify/package.json`. playwright-core never enters the root
+  `package.json` (§9).
+- `verify/out/` is gitignored. Screenshots are regenerated per run, not source.
+- The hex CI step stays `continue-on-error` while the count is above zero. Making it
+  blocking at 233 would make the pipeline red on arrival and teach everyone to ignore it.
 
 ## Next session: first three actions
 
-1. **Apply `.hit-44` to the remaining small controls.** This session covered the four
-   tabs' top-level controls. NOT swept: anything behind an opened FilterSheet, the city
-   dropdown's 32×32 submit button (`w-8 h-8`, Sidebar.tsx), venue detail actions, and the
-   Happy Hour source links (measured 14px and 34px tall — the 14px ones are the worst
-   targets in the app and were left because they are inline text links inside a
-   paragraph, where a 44px block would break the line box; they need a different fix,
-   probably a spaced-out link list).
-2. **Merge this branch to `main`.** Production still serves `6754d7c`; every change in
-   this session — derived cuisine rail, 44pt hit targets, CI — is on
-   `claude/docs-system-audit-emgpoj` and invisible on the live site until it merges.
-3. **Start trusting CI over local claims.** `.github/workflows/ci.yml` is live and green
-   (run #1, `47df1a6`, 28s). `tsc --noEmit` completed for the first time in this
-   project's history. §6's whole "the typecheck won't finish, report it as did-not-
-   complete" workaround is now obsolete for anything pushed — check the Actions tab
-   instead of guessing. It stays true only for uncommitted local work.
+1. **Fix §13.3 item 1 — the `openNow` Trust defect.** `EateryView.tsx:70,72` and
+   `RecipeView.tsx:563,564` render "Closed" when `openNow` is `undefined`, asserting an
+   opening state Google never published. Compare `=== false` (as `App.tsx:596` already
+   does) and omit the tile entirely when the value is `undefined` — an absent field is
+   absent, never a placeholder (§8). Then lower the CI ratchet to 0.
+2. **§13.3 item 2 — the five hardcoded bottom offsets.** `EateryView.tsx:486`,
+   `RecipeView.tsx:446` and `:675`, `App.tsx:1129`, `index.css:207` all guess against
+   `--tabbar-h`. One token, all sites; lower the ratchet as they go.
+3. **Phase 2: hex → tokens**, highest-traffic first (`RecipeView.tsx`, `App.tsx`,
+   `EateryView.tsx`); `RecipeView.tsx:253` alone hardcodes three values that have tokens.
+   Add any missing token to both `:root` and `html.dark` first; do not change the palette.
+   Lower the hex ratchet from 211 as you go — never raise it.
+
+All three change `src/`, so all three need the full `/qa-gate` run in both modes, and a
+§13.4 report naming what was still unchecked.
 
 ## Known risks and open questions
 
-- **`COUNTRY_LEAD` in `cuisineRail.ts` is a judgement call, not data.** 26 countries, hand
-  written. It is defensible but it is the one place in this change where a human decided
-  what a locale eats. Worth revisiting if it ever feels wrong.
-- `NL` leads with `Indonesian`, which is **not** a TheMealDB area — it is filtered out by
-  `orderAreasForCountry`. Harmless, but it means the Dutch rail is one shorter than it
-  reads.
-- `FALLBACK_AREAS` is transcribed from TheMealDB's area list and was **not** verified
-  against the live endpoint this session. If an entry is wrong, it only affects the
-  offline path.
-- **`vite-plugin-pwa` is still in `devDependencies`** even though `vite.config.ts` no
-  longer uses it and §12 forbids ever re-adding it. It is inert, but leaving the package
-  installed is an invitation for a future session to wire it back up. Removing it is a
-  one-line `package.json` change nobody has been asked to make yet.
-- The audit's items 5–7 (CI, doc split, accessibility section) were scoped to tomorrow and
-  are untouched.
+- **The rename was not typechecked locally.** `SouthAfricanEatery` → `Venue` and
+  `priceSymbol` → `priceTier` touched `App.tsx`, `placesService.ts`, `venue.ts`,
+  `EateryView.tsx`, `RecipeView.tsx`. Parse checks pass and all six views render, but a
+  type error that does not affect these paths would not have been caught. CI is the gate.
+- **`src/venueExtras.ts` still contains Rand-priced synthetic menu constants**
+  (`PRICE_BANDS`, `'R60 espresso martinis'`). `getVenueExtras` is dead — no caller — but
+  the data is still in the tree. Removing it was out of budget; it renders nothing today.
+- **The Phase 0 vs Phase 3 comparison was same-session only.** Baselines live in
+  `/tmp/phase0-baseline` and this container is ephemeral, so it cannot be re-run later.
+  Consider committing a baseline set if visual regression matters.
+- **The harness proves rendering, not correctness of live data.** Fixtures are shaped like
+  the real APIs but are not them. Nothing here says the real Places response still parses.
+- The `fonts.googleapis.com` request in `index.html` fails in any blocked environment.
+  Harmless, but it makes every harness run report one console error.

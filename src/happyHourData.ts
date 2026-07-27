@@ -35,6 +35,14 @@ const MON_THU = [1, 2, 3, 4];
 const CTM = 'https://www.capetownmagazine.com/happy-hours';
 const CTM_LABEL = 'Cape Town Magazine';
 
+/**
+ * The city this curated set covers. Coverage is a property of the DATA, not a string
+ * typed into a view — HappyHourView used to compare against a hardcoded 'cape town',
+ * so when the app stopped defaulting the city to Cape Town the tab silently went
+ * empty for every user on earth and nothing pointed at why.
+ */
+export const HAPPY_HOUR_CITY = 'Cape Town';
+
 export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = [
   {
     venue: 'Woodstock Brewery',

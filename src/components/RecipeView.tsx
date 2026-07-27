@@ -5,7 +5,9 @@
 
 import React, { useState, useEffect } from'react';
 import { eateryPlaceholderImage } from '../App';
+import { formatPriceTier, priceTierLabel } from '../placesService';
 import { ParsedRecipe } from'../types';
+import { formatQuantity } from '../locale';
 import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, MapPin, Star } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
 
@@ -73,8 +75,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  
  if (!isNaN(val) && val > 0) {
  const scaled = val * ratio;
- // Format to max 2 decimal places if needed
- return Number.isInteger(scaled) ? scaled.toString() : scaled.toFixed(2).replace(/\.00$/,'');
+ // Intl, not toFixed: toFixed always emits a "." and pads to a fixed width, so a
+ // scaled recipe read "0.5 tsp" to everyone who writes "0,5". Intl drops the
+ // trailing zeros itself, so the old .replace() is gone with it.
+ return formatQuantity(scaled, 2);
  }
  return match;
  });
@@ -126,7 +130,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {(
  <button
  onClick={() => onSelectRecipe(null)}
- className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
+ className="hit-44 flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
  >
  <ChevronLeft className="w-3.5 h-3.5" />
  {isSavedTab ? (
@@ -158,7 +162,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <button
  onClick={() => onToggleSave(r)}
  aria-pressed={savedIds.includes(r.id)}
- className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-[13px] font-medium transition-colors cursor-pointer ${
+ className={`hit-44 flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-[13px] font-medium transition-colors cursor-pointer ${
  savedIds.includes(r.id)
  ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
  :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
@@ -202,7 +206,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
  <div className="text-center flex flex-col items-center justify-center">
  {/* Stepper. The ink stays 24px — a 44px drawn circle beside an 18px numeral is
- the "comically large button" failure. `.tap-target` lays an invisible 44×44
+ the "comically large button" failure. `.hit-44` lays an invisible 44×44
  box over each control instead, so the touch is HIG-legal and the drawing
  isn't. Gap widened to 4 (16px) so the two invisible boxes clear each other. */}
  <div className="flex items-center gap-4">
@@ -211,7 +215,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  aria-label="One fewer plate"
  onClick={() => handleAdjustPlates(-1)}
  disabled={plates <= 1}
- className="tap-target w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
  >
  -
  </button>
@@ -222,7 +226,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  type="button"
  aria-label="One more plate"
  onClick={() => handleAdjustPlates(1)}
- className="tap-target w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
  >
  +
  </button>
@@ -249,7 +253,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5]">
  Ingredients
  {plates !== defaultPlates && (
- <span className="ml-3 text-xs font-mono text-[#7C2D12] dark:text-[#fca5a5] uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 px-2 py-0.5 rounded-md align-middle">Scaled x{(plates/defaultPlates).toFixed(1).replace(/\.0$/,'')}</span>
+ <span className="ml-3 text-xs font-mono text-[var(--accent-terracotta)] uppercase tracking-wider bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] px-2 py-0.5 rounded-md align-middle">Scaled x{formatQuantity(plates / defaultPlates, 1)}</span>
 )}
  </h3>
  <ChevronDown className="md:hidden w-4 h-4 text-[var(--charcoal)] opacity-50 ml-2 group-open:rotate-180 transition-transform flex-shrink-0" />
@@ -434,7 +438,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {recipes.length > 1 && (
  <button
  onClick={() => onSelectRecipe(null)}
- className="px-6 py-3.5 bg-none border-none text-[#5b7993] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] font-sans text-sm font-bold transition-all cursor-pointer"
+ className="hit-44 px-6 py-3.5 bg-none border-none text-[var(--text-muted)] hover:text-[var(--charcoal)] font-sans text-sm font-bold transition-all cursor-pointer"
  >
  See other matches ({recipes.length - 1} more)
  </button>
@@ -442,7 +446,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
  </div>
  {toastMsg && (
- <div className="fixed bottom-[80px] md:bottom-6 right-4 md:right-6 z-50 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-white/10 max-w-sm">
+ // Clears the tab bar via --tabbar-h + the home-indicator inset, never a guessed
+ // number: 80px was 23px of luck against a 57px bar, and would have sat UNDER it
+ // the moment the bar grew.
+ <div className="fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1rem)] md:bottom-6 right-4 md:right-6 z-50 bg-[var(--charcoal)] text-[var(--bg-warm)] py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-[var(--border-color)] max-w-sm">
  <div className="w-2.5 h-2.5 rounded-full bg-[#7C2D12] animate-pulse flex-shrink-0" />
  <span>{toastMsg}</span>
  </div>
@@ -547,7 +554,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {rawEatery.rating}
  </span>
  <span className="opacity-30">·</span>
- <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.priceSymbol}</span>
+ <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]" aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
  {typeof r.tags[1] ==='string' && r.tags[1].includes('km') && (
  <>
  <span className="opacity-30">·</span>
@@ -671,7 +678,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </button>
  </div>
  {toastMsg && (
- <div className="fixed bottom-[80px] md:bottom-6 right-4 md:right-6 z-50 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-white/10 max-w-sm">
+ // Clears the tab bar via --tabbar-h + the home-indicator inset, never a guessed
+ // number: 80px was 23px of luck against a 57px bar, and would have sat UNDER it
+ // the moment the bar grew.
+ <div className="fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1rem)] md:bottom-6 right-4 md:right-6 z-50 bg-[var(--charcoal)] text-[var(--bg-warm)] py-3.5 px-5 rounded-2xl shadow-xl font-sans text-xs font-semibold flex items-center gap-3 border border-[var(--border-color)] max-w-sm">
  <div className="w-2.5 h-2.5 rounded-full bg-[#7C2D12] animate-pulse flex-shrink-0" />
  <span>{toastMsg}</span>
  </div>

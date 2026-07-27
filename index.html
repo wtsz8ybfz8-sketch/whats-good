@@ -2,7 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      viewport-fit=cover is not cosmetic and it is not optional.
+
+      Without it iOS Safari reports every env(safe-area-inset-*) as 0. So every
+      safe-area rule this app has ever shipped — the tab bar's bottom padding, the
+      action bar's calc() offset — has been a no-op on the exact devices it was
+      written for, while rendering correctly in a desktop Chromium where those insets
+      are legitimately 0. That is the whole "it looked fine in my screenshots" failure
+      mode: the code was right and the platform was never being asked.
+
+      With it, the layout extends into the safe area and the env() values become real,
+      which is what the padding below the tab bar has always been waiting for.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>What's Good — Find your next great meal</title>
     <meta name="description" content="What's Good finds restaurants near you by mood, budget, and distance — or helps you pick a recipe for a night in." />
     <meta property="og:title" content="What's Good" />
@@ -11,7 +24,26 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="What's Good" />
-    <meta name="theme-color" content="#7C2D12" />
+    <!--
+      theme-color tints the browser's own chrome — the bar iOS Safari draws above and
+      below the page. It was a single hardcoded terracotta, so in dark mode the app was
+      near-black (#0F0C0A) while Safari's chrome stayed a saturated brown: a band of a
+      completely different colour welded to the edge of the app, which is precisely the
+      seam a user reads as "the app does not reach the edge of the screen".
+
+      Two tags with media queries, matching the two canvases exactly, so the browser
+      chrome and the app become one continuous surface in either mode.
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F2EF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F0C0A" />
+
+    <!--
+      Without color-scheme the UA renders its own furniture — scrollbars, form controls,
+      the overscroll/rubber-band area — in light mode regardless of the app's theme. In a
+      dark app that shows as a white scrollbar and a white flash when you overscroll past
+      the top: more edges that do not belong to the app.
+    -->
+    <meta name="color-scheme" content="light dark" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

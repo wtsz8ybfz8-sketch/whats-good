@@ -43,6 +43,28 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The regression suite. Every check in it corresponds to a defect that SHIPPED and
+      # was found by the user rather than by any check. Running it here means it runs
+      # whether or not an agent remembers to.
+      # playwright-core ships no browser, and until 2026-07-27 this step pointed at
+      # /opt/pw-browsers/chromium-1194 — the agent container's path, absent on a runner.
+      # So the launch threw on EVERY run: the 9 static checks ran, the browser half
+      # never did, and the claim that these checks run "whether or not an agent
+      # remembers" was false for the life of the file. Install a real browser.
+      - name: Install Chromium for the harness
+        run: npx --yes playwright install --with-deps chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
+
+      - name: Regression checks (verify/checks.mjs)
+        run: |
+          npm --prefix verify ci || npm --prefix verify install
+          VITE_GOOGLE_PLACES_KEY=ci-fixture-key npx vite --port 3000 &
+          npx wait-on -t 60000 http://localhost:3000/ || sleep 10
+          node verify/checks.mjs
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
+
       # --- Guards for rules CLAUDE.md states as prose and nothing enforces ---
       #
       # These exist because a written rule that only an agent reads is a rule that gets
@@ -53,7 +75,11 @@ jobs:
       # CTA bar). On a card it puts backdrop-filter cost on every row of a scrolling list
       # — the specific regression the .surface classes were introduced to prevent.
       # `.glass-range` is a different class (the Sidebar slider) and is excluded.
-      # Measured at 2 on 2026-07-27; this blocks a third from appearing.
+      # NOTE: the real count is 1, not 2 — only the header carries it; the mobile CTA bar
+      # dropped it (see index.css:124). The ceiling stays 2 because §7 still describes two
+      # legitimate chrome surfaces, but be aware it currently permits one new use. This
+      # counts surfaces, not placement: moving .glass from the header onto a card keeps
+      # the count at 1 and passes. §7's "never on a card" is agent discipline (§13.2).
       - name: .glass stays off cards
         run: |
           hits=$(grep -rnE '\bglass\b' src --include='*.tsx' | grep -v 'glass-range' || true)
@@ -78,17 +104,56 @@ jobs:
           fi
           echo "OK — no PWA plugin wired into vite.config.ts"
 
-      # §7 says colour comes from tokens in index.css, but src/**/*.tsx currently carries
-      # 233 hardcoded hex occurrences (measured 2026-07-27). Blocking on that would make this
-      # pipeline permanently red on arrival, which teaches everyone to ignore it — the
-      # worst possible outcome for a new gate.
+      # §13.2/§13.3: rules stated as absolutes in CLAUDE.md that nothing could fail.
       #
-      # So it reports and does not fail. When the count reaches zero, delete
-      # `continue-on-error` and it becomes a real gate. Until then it is a visible debt
-      # counter rather than a lie.
-      - name: Hardcoded hex report (advisory — see §7)
-        continue-on-error: true
+      # Each is a RATCHET, not a pass/fail: the current count is the ceiling, so the
+      # pipeline is green on arrival but a NEW violation turns it red. That is the only
+      # shape that works for debt a blocking gate would make permanently red — the
+      # variant that teaches everyone to ignore the pipeline.
+      #
+      # Lower a baseline whenever you remove a violation. Never raise one.
+      - name: Structural ratchets (§13)
         run: |
-          count=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
-          echo "Hardcoded hex values in src/**/*.tsx: $count (baseline 233, target 0)"
-          echo "### Hardcoded hex: $count (baseline 233, target 0)" >> "$GITHUB_STEP_SUMMARY"
+          fail=0
+          ratchet() {
+            name="$1"; baseline="$2"; count="$3"
+            echo "$name: $count (ceiling $baseline)"
+            echo "- $name: **$count** / ceiling $baseline" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$count" -gt "$baseline" ]; then
+              echo "::error::$name went up: $count > $baseline. See CLAUDE.md §13."
+              fail=1
+            fi
+          }
+          echo "### Structural ratchets (§13)" >> "$GITHUB_STEP_SUMMARY"
+
+          # NOTE: there is deliberately NO openNow ratchet. The audit that added this
+          # step flagged 4 sites, then reading them showed all 4 sit inside an outer
+          # `openNow !== undefined` guard — the code was already correct and the grep
+          # could not see the guard. A grep cannot distinguish a guarded ternary from a
+          # bare one, so this rule stays agent-discipline only (§13.2) rather than
+          # shipping a check that fires on correct code.
+
+          # §6 — bottom chrome derives from --tabbar-h, never a number. A guessed offset
+          # is how 7px of scrolling page ended up visible between two opaque bars.
+          # All five real sites were migrated on 2026-07-27, so the ceiling is 0: any
+          # hit is a new violation.
+          # Comment lines are excluded: index.css, EateryView and App all QUOTE the old
+          # values while explaining the bug, and a check that counts its own
+          # documentation as a violation trains people to raise the baseline.
+          c=$(grep -rnE '(bottom|pb)-\[[0-9]+px\]' src \
+                | grep -vE ':[[:space:]]*(\*|//|\{?/\*)' | grep -c . || true)
+          ratchet "hardcoded bottom-chrome offsets (§6)" 0 "$c"
+
+          # §6 — src/locale.ts is the ONLY module allowed to format for a human reader.
+          # toFixed elsewhere writes "1.5" to everyone who reads "1,5". Both call sites
+          # moved to formatQuantity() on 2026-07-27, so the ceiling is 0.
+          c=$(grep -rnoE 'toFixed\(' src --include='*.tsx' | grep -c . || true)
+          ratchet "hand-formatted numbers outside locale.ts (§6)" 0 "$c"
+
+          # §7 — colour comes from tokens in index.css. Reported as 233, drifted down to
+          # 211 unnoticed, 203 after the RecipeView migration. A ceiling left above the
+          # real count is not a ratchet — it is 8 free regressions. Lower it every time.
+          c=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
+          ratchet "hardcoded hex (§7)" 203 "$c"
+
+          exit $fail

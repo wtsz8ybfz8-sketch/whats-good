@@ -12,3 +12,8 @@ coverage/
 ai-system-build/
 anti-slop-main/
 _archive/
+
+# Verification harness: playwright-core and its screenshot output are
+# regenerated on every run, not source.
+verify/node_modules/
+verify/out/

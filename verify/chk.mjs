@@ -1,0 +1,10 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args:['--no-sandbox'] });
+const p = await b.newPage({ viewport:{width:390,height:844} });
+await p.route('**/*', r => r.request().url().startsWith('http://localhost') ? r.continue() : r.abort());
+await p.goto('http://localhost:3001/', { waitUntil:'domcontentloaded' });
+await p.waitForTimeout(2500);
+await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+await p.waitForTimeout(700);
+await p.screenshot({ path:'/tmp/recover.png' });
+await b.close();

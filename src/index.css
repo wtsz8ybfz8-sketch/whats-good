@@ -103,28 +103,64 @@
    and it made the rule invisible to browser verification — you could never prove the
    target was 44pt, only that the class was attached. Enforced structurally instead.
 
-   `.tap-target` is the version for controls whose INK must stay small. It grows the
-   hit area with padding and pulls the layout back with a matching negative margin, so
-   the button occupies its drawn size in the flow while accepting a 44pt touch. Use it
-   for steppers and icon buttons; use `.tap-44` only where the control may legitimately
-   grow. Never grow a control's background, border or icon to reach 44 — that is the
-   difference between an invisible hit area and a comically large button. */
+   `.hit-44` (below) is the version for controls whose INK must stay small: an invisible
+   centred pseudo-element stretches the hit area to 44 while the border, fill and glyph
+   stay exactly where they are. There was a second, near-identical class here doing the
+   same job with a fixed 44x44 ::after — two utilities for one rule, so a reader had to
+   guess which was current. `.hit-44` won because it also sets touch-action and floors
+   at 44 rather than pinning to it, so it never shrinks a control that is already larger.
+
+   Use `.tap-44` only where the control may legitimately grow. Never grow a control's
+   background, border or icon to reach 44 — that is the difference between an invisible
+   hit area and a comically large button. */
 .tap-44 {
   min-width: 44px;
   min-height: 44px;
 }
 
-.tap-target {
-  position: relative;
+/* ─── Docked action bar (mobile) ──────────────────────────────────────────────
+   NOT .glass, deliberately.
+
+   The mobile CTA bar used to carry .glass. At rgba(255,255,255,0.60) behind
+   blur(14px), a 1px high-contrast edge behind the bar does not dissolve — it ghosts.
+   So the content card's own hairline borders were visible straight through the
+   chrome, reading as random see-through lines running across the "Find a place"
+   button. Blur scatters a soft gradient; it cannot erase a hard 1px edge at that
+   opacity, and raising the opacity would have dragged the header's material with it.
+
+   A docked action bar is chrome that content passes UNDER, so it gets an opaque
+   fill — the same reasoning CLAUDE.md 12 already applies to overlays ("`.surface` is
+   translucent — it is not a modal fill. Overlays use --bg-warm"). Depth comes from a
+   top hairline plus a soft upward shadow, which is what a real toolbar does, and it
+   takes a backdrop-filter off a permanently-mounted layer.
+
+   The scrim above it fades scrolling content out instead of letting it collide with
+   the bar's edge. */
+.action-bar {
+  background: var(--bg-warm);
+  border-top: 1px solid var(--rule);
+  box-shadow: 0 -8px 24px rgba(26, 15, 10, 0.06);
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
 }
-.tap-target::after {
+
+/* Full-bleed fixed chrome: keep the FILL edge to edge, push the CONTENT clear of the
+   notch. Applied to the header and the mobile tab bar. In portrait and on desktop both
+   insets are 0 and this is inert. */
+.safe-x {
+  padding-left: max(0px, env(safe-area-inset-left));
+  padding-right: max(0px, env(safe-area-inset-right));
+}
+
+.action-bar::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 44px;
-  height: 44px;
-  transform: translate(-50%, -50%);
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to top, var(--bg-warm), transparent);
 }
 
 /* ─── Label style ────────────────────────────────────────────────────────────
@@ -166,6 +202,14 @@
   --rule:               #E8E4DF;   /* section rules + control borders */
   --row-border:         #F0EDE8;   /* list-row separators, lighter than --rule */
   --border-color:       rgba(26, 26, 26, 0.07);
+
+  /* Height of the mobile tab bar, as ONE source of truth.
+     The docked action bar used to be pinned at a hardcoded 64px — a guess — while the tab
+     bar actually renders 57px tall. The 7px difference was not padding: it was a strip
+     of the scrolling page showing through between two pieces of opaque chrome, which is
+     exactly what it looked like. Any hardcoded offset drifts the moment either bar's
+     content changes, so both now derive from this one value and cannot disagree. */
+  --tabbar-h: 57px;
 
   /* Glassmorphism tokens.
      Was blur(22px)/180% over 0.70 white — a heavy frost that read as plastic.
@@ -244,10 +288,37 @@ html.dark {
 }
 
 /* ─── Body ───────────────────────────────────────────── */
+/*
+ * The canvas MUST be painted, in every orientation.
+ *
+ * `html` carried no background at all — only `body` did, and with
+ * `background-attachment: fixed`, which iOS Safari paints unreliably. That was survivable
+ * while the layout stopped at the safe area. It stopped being survivable the moment
+ * viewport-fit=cover let the layout extend edge to edge: the safe-area regions (the
+ * notch sides in landscape, the status bar, the home indicator) had nothing painting
+ * them, so the user saw straight through the app to black at the screen edges — a band
+ * of nothing between Safari's chrome and the app's own content.
+ *
+ * html gets the flat base colour so no strip of the screen can ever be unpainted, in any
+ * orientation, on any device. body keeps the gradient on top of it.
+ */
+html {
+  background: var(--bg-warm);
+  /* Matches the meta tag; keeps UA furniture (scrollbars, controls, the iOS rubber-band
+     overscroll area) on the app's side of the theme instead of defaulting to light. */
+  color-scheme: light;
+  /* iOS rubber-band overscroll reveals whatever is behind the document. With a painted
+     canvas that is --bg-warm; without this the browser can show its own default. */
+  overscroll-behavior-y: none;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--body-gradient);
-  background-attachment: fixed;
   color: var(--charcoal);
   min-height: 100dvh;
   overflow-x: hidden;
@@ -651,6 +722,12 @@ html.dark .shimmer::after {
     [content-start] minmax(0, 1200px) [content-end]
     minmax(0, 1fr) [full-end];
   align-content: start;
+
+  /* Landscape on a notched iPhone reports ~59px of left/right inset. Nothing in this app
+     consumed them, so in landscape the content ran under the notch on one side. Zero in
+     portrait and on every desktop, so this costs nothing where it is not needed. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 .page-grid > * {
