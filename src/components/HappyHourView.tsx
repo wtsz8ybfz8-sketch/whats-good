@@ -6,7 +6,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { ParsedRecipe } from '../types';
 import { getHappyHourStatus, compareHappyHour, formatDays, type HappyHourStatus } from '../venueExtras';
-import { CAPE_TOWN_HAPPY_HOURS, mapsUrl, type CuratedHappyHour } from '../happyHourData';
+import { CAPE_TOWN_HAPPY_HOURS, HAPPY_HOUR_CITY, mapsUrl, type CuratedHappyHour } from '../happyHourData';
 import { MapPin, Clock, Navigation, Martini } from 'lucide-react';
 
 interface HappyHourViewProps {
@@ -19,13 +19,25 @@ interface HappyHourViewProps {
 }
 
 /**
- * The curated set is Cape Town only. Rendering nine Rand-priced Cape Town venues to
- * someone standing in London is the same failure as the fabricated menus we tore out:
- * it is invented-for-this-user data wearing a "REAL LISTINGS" badge. Until a city has
- * human-confirmed windows in `happyHourData.ts`, it gets an honest empty state.
+ * Three states, not two. Rendering Cape Town venues to someone who has told us they
+ * are in London is the failure this gate exists to prevent — but "we don't know where
+ * you are yet" is NOT that. It was being treated as a mismatch, so with no city set
+ * the tab rendered its empty state to everybody and the only real content in the app
+ * became unreachable.
+ *
+ * Unknown city => show the listings, clearly labelled with the city they belong to.
+ * Disclosed is honest; asserted-as-local is not.
  */
-export const hasHappyHourData = (city?: string) =>
-  (city ?? '').trim().toLowerCase() === 'cape town';
+export type Coverage = 'covered' | 'unknown-city' | 'not-covered';
+
+export const happyHourCoverage = (city?: string): Coverage => {
+  const c = (city ?? '').trim();
+  if (!c) return 'unknown-city';
+  return c.toLowerCase() === HAPPY_HOUR_CITY.toLowerCase() ? 'covered' : 'not-covered';
+};
+
+/** True when there is something to show — used for the tab's live-deal dot. */
+export const hasHappyHourData = (city?: string) => happyHourCoverage(city) !== 'not-covered';
 
 interface Entry {
   hh: CuratedHappyHour;
@@ -49,7 +61,8 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
     return () => clearInterval(t);
   }, []);
 
-  const covered = hasHappyHourData(city);
+  const coverage = happyHourCoverage(city);
+  const covered = coverage !== 'not-covered';
 
   const entries = useMemo<Entry[]>(() => {
     if (!covered) return [];
@@ -68,12 +81,12 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
             <Martini className="w-5 h-5 text-[var(--accent-terracotta)]" strokeWidth={1.75} />
           </div>
           <h2 className="font-serif text-2xl sm:text-3xl leading-[1.1] tracking-tight mb-3">
-            No confirmed happy hours in {city || 'this city'} yet
+            No confirmed happy hours in {city} yet
           </h2>
           <p className="text-sm leading-relaxed text-[var(--text-muted)] max-w-[380px] mx-auto">
             Google publishes no happy-hour data, so every window here is confirmed by a
-            human first. Cape Town is covered today. We would rather show you nothing
-            than send you across town for a deal that does not exist.
+            human first. {HAPPY_HOUR_CITY} is covered today. We would rather show you
+            nothing than send you across town for a deal that does not exist.
           </p>
         </div>
       </div>
@@ -92,9 +105,17 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
             Happy Hour
           </p>
           <span className="font-mono text-xs uppercase tracking-wider px-2 py-0.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-bold">
-            Real listings · Cape Town
+            Real listings · {HAPPY_HOUR_CITY}
           </span>
         </div>
+        {/* Shown only when we are guessing. The user gets the content AND the reason
+            they are seeing this city rather than theirs — one tap from correcting it. */}
+        {coverage === 'unknown-city' && (
+          <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-4 max-w-[520px]">
+            You are seeing {HAPPY_HOUR_CITY} because we do not know where you are yet.
+            Set your location in the header to check your own city.
+          </p>
+        )}
         {liveCount > 0 ? (
           <h2 className="font-serif text-4xl sm:text-5xl leading-[1.05] tracking-tight">
             <span className="text-[var(--accent-terracotta)]">{liveCount} live</span> right now
@@ -124,10 +145,10 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
                 href={mapsUrl(hh.venue, hh.area)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full text-left py-5 border-b border-[var(--row-border)] flex items-start gap-4 group cursor-pointer press"
+                className="w-full text-left py-5 border-b border-[var(--row-border)] flex items-start gap-3 sm:gap-4 group cursor-pointer press min-h-[44px]"
               >
                 {/* Time column — fixed width so every row's status aligns and scans vertically */}
-                <div className="w-[78px] flex-shrink-0 pt-0.5">
+                <div className="w-[54px] sm:w-[78px] flex-shrink-0 pt-0.5">
                   {isLive ? (
                     <span className="flex items-center gap-1.5">
                       <span className="relative flex w-1.5 h-1.5">
@@ -146,12 +167,12 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="font-serif text-lg leading-tight truncate group-hover:text-[var(--accent-terracotta)] transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-3">
+                    <h3 className="font-serif text-lg leading-tight sm:truncate group-hover:text-[var(--accent-terracotta)] transition-colors">
                       {hh.venue}
                     </h3>
                     <span
-                      className={`font-mono text-xs tabular-nums whitespace-nowrap ${
+                      className={`font-mono text-xs tabular-nums whitespace-nowrap sm:flex-shrink-0 ${
                         urgent ? 'text-[var(--accent-terracotta)] font-bold' : isLive ? 'text-[var(--charcoal)]' : 'text-[var(--text-muted)]'
                       }`}
                     >

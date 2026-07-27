@@ -173,6 +173,14 @@ export default function App() {
  const [selectedRecipe, setSelectedRecipe] = useState<ParsedRecipe | null>(null);
  const [isLoading, setIsLoading] = useState(false);
  const [error, setError] = useState<string | null>(null);
+ /**
+  * A state the user can act on but cannot retry away — no API key, no location. Kept
+  * separate from `error` because they read differently on screen: an error says
+  * something failed, a notice says something has not been set up yet. Collapsing the
+  * two shipped "Something went wrong / Try again" over a missing configuration, where
+  * pressing the button provably changes nothing.
+  */
+ const [notice, setNotice] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
  const [filtersOpen, setFiltersOpen] = useState(true);
 
  // Premium tactical geolocation tracking
@@ -370,6 +378,7 @@ export default function App() {
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
  setIsLoading(true);
  setError(null);
+ setNotice(null);
  setRecipes([]);
  setSelectedRecipe(null);
 
@@ -382,10 +391,13 @@ export default function App() {
  // Name them instead — each one has a different next step for the user.
  if (!isPlacesConfigured()) {
  setRecipes([]);
- setError(
-'Venue search is not configured on this deployment, so there are no places to show. ' +
-'Cooking still works — the Stay In tab needs no key.',
-);
+ setNotice({
+ title:'Venue search is not switched on',
+ message:
+'This deployment has no Google Places key, so there are no places to look through. ' +
+'Nothing is broken and retrying will not help. Stay In needs no key and works now.',
+ canRetry: false,
+ });
  setIsLoading(false);
  return;
  }
@@ -393,10 +405,13 @@ export default function App() {
  // The query would have been "best restaurants in " — a real request, sent to a
  // real API, guaranteed to be meaningless. Ask for the one thing that is missing.
  setRecipes([]);
- setError(
-'Set a location first — tap the badge in the header, or allow location access — ' +
-'and we will find places near you.',
-);
+ setNotice({
+ title:'Where are you?',
+ message:
+'Tap "Set location" in the header, or allow location access, and we will find ' +
+'places near you.',
+ canRetry: true,
+ });
  setIsLoading(false);
  return;
  }
@@ -644,6 +659,7 @@ export default function App() {
  const handleRandomWildcard = async () => {
  setIsLoading(true);
  setError(null);
+ setNotice(null);
  setRecipes([]);
  setSelectedRecipe(null);
 
@@ -1065,6 +1081,14 @@ export default function App() {
  // MOOD CORNER CANVAS
  isLoading ? (
  <LoadingState />
+) : notice ? (
+ <ErrorState
+ tone="notice"
+ title={notice.title}
+ message={notice.message}
+ showRetry={notice.canRetry}
+ onRetry={() => handleTriggerMatch()}
+ />
 ) : error ? (
  <ErrorState title="Something went wrong" message={error} onRetry={() => handleTriggerMatch()} />
 ) : recipes.length > 0 ? (

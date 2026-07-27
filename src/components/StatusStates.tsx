@@ -4,7 +4,7 @@
  */
 
 import React from'react';
-import { AlertCircle, RotateCcw, Compass } from'lucide-react';
+import { AlertCircle, RotateCcw, Compass, Info } from'lucide-react';
 
 interface LoadingProps {
  /** How many card skeletons to draw. Defaults to a full first row on desktop. */
@@ -63,30 +63,50 @@ interface ErrorProps {
  title?: string;
  message?: string;
  onRetry: () => void;
+ /**
+  * 'notice' for a state the user can act on but cannot retry away — a missing API key,
+  * a missing location. Shipping those under "Something went wrong" with a "Try again"
+  * button was actively misleading: retrying changes nothing, and the red alert framing
+  * blamed a fault for what is really a setup step.
+  */
+ tone?: 'error' | 'notice';
+ /** Hide the retry button where pressing it provably cannot help. */
+ showRetry?: boolean;
 }
 
 export const ErrorState: React.FC<ErrorProps> = ({
  title ="Can't reach our recipe source",
  message ='Check your connection and try again.',
  onRetry,
+ tone = 'error',
+ showRetry = true,
 }) => {
+ const isNotice = tone === 'notice';
  return (
  <div className="max-w-[420px] mx-auto text-center py-16 sm:py-24 px-8 surface rounded-3xl flex flex-col items-center justify-center animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
- <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/40 flex items-center justify-center text-red-600 dark:text-red-300 mb-6 border border-red-100 dark:border-red-900/50">
- <AlertCircle className="w-6 h-6" />
+ <div
+ className={`w-12 h-12 rounded-full flex items-center justify-center mb-6 border ${
+ isNotice
+ ?'bg-[var(--accent-tint)] border-[var(--accent-tint-border)] text-[var(--accent-terracotta)]'
+ :'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-900/50 text-red-600 dark:text-red-300'
+ }`}
+ >
+ {isNotice ? <Info className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
  </div>
  <h4 className="font-serif text-lg sm:text-xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">
  {title}
  </h4>
- <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-8">
+ <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-8 last:mb-0">
  {message}
  </p>
+ {showRetry && (
  <button
  onClick={onRetry}
- className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#7C2D12] hover:bg-[#5E220E] text-white rounded-2xl font-sans text-xs font-bold transition-all shadow-md cursor-pointer hover:shadow-lg"
+ className="hit-44 inline-flex items-center gap-2 px-6 py-3.5 bg-[var(--accent-terracotta)] hover:opacity-90 text-[var(--accent-contrast)] rounded-2xl font-sans text-xs font-bold transition-all shadow-md cursor-pointer hover:shadow-lg"
  >
  <RotateCcw className="w-3.5 h-3.5" /> Try again
  </button>
+)}
  </div>
 );
 };
