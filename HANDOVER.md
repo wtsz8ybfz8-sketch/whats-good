@@ -7,11 +7,21 @@ browser-verified and pushed. **Phase 2 (hardcoded hex → tokens) was not starte
 45-minute budget was spent. The hex count is unchanged at **233** and the CI step
 correctly remains advisory (`continue-on-error` still present, as it must be at 233).
 
-Pushed to `claude/verify-harness-regional-fixes-mkvr84`, **not `main`**. The session's
-branch policy names that branch and forbids pushing elsewhere without permission; the
-request said main. Merging to main is one PR away and is the user's call.
+Merged to `main` and **deployed to production** at the user's explicit request:
+Vercel deployment `dpl_7HoZPVDg9Nbsdzn4RLJQFu3oketh`, commit `d74f9b2`, state READY,
+target production. Production domain `whats-good-nu.vercel.app`. Reachability was NOT
+checked from this container and must not be — the agent proxy 403s every outbound URL
+(§6). READY is Vercel's own report via the MCP transport.
 
-Local typecheck was NOT run — see Verification.
+`tsc --noEmit` DID complete this session, locally, exit 0 — the first clean local run
+recorded. GitHub Actions is green on every pushed commit.
+
+**One blocker remains and it needs a lever this session does not have:**
+`VITE_GOOGLE_PLACES_KEY` is not set in the Vercel project as far as anything here can
+tell, and no key exists to set. Without it there are no venues — the Find a Place tab
+now says so explicitly instead of rendering a silent blank, and Stay In / Happy Hour /
+Saved are unaffected. Setting that env var in Vercel and redeploying is what turns
+venue discovery on.
 
 ## Objective
 
@@ -85,9 +95,12 @@ Light and dark, after Phase 1 — **6/6 views captured, 0 unreachable, 0 horizon
   stylesheet request. Pre-existing and unrelated to these changes — `index.html` preloads
   the font, and the harness blocks all unmocked external hosts.
 - Parse checks (rung 1) pass on every modified file.
-- **`npm run lint` / `tsc --noEmit` was not run** — the budget did not allow for a check
-  that routinely exceeds seven minutes here. Not a pass and not a failure. Read the
-  Actions tab for the pushed commits; that is where the real type gate lives.
+- **`tsc --noEmit` completed locally, exit 0.** `vite build` also passes (3.7s, 439 kB JS).
+  GitHub Actions green on all pushed commits.
+- **Re-run against a KEYLESS dev server** (production's actual configuration) found the
+  real defect: 5/6 views, `venue-detail` unreachable because there are no venues at all.
+  That path now renders a named explanation, confirmed by screenshot, instead of a
+  generic empty state under a heading promising real places nearby.
 - The three hit-probe misses are on detail pages where an adjacent control legitimately
   owns the neighbouring pixel. They were NOT "fixed" with padding (§11.3). Not
   individually confirmed — see risks.
