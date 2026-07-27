@@ -147,9 +147,18 @@ sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 31 checks; exit 0 = 
 NO_PROXY='*' node driver.mjs && NO_PROXY='*' node driver.mjs --dark
 ```
 
-`NO_PROXY='*'` is required or localhost returns 000. **CI runs `checks.mjs` too**, so it
-runs whether or not an agent remembers. Every check in it exists because that bug
+`NO_PROXY='*'` is required or localhost returns 000. **CI runs `checks.mjs` too** — but verify that it *reached the browser*:
+from the day it was added until 2026-07-27 the step pinned this container's Chromium
+build path, which does not exist on a GitHub runner, so it threw at launch on every run.
+The nine static checks ran; the browser half never did. `verify/chromePath.mjs` now
+resolves a binary and **exits 3 rather than skipping**, because a suite that silently
+drops its browser reports green while measuring nothing. Every check in it exists because that bug
 shipped and *the user* found it.
+
+**A skip is not a pass.** `checks.mjs` prints `⚠ SKIPPED` and counts skips separately
+in its summary line. One check is skipped today — back-restores-scroll needs a rendered
+venue card and no environment reachable from here produces one. Read the summary line,
+not the exit code alone.
 
 **A check that cannot fail is not evidence.** Before trusting a green result, name the
 result that would have been red. Rendering at 390px in headless Chromium cannot fail an

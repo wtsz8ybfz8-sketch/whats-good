@@ -46,6 +46,16 @@ jobs:
       # The regression suite. Every check in it corresponds to a defect that SHIPPED and
       # was found by the user rather than by any check. Running it here means it runs
       # whether or not an agent remembers to.
+      # playwright-core ships no browser, and until 2026-07-27 this step pointed at
+      # /opt/pw-browsers/chromium-1194 — the agent container's path, absent on a runner.
+      # So the launch threw on EVERY run: the 9 static checks ran, the browser half
+      # never did, and the claim that these checks run "whether or not an agent
+      # remembers" was false for the life of the file. Install a real browser.
+      - name: Install Chromium for the harness
+        run: npx --yes playwright install --with-deps chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
+
       - name: Regression checks (verify/checks.mjs)
         run: |
           npm --prefix verify ci || npm --prefix verify install
@@ -53,7 +63,7 @@ jobs:
           npx wait-on -t 60000 http://localhost:3000/ || sleep 10
           node verify/checks.mjs
         env:
-          PLAYWRIGHT_BROWSERS_PATH: /opt/pw-browsers
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
 
       # --- Guards for rules CLAUDE.md states as prose and nothing enforces ---
       #

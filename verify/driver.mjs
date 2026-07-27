@@ -15,6 +15,7 @@
  */
 
 import { chromium } from 'playwright-core';
+import { resolveChrome } from './chromePath.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +30,7 @@ const DARK = process.argv.includes('--dark');
 const SUFFIX = DARK ? '-dark' : '';
 
 /** Pre-installed in this image. Never run `playwright install`. */
-const CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROME = resolveChrome();   // never a pinned build number — see chromePath.mjs
 
 const json = (body) => ({
   status: 200,
