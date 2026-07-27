@@ -21,7 +21,7 @@ npm install                                                   # once
 cd verify && npm install                                      # once — playwright-core lives HERE, never in root package.json
 cd /home/user/whats-good && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &
 sleep 5
-cd verify && NO_PROXY='*' node checks.mjs                     # 31 checks, exit 0 = pass
+cd verify && NO_PROXY='*' node checks.mjs                     # exit 0 = pass; quote the total IT prints, never a number from a doc
 NO_PROXY='*' node driver.mjs                                  # 6 views, screenshots -> verify/out/
 NO_PROXY='*' node driver.mjs --dark                           # same, dark
 cd .. && npx tsc --noEmit && npx vite build
@@ -64,3 +64,22 @@ specification but unconfirmed on the target device, say exactly that.
 When the user reports a defect, add a check for it to `verify/checks.mjs` in the same
 change that fixes it. A bug the user had to find twice is a process failure, not a
 coding one.
+
+
+## Then say what was NOT checked
+
+Passing this gate is not the same as the change being safe, and the difference is
+written down: **CLAUDE.md §13.2 lists every rule in this project that no machine can
+fail.** `openNow` truthiness, hardcoded bottom offsets, hand-formatted numbers, hex vs
+tokens, invented restaurant facts, content stranded behind an animation, and every
+iOS-Safari behaviour — a green run says nothing about any of them.
+
+Before writing **verified / working / fixed / clean / done**, do all four (§13.4):
+
+1. Name the §6 rung reached and the real exit code.
+2. Name the result that would have been **red**.
+3. Name anything in §13.2 your change touched that nothing checked — in those words.
+4. A timed-out typecheck is **"did not complete"**, never "passed".
+
+Never quote a check count from prose. This file has carried 11, then 18, then 31, and
+each drifted, because checks run inside loops over six viewport/mode combinations.

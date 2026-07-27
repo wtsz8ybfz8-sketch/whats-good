@@ -2,6 +2,17 @@
 
 ## Status
 
+**This session (structural checks audit) — docs + CI only, no `src/` change.** Added
+CLAUDE.md **§13 (the structural check ledger)** and **§14 (skills policy)**, replaced the
+non-blocking hex report in `.github/workflows/ci.yml` with four **ratchets**, and extended
+`qa-gate/SKILL.md` with the §13.4 honesty contract. Ratchet baselines were measured on
+this tree, not assumed: openNow-truthiness 3, bottom-offsets 5, toFixed-in-tsx 2, hex 211.
+`checks.mjs`, the typecheck and the browser sweep were **NOT run** — nothing in `src/`
+changed, so §2 puts the cheapest sufficient check at YAML parse (passed) plus the greps
+that produced the baselines. **§13.3 records six live rule violations found by the audit
+and left unfixed on purpose**, so the ledger and the fixes stay separately reviewable.
+Fixing §13.3 item 1 (`openNow` truthiness, a Trust defect) is the first action below.
+
 Phase 0 (verification harness) and Phase 1 (regional de-hardcoding) are complete,
 browser-verified and pushed. **Phase 2 (hardcoded hex → tokens) was not started** — the
 45-minute budget was spent. The hex count is unchanged at **233** and the CI step
@@ -121,16 +132,21 @@ Light and dark, after Phase 1 — **6/6 views captured, 0 unreachable, 0 horizon
 
 ## Next session: first three actions
 
-1. Run `cd verify && npm i && NO_PROXY='*' node driver.mjs` (dev server on :3000 with
-   `VITE_GOOGLE_PLACES_KEY` set to anything) to re-establish a baseline before touching
-   anything.
-2. Phase 2: migrate hardcoded hex in `src/**/*.tsx` to tokens, highest-traffic components
-   first — `RecipeView.tsx`, `App.tsx`, `EateryView.tsx`. Add any missing token to both
-   `:root` and `html.dark` first; do not change the palette. Re-run the harness in
-   **both** modes and compare against the baseline. Delete `continue-on-error` from
-   `.github/workflows/ci.yml` only when the count is 0.
-3. Check CI on the pushed commits for type errors — the `Venue` / `priceTier` rename
-   touched five files and was never typechecked locally.
+1. **Fix §13.3 item 1 — the `openNow` Trust defect.** `EateryView.tsx:70,72` and
+   `RecipeView.tsx:563,564` render "Closed" when `openNow` is `undefined`, asserting an
+   opening state Google never published. Compare `=== false` (as `App.tsx:596` already
+   does) and omit the tile entirely when the value is `undefined` — an absent field is
+   absent, never a placeholder (§8). Then lower the CI ratchet to 0.
+2. **§13.3 item 2 — the five hardcoded bottom offsets.** `EateryView.tsx:486`,
+   `RecipeView.tsx:446` and `:675`, `App.tsx:1129`, `index.css:207` all guess against
+   `--tabbar-h`. One token, all sites; lower the ratchet as they go.
+3. **Phase 2: hex → tokens**, highest-traffic first (`RecipeView.tsx`, `App.tsx`,
+   `EateryView.tsx`); `RecipeView.tsx:253` alone hardcodes three values that have tokens.
+   Add any missing token to both `:root` and `html.dark` first; do not change the palette.
+   Lower the hex ratchet from 211 as you go — never raise it.
+
+All three change `src/`, so all three need the full `/qa-gate` run in both modes, and a
+§13.4 report naming what was still unchecked.
 
 ## Known risks and open questions
 

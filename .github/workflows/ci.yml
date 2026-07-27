@@ -90,17 +90,51 @@ jobs:
           fi
           echo "OK — no PWA plugin wired into vite.config.ts"
 
-      # §7 says colour comes from tokens in index.css, but src/**/*.tsx currently carries
-      # 233 hardcoded hex occurrences (measured 2026-07-27). Blocking on that would make this
-      # pipeline permanently red on arrival, which teaches everyone to ignore it — the
-      # worst possible outcome for a new gate.
+      # §13.2/§13.3: rules stated as absolutes in CLAUDE.md that nothing could fail.
       #
-      # So it reports and does not fail. When the count reaches zero, delete
-      # `continue-on-error` and it becomes a real gate. Until then it is a visible debt
-      # counter rather than a lie.
-      - name: Hardcoded hex report (advisory — see §7)
-        continue-on-error: true
+      # Each is a RATCHET, not a pass/fail: the current count is the ceiling, so the
+      # pipeline is green on arrival but a NEW violation turns it red. That is the only
+      # shape that works for debt a blocking gate would make permanently red — the
+      # variant that teaches everyone to ignore the pipeline.
+      #
+      # Lower a baseline whenever you remove a violation. Never raise one.
+      - name: Structural ratchets (§13)
         run: |
-          count=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
-          echo "Hardcoded hex values in src/**/*.tsx: $count (baseline 233, target 0)"
-          echo "### Hardcoded hex: $count (baseline 233, target 0)" >> "$GITHUB_STEP_SUMMARY"
+          fail=0
+          ratchet() {
+            name="$1"; baseline="$2"; count="$3"
+            echo "$name: $count (ceiling $baseline)"
+            echo "- $name: **$count** / ceiling $baseline" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$count" -gt "$baseline" ]; then
+              echo "::error::$name went up: $count > $baseline. See CLAUDE.md §13."
+              fail=1
+            fi
+          }
+          echo "### Structural ratchets (§13)" >> "$GITHUB_STEP_SUMMARY"
+
+          # §8.3 — `openNow` is boolean|undefined. A truthy test renders "Closed" for a
+          # venue whose hours Google never published: a fact the app does not have.
+          # Baseline 3 = EateryView 70 + RecipeView 563,564 (2026-07-27). NOTE: the
+          # 4th known site, EateryView:72, wraps the `?` onto its own line and this
+          # single-line regex does NOT see it — a check that cannot fail on that form.
+          # Recorded rather than hidden; §13.3 item 1 lists all four.
+          c=$(grep -rnoE '\bopenNow\s*\?' src --include='*.tsx' | grep -c . || true)
+          ratchet "openNow truthiness (§8.3)" 3 "$c"
+
+          # §6 — bottom chrome derives from --tabbar-h, never a number. A guessed offset
+          # is how 7px of scrolling page ended up visible between two opaque bars.
+          # Baseline 5 (2026-07-27).
+          c=$(grep -rnoE '(bottom|pb)-\[[0-9]+px\]' src | grep -c . || true)
+          ratchet "hardcoded bottom-chrome offsets (§6)" 5 "$c"
+
+          # §6 — src/locale.ts is the ONLY module allowed to format for a human reader.
+          # toFixed elsewhere writes "1.5" to everyone who reads "1,5". Baseline 2.
+          c=$(grep -rnoE 'toFixed\(' src --include='*.tsx' | grep -c . || true)
+          ratchet "hand-formatted numbers outside locale.ts (§6)" 2 "$c"
+
+          # §7 — colour comes from tokens in index.css. Was reported as 233 and drifted
+          # down to 211 unnoticed, which is precisely why a bare report is not a gate.
+          c=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
+          ratchet "hardcoded hex (§7)" 211 "$c"
+
+          exit $fail

@@ -430,3 +430,185 @@ Verification records **actual observed results**, including "did not complete."
   only hashed `/assets/*` immutable. An app whose value is "what's open near me right now"
   gains nothing from offline precaching.
 - **All of the above passed `tsc` clean.** Types are a gate, never verification.
+
+---
+
+## 13. The structural check ledger — what is enforced, what is not, what is open
+
+**Why this section exists.** Every rule above this line is prose. Prose is obeyed by an
+agent that read it carefully and broken by one that skimmed. This audit went looking for
+the gap between what CLAUDE.md *claims* is guaranteed and what any machine actually
+refuses to let through — and found live violations of §6 and §8 sitting in `src/` right
+now, on rules written in bold, passing every gate the project has.
+
+**The rule this section adds: a claim of "verified" must name the check that produced it.**
+"I read the rule and complied" is not verification. If no row below covers what you
+changed, you have not been checked — say so in those words.
+
+### 13.1 Enforced by machine (CI + `verify/checks.mjs`)
+
+These can turn red without an agent's cooperation. They are the only claims you may make
+flatly.
+
+| Rule | Enforced by | Fails when |
+|---|---|---|
+| `viewport-fit=cover` in the meta tag | `checks.mjs` | Tag edited or dropped |
+| No `100vh` / `min-h-screen` | `checks.mjs` | Either appears in CSS or TSX |
+| `html` canvas is painted | `checks.mjs` | `html` has no background |
+| No `background-attachment: fixed` | `checks.mjs` | It reappears in CSS |
+| Two `theme-color` tags with `media=` + a live one | `checks.mjs` | Back to one hardcoded tint |
+| `color-scheme` declared (meta + CSS) | `checks.mjs` | Either half missing |
+| Action bar flush on the tab bar, incl. a simulated 34px inset | `checks.mjs` | A hardcoded offset drifts from `--tabbar-h` |
+| `history.scrollRestoration === 'manual'` | `checks.mjs` | Browser back resets scroll again |
+| `?tab=` / `?city=` deep links, `document.title` per screen | `checks.mjs` | Navigation returns to pure state |
+| No horizontal overflow, hit targets ≥44pt — **390×844, 844×390, 1440×900, light + dark** | `checks.mjs` | Any of the six combinations regresses |
+| Locale: comma decimals, 24h rewrite, non-Latin day labels | `checks.mjs` | A locale assumption returns |
+| No Vite error overlay | `checks.mjs` | Runtime error on load |
+| Types | GH Actions `tsc --noEmit` | Any type error |
+| Bundling | GH Actions `vite build` | Bad import / asset path |
+| `.glass` on ≤2 surfaces | GH Actions grep | A third surface gets it |
+| No `vite-plugin-pwa` wired in | GH Actions grep | The invisible-deploy bug returns |
+
+**Never state a check count in prose.** This file and `qa-gate/SKILL.md` have each carried
+a hardcoded count ("11", then "18", then "31") and each has drifted, because checks are
+added inside loops over six viewport/mode combinations. `checks.mjs` prints its own total.
+Quote what it printed on the run you actually did, or say nothing.
+
+### 13.2 Rules with NO enforcement — agent discipline is the only gate
+
+Every one of these is stated as an absolute above and nothing on any machine can fail it.
+Treat each as unverified on every change until you have checked it by hand and said so.
+
+- **Bottom offsets from `--tabbar-h`, never a number** (§6). `checks.mjs` measures the
+  *one* action bar it knows about. Three other hardcoded offsets exist (13.3).
+- **`openNow` compared against `undefined`, never truthiness** (§8.3). Nothing greps for it.
+- **No number, date or distance formatted by hand** (§6). `checks.mjs` covers `locale.ts`;
+  nothing covers `toFixed` called anywhere else.
+- **Colour from tokens, never a hex** (§7). CI counts and reports; it does not fail, and it
+  does not ratchet — the count can climb back to its worst-ever value silently.
+- **Never invent a restaurant fact; no placeholder content** (§8). Unfalsifiable by machine.
+  This is the rule with the highest cost of failure in the entire document.
+- **Primary content never depends on an animation** (§8). A headless render at default
+  settings can pass while `opacity: 0` strands the venue name on a real device.
+- **No `.glass` on a card** is enforced only as a *count* — swapping the header's `.glass`
+  onto a card keeps the count at 1 and passes.
+- **`position: fixed` inside tab content** (§12). Portalling is prose only.
+- **44pt targets via invisible boxes, never grown ink** (§11.3). The probe proves the
+  target is live; nothing proves the *ink* did not grow to get there.
+- **iOS Safari behaviour of any kind.** Headless Chromium at 390px reports every
+  `env(safe-area-inset-*)` as 0, which is also the correct value here. A green safe-area
+  result on this machine is not evidence about iOS. It never has been.
+- **Reachability of any deployment.** The agent proxy 403s every outbound URL (§6). There
+  is no check, and there must not be one. Real device or nothing.
+
+### 13.3 Open violations found by this audit — live in `src/` today
+
+Found by grep against the rules in this file, on the commit that introduced this section.
+None of them fail any existing gate. They are recorded here rather than fixed in the same
+pass, so that the ledger and the fix are separately reviewable.
+
+1. **`openNow` truthiness — §8.3, a Trust defect.** `EateryView.tsx:70,72` and
+   `RecipeView.tsx:563,564` all read `rawEatery.openNow ? 'Open now' : 'Closed'`. When
+   Google publishes no opening hours the value is `undefined` and the app tells the user
+   the venue is **Closed** — asserting a fact it does not have, which is the exact failure
+   §8 exists to prevent. `App.tsx:596` does it correctly (`=== false`); the render sites
+   do not. The CI ratchet catches 3 of the 4 — `EateryView.tsx:72` wraps the `?` onto
+   its own line and the single-line grep cannot see it. Stated, not hidden.
+2. **Hardcoded bottom-chrome offsets — §6.** `EateryView.tsx:486` `bottom-[64px]`,
+   `RecipeView.tsx:446` and `:675` `bottom-[80px]`, `App.tsx:1129` `pb-[76px]`,
+   `index.css:207` `bottom-[64px]`. The rule is one token, all sites; five sites guess.
+   `checks.mjs` proves only the site it knows about.
+3. **Hand-formatted numbers outside `locale.ts` — §6.** `RecipeView.tsx:78`
+   (`toFixed(2)`, ingredient quantities) and `:253` (`toFixed(1)`, the plate multiplier)
+   render "0.5" and "x1.5" to readers who write "0,5" and "x1,5".
+4. **Hardcoded hex.** Count is **211** in `src/**/*.tsx` (CI baseline text says 233 — the
+   number moved and the comment did not). `RecipeView.tsx:253` alone hardcodes
+   `#7C2D12`, `#fca5a5` and `#FAF2F0` — three values that all have tokens.
+5. **Doc drift on `.glass`.** §7 says two surfaces; there is exactly **one** (`App.tsx:890`,
+   the header). The mobile CTA bar no longer carries it. The CI ceiling of 2 therefore
+   permits one new card to take it silently.
+6. **`pushState` at `App.tsx:831`.** §6's "never `pushState`" is about the `?tab=`/`?city=`
+   params; the detail view uses it deliberately so the back gesture closes the detail. The
+   code is right and the rule is written too broadly — **fixed by this clarification, not
+   by a code change.**
+
+### 13.4 The honesty contract for reporting
+
+Before writing **verified, working, fixed, clean, passing** or **done**, all four:
+
+1. Name the rung of §6 you actually reached, and the command's real exit code.
+2. Name the specific result that would have been **red**. If you cannot, you ran a check
+   that cannot fail — say "not verified" instead.
+3. Name anything in 13.2 your change touched that nothing checked, in those words.
+4. If a check timed out, say **"did not complete."** Never "passed."
+
+A timed-out typecheck, an unrun browser sweep and a rule in 13.2 are three different kinds
+of "unknown", and all three must be reported as unknown. The failure mode this project has
+actually shipped, every session, is not a wrong claim — it is a confident one.
+
+---
+
+## 14. Skills — what to use, what to ignore, and why
+
+**"Use every relevant skill" never means invoke every skill** (§2). Loading a skill costs
+context and, worse, an aesthetic skill will confidently redirect §7's decided design
+direction. The list below is the standing decision; it overrides a skill's own
+self-description of when it should trigger.
+
+### 14.1 Always
+
+- **`qa-gate`** (project skill, `.claude/skills/qa-gate/`) — mandatory before the words in
+  §13.4, and before any deploy. It is the only skill that gates a claim.
+
+### 14.2 Use when the task calls for it
+
+- **`simplify`** — after a refactor, to review the diff for reuse and dead code. Quality
+  only; it does not hunt bugs.
+- **`security-review`** / **`code-review`** — before any change touching `placesService.ts`,
+  keys, or `.env*`.
+- **`full-output-enforcement`** — when editing `src/App.tsx` (63KB) or
+  `RecipeView`/`EateryView` (25–28KB). Truncation and `// ... rest unchanged` placeholders
+  are a real failure mode at that file size and would destroy working code.
+- **`stop-slop`** — for user-facing copy inside the product. The voice is warm editorial
+  (§7), not assistant-speak.
+- **`update-config`** / **`fewer-permission-prompts`** — to keep the QA gate from dying on
+  permission prompts (see 14.4).
+
+### 14.3 Deliberately NOT used — do not invoke these, and say so if asked
+
+These are installed and relevant-sounding. They are refused on purpose:
+
+- **`ui-ux-pro-max`, `frontend-design`, `redesign-existing-projects`, `minimalist-ui`,
+  `industrial-brutalist-ui`, `stitch-design-taste`, `design`, `brandkit`, `canvas-design`,
+  `banner-design…`, `brand-identity-governance…`** — §7 is a *decided* direction (warm
+  editorial, Schibsted Grotesk, one terracotta accent, tokens in `index.css`). Every one of
+  these proposes its own palette, type system and layout language. Invoking one does not
+  add taste to this project; it starts a fight with §7 that the skill wins because it is
+  the more recent instruction. **If a design change is wanted, change §7 first, on purpose.**
+- **`dataviz`** — no charts in this product. If one is ever added, this becomes 14.2.
+- **`web-artifacts-builder`, `artifact-design`, `strategic-slide-presentation-designer`** —
+  this is a Vite app, not an artifact or a deck.
+- **`docx`, `pptx`, `xlsx`, `pdf`, `email-marketing*`, `ad-creative`, `internal-comms`,
+  `learn`, `morning`, `firecrawl`** — unrelated to this codebase.
+- **`run`** — superseded by §6's exact, verified launch recipe and by `qa-gate`. A generic
+  launcher will not know about `NO_PROXY='*'`, the pre-installed Chromium path, or the
+  fixtures, and will draw wrong conclusions from the proxy's 403s.
+- **`loop`** — never poll from inside a session. §3 is a hard stop, not a retry loop.
+
+### 14.4 What the user needs to do — this is the ask
+
+Nothing here needs downloading; these are switches only you can throw:
+
+1. **A `SessionStart` hook** (skill: `session-start-hook`) that runs `npm install` and
+   `npm --prefix verify install`. The QA gate's install step is the most common reason a
+   session skips it and reports from a cheap check instead. **Highest-value item on this
+   list.**
+2. **Permission allowances** so the gate runs unattended — `Bash(node verify/checks.mjs)`,
+   `Bash(node driver.mjs*)`, `Bash(NO_PROXY=* *)`, `Bash(npx esbuild *)`, `Bash(grep *)`.
+   `.claude/settings.local.json` currently allows commits and pushes but **not the checks**,
+   which is exactly backwards given §4.
+3. **Delete the stale entry** in `.claude/settings.local.json` permitting
+   `rm .../.git/index.lock`. §4 forbids that action outright; a standing permission for it
+   contradicts the hardest rule in this file.
+4. **`VITE_GOOGLE_PLACES_KEY` in Vercel.** Still the one blocker on venue discovery. No key
+   exists in this container to set, and reachability cannot be confirmed from here.
