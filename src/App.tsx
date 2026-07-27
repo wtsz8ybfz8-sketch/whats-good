@@ -15,8 +15,8 @@ import { HappyHourView, hasHappyHourData } from'./components/HappyHourView';
 import { getHappyHourStatus } from'./venueExtras';
 import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon } from'lucide-react';
-import { SOUTH_AFRICAN_EATERIES, type SouthAfricanEatery } from'./campusData';
-import { fetchCapeTownEateries, detectCityFromCoords, currencyForCountry } from'./placesService';
+import type { Venue } from'./venue';
+import { fetchVenues, detectCityFromCoords, formatPriceTier } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
 import { cuisineIcon } from'./cuisineIcon';
 
@@ -69,7 +69,7 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
 }
 
 function createEateryResult(
- eatery: SouthAfricanEatery,
+ eatery: Venue,
  city: City,
  userCoords: { latitude: number; longitude: number } | null,
 ): ParsedRecipe {
@@ -105,7 +105,7 @@ function createEateryResult(
  tags: [
  eatery.vibeMatch,
  distanceStr,
- eatery.priceSymbol,
+ formatPriceTier(eatery.priceTier),
  'Restaurant'
  ],
  ingredients: eatery.signatureIngredients,
@@ -121,26 +121,30 @@ function createEateryResult(
  : '',
  ].filter(Boolean),
  prepTime: eatery.estimatedWait,
- cookTime: eatery.priceSymbol,
+ cookTime: formatPriceTier(eatery.priceTier),
  serves:'Table booking',
  source: eatery.externalLink,
  distanceVal: distVal,
  rawEatery: eatery,
  distanceStr,
- } as ParsedRecipe & { distanceVal: number; rawEatery: SouthAfricanEatery; distanceStr: string };
+ } as ParsedRecipe & { distanceVal: number; rawEatery: Venue; distanceStr: string };
 }
 
 export default function App() {
  const [activeTab, setActiveTab] = useState<ActiveTab>('mood');
  const [prevTab, setPrevTab] = useState<ActiveTab>('mood');
- // City is auto-detected from the user's location, never manually picked.
- // Cached in localStorage so the header doesn't flash back to Cape Town on reload
- // while a fresh detection runs in the background.
+ // City is auto-detected from the user's location, or typed. There is deliberately no
+ // default city: this app began as a Cape Town product and 'Cape Town' sat here as the
+ // seed value, so a user in London was greeted by another hemisphere and offered South
+ // African cuisine before they had touched anything. An empty string renders as
+ // "Set location" and asks — which is honest, and one tap from correct (§5, Orient).
+ // Cached in localStorage so a resolved city doesn't flash away on reload while a
+ // fresh detection runs in the background.
  const [city, setCity] = useState<City>(() => {
  try {
- return localStorage.getItem('whats_good_city') ||'Cape Town';
+ return localStorage.getItem('whats_good_city') || '';
  } catch {
- return 'Cape Town';
+ return '';
  }
  });
  // When the user types a destination ("Paris while in CPT"), we pin the city and
@@ -178,7 +182,6 @@ export default function App() {
  const [countryCode, setCountryCode] = useState<string | null>(() => {
  try { return localStorage.getItem('whats_good_country'); } catch { return null; }
  });
- const currency = currencyForCountry(countryCode);
  useEffect(() => {
  try { if (countryCode) localStorage.setItem('whats_good_country', countryCode); } catch {}
  }, [countryCode]);
@@ -386,13 +389,18 @@ export default function App() {
  customQuery === undefined ? dimensions.diet : null,
  ].filter(Boolean).join(' ');
 
- // Try Places API first; fall back to local Cape Town data when that is the selected city.
- let eateryList: typeof SOUTH_AFRICAN_EATERIES = city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES : [];
+ // No local fallback venue set. This used to seed the list with the app's original
+ // South African venues whenever the city happened to be Cape Town, which meant the
+ // fallback path served real-looking venues from one specific country while the rest
+ // of the world got nothing. An empty list lands on the honest empty state, which
+ // tells the user what went wrong and offers a way forward (§5, Recover). Showing
+ // someone a venue 9,000 km away is worse than showing them none.
+ let eateryList: Venue[] = [];
  let usingPlacesApi = false;
  try {
- const placesResults = await fetchCapeTownEateries(placesSearchTerms, city, priceFilter);
+ const placesResults = await fetchVenues(placesSearchTerms, city, priceFilter);
  if (placesResults.length > 0) {
- eateryList = placesResults as typeof SOUTH_AFRICAN_EATERIES;
+ eateryList = placesResults;
  usingPlacesApi = true;
  }
  } catch {
@@ -403,7 +411,7 @@ export default function App() {
  eateryList.forEach((eatery) => {
  // Price filter client-side only for the hardcoded list — Places results
  // were already filtered server-side via priceLevels.
- if (!usingPlacesApi && priceFilter && eatery.priceSymbol !== priceFilter) return;
+ if (!usingPlacesApi && priceFilter && eatery.priceTier !== priceFilter) return;
 
  // Cuisine, vibe, and text filters only apply to hardcoded list
  // (Places API already scoped the results via the search query)
@@ -617,42 +625,13 @@ export default function App() {
 
  try {
  if (dimensions.locationMode ==='dineout') {
- const randomEatery = SOUTH_AFRICAN_EATERIES[Math.floor(Math.random() * SOUTH_AFRICAN_EATERIES.length)];
- 
- const imgUrl = randomEatery.photoUrl || eateryPlaceholderImage(randomEatery.name);
-
- let distanceStr = randomEatery.fallbackDistance;
- if (userCoords) {
- const dist = getDistance(userCoords.latitude, userCoords.longitude, randomEatery.latitude, randomEatery.longitude);
- distanceStr = `${dist.toFixed(1)} km away`;
- }
-
- const parsed: ParsedRecipe = {
- id: randomEatery.id,
- name: randomEatery.name,
- category: randomEatery.cuisine,
- area: city,
- instructions: `${randomEatery.signatureDescription}\n\nRecommended Order: ${randomEatery.signatureOrder}`,
- image: imgUrl,
- tags: [
- randomEatery.vibeMatch,
- distanceStr,
- randomEatery.priceSymbol,
-'Eatery'
- ],
- ingredients: randomEatery.signatureIngredients,
- steps: [
- `Head to ${randomEatery.address} (${distanceStr}).`,
- `Try the recommended order: ${randomEatery.signatureOrder}`
- ],
- prepTime: randomEatery.estimatedWait,
- cookTime: randomEatery.priceSymbol,
- serves:'Custom Plate',
- source: randomEatery.externalLink,
- };
-
- setRecipes([parsed]);
- setSelectedRecipe(parsed);
+ // "Surprise me" used to roll a die over the hardcoded South African venue list, so
+ // on this tab it returned a Cape Town restaurant to everyone, everywhere, regardless
+ // of the city in the header. With no local list there is nothing to roll against and
+ // nothing to invent: re-run the real search and let the live results answer.
+ setIsLoading(false);
+ handleTriggerMatch(undefined,'dineout');
+ return;
  } else {
  // Gourmet Wildcard Search
  const res = await fetch('https://www.themealdb.com/api/json/v1/1/random.php');
@@ -780,7 +759,7 @@ export default function App() {
  type="button"
  onClick={() => setCityMenuOpen((o) => !o)}
  title="Search another city"
- aria-label={`Location: ${city}. Tap to search another city.`}
+ aria-label={city ? `Location: ${city}. Tap to search another city.` : 'No location set. Tap to choose a city.'}
  // Was ~20px tall at 10px mono — a control you are meant to tap to change
  // city, drawn at caption size. Deliberately NOT given `tap-44`: a 44px-tall
  // black slab in a 60px header would dominate the wordmark next to it. Grown
@@ -789,7 +768,7 @@ export default function App() {
  className="flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
  >
  {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
- <span>{city}</span>
+ <span>{city || 'Set location'}</span>
  <ChevronRight className={`w-2.5 h-2.5 opacity-70 transition-transform ${cityMenuOpen ?'rotate-90' :''}`} />
  </button>
  {cityMenuOpen && (
@@ -1027,7 +1006,6 @@ export default function App() {
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
  <EateryView
- currency={currency}
  recipes={recipes.length > 0 ? recipes : savedRecipes}
  selectedRecipe={selectedRecipe}
  onSelectRecipe={setSelectedRecipe}
@@ -1107,7 +1085,7 @@ export default function App() {
  <LoadingState count={4} />
 ) : (
  <HappyHourView
- recipes={recipes.length > 0 ? recipes : (city ==='Cape Town' ? SOUTH_AFRICAN_EATERIES.map((e) => createEateryResult(e, city, userCoords)) : [])}
+ recipes={recipes}
  onSelectRecipe={(r) => setSelectedRecipe(r)}
  city={city}
  />

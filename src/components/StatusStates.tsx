@@ -114,7 +114,7 @@ interface EmptyProps {
 
 export const EmptyState: React.FC<EmptyProps> = ({
  onSearchRandom,
- city = 'Cape Town',
+ city = '',
 }) => {
  return (
  <div className="max-w-2xl mx-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
@@ -123,7 +123,7 @@ export const EmptyState: React.FC<EmptyProps> = ({
  <Compass className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
  </div>
  <p className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold mb-3">
- What's Good {city}
+ What's Good{city ? ` ${city}` : ''}
  </p>
  <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5] mb-4 leading-tight">
  Where are we eating?

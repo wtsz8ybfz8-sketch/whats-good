@@ -35,7 +35,8 @@ export interface ParsedRecipe {
 
 export type LocationMode = 'dineout' | 'gourmet';
 // Auto-detected from the user's location (Google Places reverse geocode) — not a fixed list.
-// Falls back to 'Cape Town' when location is denied or detection fails.
+// Empty until detected or typed. There is no default city — a seeded one told users
+// they were somewhere they had never been. See App.tsx.
 export type City = string;
 
 export interface Dimensions {

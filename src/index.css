@@ -103,28 +103,19 @@
    and it made the rule invisible to browser verification — you could never prove the
    target was 44pt, only that the class was attached. Enforced structurally instead.
 
-   `.tap-target` is the version for controls whose INK must stay small. It grows the
-   hit area with padding and pulls the layout back with a matching negative margin, so
-   the button occupies its drawn size in the flow while accepting a 44pt touch. Use it
-   for steppers and icon buttons; use `.tap-44` only where the control may legitimately
-   grow. Never grow a control's background, border or icon to reach 44 — that is the
-   difference between an invisible hit area and a comically large button. */
+   `.hit-44` (below) is the version for controls whose INK must stay small: an invisible
+   centred pseudo-element stretches the hit area to 44 while the border, fill and glyph
+   stay exactly where they are. There was a second, near-identical class here doing the
+   same job with a fixed 44x44 ::after — two utilities for one rule, so a reader had to
+   guess which was current. `.hit-44` won because it also sets touch-action and floors
+   at 44 rather than pinning to it, so it never shrinks a control that is already larger.
+
+   Use `.tap-44` only where the control may legitimately grow. Never grow a control's
+   background, border or icon to reach 44 — that is the difference between an invisible
+   hit area and a comically large button. */
 .tap-44 {
   min-width: 44px;
   min-height: 44px;
-}
-
-.tap-target {
-  position: relative;
-}
-.tap-target::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 44px;
-  height: 44px;
-  transform: translate(-50%, -50%);
 }
 
 /* ─── Label style ────────────────────────────────────────────────────────────

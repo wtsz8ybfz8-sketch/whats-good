@@ -3,7 +3,7 @@
  * Falls back silently to hardcoded data on any failure.
  */
 
-import { SouthAfricanEatery } from './campusData';
+import { Venue } from './venue';
 
 const PLACES_BASE = 'https://places.googleapis.com/v1';
 
@@ -65,19 +65,28 @@ function getGooglePlacesKey(): string {
   );
 }
 
-function priceLevelToSymbol(level?: string): 'R' | 'RR' | 'RRR' | 'RRRR' {
+/**
+ * Places' priceLevel enum -> a tier count, 1-4.
+ *
+ * This used to return 'R'|'RR'|'RRR'|'RRRR' — the South African Rand glyph, repeated,
+ * with the tier recovered downstream via `.length`. An unknown level defaulted to 'RR',
+ * which invented a mid-range price band for a venue that had published none. Unknown is
+ * now `undefined` and the render sites omit the field, per §8: a field is a real value
+ * or it is absent.
+ */
+function priceLevelToTier(level?: string): 1 | 2 | 3 | 4 | undefined {
   switch (level) {
     case 'PRICE_LEVEL_FREE':
     case 'PRICE_LEVEL_INEXPENSIVE':
-      return 'R';
+      return 1;
     case 'PRICE_LEVEL_MODERATE':
-      return 'RR';
+      return 2;
     case 'PRICE_LEVEL_EXPENSIVE':
-      return 'RRR';
+      return 3;
     case 'PRICE_LEVEL_VERY_EXPENSIVE':
-      return 'RRRR';
+      return 4;
     default:
-      return 'RR';
+      return undefined;
   }
 }
 
@@ -101,16 +110,16 @@ export function getPlacePhotoUrl(photoName: string): string {
   return `${PLACES_BASE}/${photoName}/media?maxWidthPx=800&key=${key}`;
 }
 
-/** Maps the app's Rand price tier to the Places API priceLevels filter. */
-function symbolToPriceLevels(symbol?: string | null): string[] | undefined {
-  switch (symbol) {
-    case 'R':
+/** Maps a price tier (1-4) to the Places API priceLevels filter. */
+export function tierToPriceLevels(tier?: number | null): string[] | undefined {
+  switch (tier) {
+    case 1:
       return ['PRICE_LEVEL_FREE', 'PRICE_LEVEL_INEXPENSIVE'];
-    case 'RR':
+    case 2:
       return ['PRICE_LEVEL_MODERATE'];
-    case 'RRR':
+    case 3:
       return ['PRICE_LEVEL_EXPENSIVE'];
-    case 'RRRR':
+    case 4:
       return ['PRICE_LEVEL_VERY_EXPENSIVE'];
     default:
       return undefined;
@@ -178,17 +187,17 @@ async function searchTextOnce(
  * priceLevels so all 20 slots per call hold matching venues.
  * Returns an empty array on any failure so callers can silently fall back.
  */
-export async function fetchCapeTownEateries(
+export async function fetchVenues(
   query: string,
-  city = 'Cape Town',
-  priceSymbol?: string | null,
-): Promise<SouthAfricanEatery[]> {
+  city: string,
+  priceTier?: number | null,
+): Promise<Venue[]> {
   const key = getGooglePlacesKey();
 
   if (!key) return [];
 
   try {
-    const priceLevels = symbolToPriceLevels(priceSymbol);
+    const priceLevels = tierToPriceLevels(priceTier);
     const queries = query
       ? [
           `${query} restaurant in ${city}`,
@@ -213,11 +222,11 @@ export async function fetchCapeTownEateries(
 
     if (places.length === 0) return [];
 
-    return places.map((place, index): SouthAfricanEatery => {
+    return places.map((place, index): Venue => {
       const name = place.displayName?.text ?? 'Restaurant';
       const address = place.formattedAddress ?? city;
       const rating = Math.round((place.rating ?? 4.0) * 10) / 10;
-      const priceSymbol = priceLevelToSymbol(place.priceLevel);
+      const priceTier = priceLevelToTier(place.priceLevel);
       const phone = place.nationalPhoneNumber ?? '';
       const website =
         place.websiteUri ?? `https://www.google.com/maps/search/${encodeURIComponent(name)}`;
@@ -235,7 +244,7 @@ export async function fetchCapeTownEateries(
         vibeMatch: 'feeling adventurous',
         fallbackDistance: '',
         rating,
-        priceSymbol,
+        priceTier,
         /* Empty on purpose. These four fields used to be filled with template strings
            built from the venue's own name — `House specialty at ${name}`, `A featured
            dining experience at ${name}, located at ${address}` — which EateryView then
@@ -244,15 +253,18 @@ export async function fetchCapeTownEateries(
            A template is not data. Google's Places API does not publish a signature dish,
            so we do not have one, and the render sites already omit an empty value. An
            empty section beats a confident lie; see the "never render invented data" rule
-           in CLAUDE.md. Venues in campusData.ts carry real, human-written values here and
-           still render normally. */
+           in CLAUDE.md. */
         signatureOrder: '',
         signatureDescription: '',
         signatureIngredients: [],
         digestiveNote: '',
         externalLink: website,
-        latitude: place.location?.latitude ?? -33.9249,
-        longitude: place.location?.longitude ?? 18.4241,
+        /* No coordinate fallback. This was `?? -33.9249, 18.4241` — Cape Town's City
+           Hall — so a venue with no published location silently claimed to be in South
+           Africa and then sorted by a distance computed from that lie. NaN propagates
+           into a hidden distance, which is the honest outcome. */
+        latitude: place.location?.latitude as number,
+        longitude: place.location?.longitude as number,
         phone,
         estimatedWait: '', // Not published by Places. "Check with venue" is filler, not a wait time.
         photoUrl,
@@ -268,7 +280,7 @@ export async function fetchCapeTownEateries(
 
 /**
  * Reverse-geocodes coordinates to a city name using Google Places API (New) Nearby Search,
- * scoped to type "locality". Same key, same API family as fetchCapeTownEateries — no new
+ * scoped to type "locality". Same key, same API family as fetchVenues — no new
  * dependency, no new data source. Returns null on any failure so callers can fall back.
  */
 export async function detectCityFromCoords(
@@ -316,29 +328,29 @@ export async function detectCityFromCoords(
 }
 
 /**
- * Currency symbol for a detected country.
+ * A price band, rendered.
  *
- * The venue data and price tiers were built around South African Rand. Detection is
- * global, so landing anywhere else used to render foreign venues priced in "R" —
- * incoherent, and the source of stray currency codes on screen. Price level from
- * Places is an enum (1–4), so the tier is meaningful anywhere; only the symbol has
- * to follow the country.
+ * The old pair of helpers here mapped a country code to a currency glyph through a
+ * fourteen-entry hardcoded table, defaulted to 'R' when the country was unknown, and
+ * fell back to '€' for everywhere not in the table. So an undetected user saw South
+ * African Rand and a user in Lagos saw Euros. Replacing that table with a longer table
+ * would be the same mistake with more rows.
+ *
+ * Google Places does not publish prices — only a 1-4 band. A currency glyph on a band
+ * is decoration that reads as fact, and a wrong one is worse than none. So the band is
+ * rendered as what it is: a count, out of four, with a word for screen readers and for
+ * anyone who has never met the dot convention. No country, no currency, no assumption.
  */
-const CURRENCY_BY_COUNTRY: Record<string, string> = {
-  ZA: 'R', KE: 'KSh', NG: '₦', GB: '£', US: '$', AU: 'A$', NZ: 'NZ$',
-  IN: '₹', JP: '¥', CN: '¥', BR: 'R$', CA: 'C$', CH: 'CHF', AE: 'AED',
-};
+const TIER_WORDS = ['Inexpensive', 'Moderate', 'Expensive', 'Very expensive'] as const;
 
-export function currencyForCountry(countryCode?: string | null): string {
-  if (!countryCode) return 'R';
-  return CURRENCY_BY_COUNTRY[countryCode.toUpperCase()] ?? '€';
+/** e.g. tier 2 -> '●●○○'. Returns '' when the venue published no price band. */
+export function formatPriceTier(tier?: number | null): string {
+  if (!tier || tier < 1 || tier > 4) return '';
+  return '\u25CF'.repeat(tier) + '\u25CB'.repeat(4 - tier);
 }
 
-/**
- * Renders a stored Rand price tier ('R'|'RR'|'RRR'|'RRRR') in the local currency.
- * The tier count is the signal; the glyph just has to match where the user is.
- */
-export function formatPriceTier(priceSymbol: string | undefined, currency: string): string {
-  const tier = Math.min(Math.max((priceSymbol ?? 'RR').length, 1), 4);
-  return currency.repeat(tier);
+/** The same band in words, for aria-label and for the detail page's utility block. */
+export function priceTierLabel(tier?: number | null): string {
+  if (!tier || tier < 1 || tier > 4) return '';
+  return `${TIER_WORDS[tier - 1]} \u00B7 ${tier} of 4`;
 }

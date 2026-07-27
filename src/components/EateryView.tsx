@@ -12,7 +12,7 @@ import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLin
 import { getHappyHourStatus, formatDays } from '../venueExtras';
 import { cuisineIcon } from '../cuisineIcon';
 import { findCuratedHappyHour } from '../happyHourData';
-import { formatPriceTier } from '../placesService';
+import { formatPriceTier, priceTierLabel } from '../placesService';
 
 interface EateryViewProps {
   recipes: ParsedRecipe[];
@@ -22,7 +22,6 @@ interface EateryViewProps {
   savedIds: string[];
   onToggleSave: (recipe: ParsedRecipe) => void;
   isSavedTab?: boolean;
-  currency?: string;
 }
 
 export const EateryView: React.FC<EateryViewProps> = ({
@@ -33,7 +32,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
   savedIds,
   onToggleSave,
   isSavedTab,
-  currency = 'R',
 }) => {
   const r = selectedRecipe;
   const rawEatery = (r as any).rawEatery;
@@ -65,7 +63,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
     hasRealDistance
       ? { label: 'Distance', value: distanceLabel as string, icon: MapPin, tone: 'text-[var(--accent-terracotta)]' }
       : null,
-    { label: 'Spend', value: formatPriceTier(rawEatery.priceSymbol, currency), icon: Wallet },
+    { label: 'Spend', value: priceTierLabel(rawEatery.priceTier), icon: Wallet },
     rawEatery.openNow !== undefined
       ? {
           label: 'Status',
@@ -174,7 +172,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
               {rawEatery.rating}
             </span>
             <span className="text-white/45">·</span>
-            <span>{formatPriceTier(rawEatery.priceSymbol, currency)}</span>
+            <span aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
             {hasRealDistance && (
               <>
                 <span className="text-white/45">·</span>

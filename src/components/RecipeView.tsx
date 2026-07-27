@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from'react';
 import { eateryPlaceholderImage } from '../App';
+import { formatPriceTier, priceTierLabel } from '../placesService';
 import { ParsedRecipe } from'../types';
 import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, MapPin, Star } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
@@ -202,7 +203,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
  <div className="text-center flex flex-col items-center justify-center">
  {/* Stepper. The ink stays 24px — a 44px drawn circle beside an 18px numeral is
- the "comically large button" failure. `.tap-target` lays an invisible 44×44
+ the "comically large button" failure. `.hit-44` lays an invisible 44×44
  box over each control instead, so the touch is HIG-legal and the drawing
  isn't. Gap widened to 4 (16px) so the two invisible boxes clear each other. */}
  <div className="flex items-center gap-4">
@@ -211,7 +212,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  aria-label="One fewer plate"
  onClick={() => handleAdjustPlates(-1)}
  disabled={plates <= 1}
- className="tap-target w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
  >
  -
  </button>
@@ -222,7 +223,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  type="button"
  aria-label="One more plate"
  onClick={() => handleAdjustPlates(1)}
- className="tap-target w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
  >
  +
  </button>
@@ -547,7 +548,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {rawEatery.rating}
  </span>
  <span className="opacity-30">·</span>
- <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]">{rawEatery.priceSymbol}</span>
+ <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]" aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
  {typeof r.tags[1] ==='string' && r.tags[1].includes('km') && (
  <>
  <span className="opacity-30">·</span>
