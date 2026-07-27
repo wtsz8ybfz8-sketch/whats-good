@@ -166,6 +166,22 @@ layout from `getBoundingClientRect` alone. Measure geometry AND look at the pict
 - **If the renderer times out, that is a hard stop — §3.** Do not re-probe.
 - **If you have not seen it, say you have not seen it.**
 
+**Auditing hit targets: probe, never measure.** `.hit-44` (§11.3) puts the 44px target on
+an invisible `::before`, so the element's own `getBoundingClientRect().height` stays 42
+and a rect-based audit reports a false failure — then "fixes" it with padding, which grows
+the visual ink and breaks the rule. Probe the point instead:
+
+```js
+const r = el.getBoundingClientRect(), cx = r.left + r.width / 2;
+const hits = (y) => { const h = document.elementFromPoint(cx, y); return h === el || el.contains(h); };
+hits(r.top - 1) && hits(r.bottom + 1);   // true => the 44px target is live
+```
+
+A `false` on one side where another control sits directly adjacent is normal — the
+neighbour legitimately owns that pixel. Also: an audit that reads only `textContent` /
+`aria-label` will wrongly flag inputs labelled by `<label htmlFor>`. Check for an
+associated label before adding an `aria-label`.
+
 ---
 
 ## 7. Design direction — decided, hold to it

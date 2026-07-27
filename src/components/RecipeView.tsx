@@ -658,7 +658,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </p>
  <button
  onClick={onRegenerate}
- className="inline-flex items-center gap-2 px-6 py-3 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white hover:bg-[#7C2D12] rounded-xl font-sans text-xs font-bold transition-all cursor-pointer"
+ className="hit-44 inline-flex items-center gap-2 px-6 py-3 bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white hover:bg-[#7C2D12] rounded-xl font-sans text-xs font-bold transition-all cursor-pointer"
  >
  <Compass className="w-4 h-4" /> Try something different
  </button>
