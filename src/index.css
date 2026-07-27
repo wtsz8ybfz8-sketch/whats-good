@@ -118,6 +118,41 @@
   min-height: 44px;
 }
 
+/* ─── Docked action bar (mobile) ──────────────────────────────────────────────
+   NOT .glass, deliberately.
+
+   The mobile CTA bar used to carry .glass. At rgba(255,255,255,0.60) behind
+   blur(14px), a 1px high-contrast edge behind the bar does not dissolve — it ghosts.
+   So the content card's own hairline borders were visible straight through the
+   chrome, reading as random see-through lines running across the "Find a place"
+   button. Blur scatters a soft gradient; it cannot erase a hard 1px edge at that
+   opacity, and raising the opacity would have dragged the header's material with it.
+
+   A docked action bar is chrome that content passes UNDER, so it gets an opaque
+   fill — the same reasoning CLAUDE.md 12 already applies to overlays ("`.surface` is
+   translucent — it is not a modal fill. Overlays use --bg-warm"). Depth comes from a
+   top hairline plus a soft upward shadow, which is what a real toolbar does, and it
+   takes a backdrop-filter off a permanently-mounted layer.
+
+   The scrim above it fades scrolling content out instead of letting it collide with
+   the bar's edge. */
+.action-bar {
+  background: var(--bg-warm);
+  border-top: 1px solid var(--rule);
+  box-shadow: 0 -8px 24px rgba(26, 15, 10, 0.06);
+}
+
+.action-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to top, var(--bg-warm), transparent);
+}
+
 /* ─── Label style ────────────────────────────────────────────────────────────
    The old look was uppercase + 2.5px tracking + 9px, everywhere. At that size
    letter-spacing that wide stops reading as a word and starts reading as noise.

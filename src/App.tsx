@@ -1352,7 +1352,7 @@ export default function App() {
  // Pinned to the thumb on mobile; on desktop a permanently-docked bar over a
  // half-empty viewport is a phone pattern wearing a desktop costume — there it
  // sits inline under the filters where the eye already is.
- <div className="fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-4 pt-3 glass border-t border-black/5 flex justify-center !rounded-none md:static md:bg-none md:backdrop-blur-none md:border-0 md:shadow-none md:px-0 md:pt-8 md:pb-4 md:z-auto">
+ <div className="action-bar fixed bottom-[64px] left-0 right-0 z-40 px-5 pb-4 pt-3 flex justify-center md:static md:bg-transparent md:border-0 md:shadow-none md:px-0 md:pt-8 md:pb-4 md:z-auto md:before:hidden">
  <button
  onClick={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  className="w-full max-w-md py-4 rounded-2xl font-sans font-semibold text-base tracking-[-0.01em] transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] hover:opacity-90 hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-[0.97]"

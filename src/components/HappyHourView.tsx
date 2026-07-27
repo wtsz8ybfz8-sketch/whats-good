@@ -64,14 +64,40 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
   const coverage = happyHourCoverage(city);
   const covered = coverage !== 'not-covered';
 
-  const entries = useMemo<Entry[]>(() => {
+  /**
+   * The one filter this screen actually needs. Standing on a street at 18:40, "what
+   * can I still get to" and "what is on later" are different questions, and the tab
+   * previously answered neither — it printed nine rows in one undifferentiated list.
+   * Filtering real, human-confirmed windows by their live state is a real preference
+   * acting on real data: the count in the headline moves with it.
+   */
+  const [when, setWhen] = useState<'all' | 'live' | 'today'>('all');
+
+  const allEntries = useMemo<Entry[]>(() => {
     if (!covered) return [];
     return CAPE_TOWN_HAPPY_HOURS
       .map((hh) => ({ hh, status: getHappyHourStatus(hh, now) }))
       .sort((a, b) => compareHappyHour(a.status, b.status));
   }, [now, covered]);
 
-  const liveCount = entries.filter((e) => e.status.state === 'live').length;
+  const entries = useMemo<Entry[]>(() => {
+    if (when === 'live') return allEntries.filter((e) => e.status.state === 'live');
+    if (when === 'today') {
+      return allEntries.filter(
+        (e) => e.status.state === 'live' || e.status.state === 'starting-soon',
+      );
+    }
+    return allEntries;
+  }, [allEntries, when]);
+
+  const liveCount = allEntries.filter((e) => e.status.state === 'live').length;
+  const soonCount = allEntries.filter((e) => e.status.state === 'starting-soon').length;
+
+  const filters: { key: typeof when; label: string; count: number }[] = [
+    { key: 'all', label: 'All', count: allEntries.length },
+    { key: 'live', label: 'Live now', count: liveCount },
+    { key: 'today', label: 'Live or soon', count: liveCount + soonCount },
+  ];
 
   if (!covered) {
     return (
@@ -126,9 +152,35 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
           </h2>
         )}
         <p className="font-mono text-xs text-[var(--text-muted)] mt-3">
-          {entries.length} real venue{entries.length === 1 ? '' : 's'} with a happy hour ·
-          updates every minute
+          Showing {entries.length} of {allEntries.length} confirmed venue
+          {allEntries.length === 1 ? '' : 's'} · updates every minute
         </p>
+
+        {/* One row, three states — not the carousel CLAUDE.md 11.4 forbids. */}
+        <div className="mt-5 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by time">
+          {filters.map((f) => {
+            const active = when === f.key;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={active}
+                disabled={f.count === 0 && f.key !== 'all'}
+                onClick={() => setWhen(f.key)}
+                className={`press hit-44 px-4 py-2 rounded-full text-[13px] font-medium border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                  active
+                    ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
+                    : 'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
+                }`}
+              >
+                {f.label}
+                <span className={`ml-1.5 tabular-nums ${active ? 'opacity-80' : 'text-[var(--text-muted)]'}`}>
+                  {f.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Two columns from xl. Rows stay full-width below that so the deal list never
@@ -145,10 +197,10 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
                 href={mapsUrl(hh.venue, hh.area)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full text-left py-5 border-b border-[var(--row-border)] flex items-start gap-3 sm:gap-4 group cursor-pointer press min-h-[44px]"
+                className="w-full text-left py-5 border-b border-[var(--row-border)] flex flex-col sm:flex-row items-start gap-1.5 sm:gap-4 group cursor-pointer press min-h-[44px]"
               >
                 {/* Time column — fixed width so every row's status aligns and scans vertically */}
-                <div className="w-[54px] sm:w-[78px] flex-shrink-0 pt-0.5">
+                <div className="w-auto sm:w-[78px] flex-shrink-0 pt-0.5">
                   {isLive ? (
                     <span className="flex items-center gap-1.5">
                       <span className="relative flex w-1.5 h-1.5">
@@ -166,7 +218,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
                   )}
                 </div>
 
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 w-full">
                   <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-3">
                     <h3 className="font-serif text-lg leading-tight sm:truncate group-hover:text-[var(--accent-terracotta)] transition-colors">
                       {hh.venue}
@@ -215,7 +267,17 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
       {entries.length === 0 && (
         <div className="py-16 text-center">
           <Martini className="w-8 h-8 mx-auto mb-4 text-[var(--text-subtle)]" strokeWidth={1.5} />
-          <p className="font-serif text-2xl">No happy hours listed</p>
+          <p className="font-serif text-2xl mb-2">Nothing live right now</p>
+          <p className="text-sm text-[var(--text-muted)] mb-6">
+            {allEntries.length} venue{allEntries.length === 1 ? '' : 's'} have a window later.
+          </p>
+          <button
+            type="button"
+            onClick={() => setWhen('all')}
+            className="press hit-44 px-5 py-2.5 rounded-full text-[13px] font-medium border border-[var(--rule)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)] cursor-pointer"
+          >
+            Show all {allEntries.length}
+          </button>
         </div>
       )}
 
