@@ -52,6 +52,28 @@ function pids() {
   }
 }
 
+/**
+ * Every vite process belonging to this repo, listener or wrapper.
+ *
+ * `pgrep -f` matches the shell running the pgrep, because that shell's own command line
+ * contains the pattern. Reported as a survivor, it makes a clean shutdown look like a
+ * leak — which it did, once, before this filter. Drop self, the searchers, and anything
+ * that is not actually vite.
+ */
+function strays() {
+  try {
+    return execSync(`pgrep -af "vite --port ${PORT}" 2>/dev/null || true`, { encoding: 'utf8' })
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .filter((l) => !/\b(pgrep|pkill|grep|sh -c)\b/.test(l))
+      .map((l) => l.split(/\s+/)[0])
+      .filter((pid) => pid && Number(pid) !== process.pid && Number(pid) !== process.ppid);
+  } catch {
+    return [];
+  }
+}
+
 async function up() {
   if (await healthy()) {
     console.log(`reusing the server already on :${PORT}`);
@@ -89,9 +111,24 @@ async function down(quiet = false) {
   }
   await new Promise((r) => setTimeout(r, 400));
   for (const pid of pids()) { try { process.kill(Number(pid), 'SIGKILL'); } catch { /* gone */ } }
-  // npm/sh wrappers can survive the listener; sweep this repo's strays too.
+  // The npm exec -> sh -> node wrappers can outlive the listener; sweep them too.
+  try { execSync(`pkill -f "vite --port ${PORT}" 2>/dev/null || true`); } catch { /* none */ }
   try { execSync(`pkill -f "${ROOT}/node_modules/.bin/vite" 2>/dev/null || true`); } catch { /* none */ }
-  if (!quiet) console.log(`stopped ${found.length} listener(s) on :${PORT}`);
+
+  // Confirm, don't assume. Reporting "stopped" while three processes are still winding
+  // down is the same lie as reporting a check green that never ran — and here it would
+  // send the next session looking for a leak that had simply not finished exiting.
+  let left = [];
+  for (let i = 0; i < 12; i++) {
+    left = strays();
+    if (!left.length && !pids().length) break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  if (left.length || pids().length) {
+    console.error(`still running after SIGKILL: ${[...new Set([...left, ...pids()])].join(', ')}`);
+    return 1;
+  }
+  if (!quiet) console.log(`stopped ${found.length} listener(s) on :${PORT}; 0 vite processes remain`);
   return 0;
 }
 
