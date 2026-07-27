@@ -130,7 +130,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {(
  <button
  onClick={() => onSelectRecipe(null)}
- className="hit-44 flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
+ className="hit-44 flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
  >
  <ChevronLeft className="w-3.5 h-3.5" />
  {isSavedTab ? (
@@ -189,18 +189,18 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {/* Structured Ticket Stats */}
  <div className="grid grid-cols-3 border-t border-b border-dashed border-black dark:border-[#444] py-5 my-2 max-w-[500px]">
  <div className="text-center">
- <span className="font-mono text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] block">
+ <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block">
  {r.prepTime}
  </span>
- <span className="text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
+ <span className="text-xs uppercase tracking-wider text-[var(--text-muted)] block mt-1">
  Prep
  </span>
  </div>
  <div className="text-center border-l border-r border-[#e6e4e0] dark:border-white/10">
- <span className="font-mono text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] block">
+ <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block">
  {r.cookTime}
  </span>
- <span className="text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
+ <span className="text-xs uppercase tracking-wider text-[var(--text-muted)] block mt-1">
  Cook
  </span>
  </div>
@@ -215,23 +215,23 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  aria-label="One fewer plate"
  onClick={() => handleAdjustPlates(-1)}
  disabled={plates <= 1}
- className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[var(--charcoal)] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
  >
  -
  </button>
- <span className="font-mono text-lg sm:text-xl font-bold text-[#1A1A1A] dark:text-[#f5f5f5] block min-w-[1.5rem]">
+ <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block min-w-[1.5rem]">
  {plates}
  </span>
  <button
  type="button"
  aria-label="One more plate"
  onClick={() => handleAdjustPlates(1)}
- className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[#1A1A1A] dark:text-[#f5f5f5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[var(--charcoal)] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
  >
  +
  </button>
  </div>
- <span className="text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] block mt-1">
+ <span className="text-xs uppercase tracking-wider text-[var(--text-muted)] block mt-1">
  Serves
  </span>
  </div>
@@ -250,7 +250,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {/* Ingredients Side */}
  <details className="md:col-span-5 group w-full" open>
  <summary className="list-none flex items-baseline justify-between cursor-pointer md:cursor-text md:pointer-events-none pb-2 border-b border-black dark:border-[#444] select-none outline-none">
- <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5]">
+ <h3 className="font-serif text-xl sm:text-2xl text-[var(--charcoal)]">
  Ingredients
  {plates !== defaultPlates && (
  <span className="ml-3 text-xs font-mono text-[var(--accent-terracotta)] uppercase tracking-wider bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] px-2 py-0.5 rounded-md align-middle">Scaled x{formatQuantity(plates / defaultPlates, 1)}</span>
@@ -259,7 +259,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <ChevronDown className="md:hidden w-4 h-4 text-[var(--charcoal)] opacity-50 ml-2 group-open:rotate-180 transition-transform flex-shrink-0" />
  </summary>
  <div className="flex flex-col gap-4 pt-4">
- <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] font-mono uppercase tracking-wider">
+ <p className="text-xs text-[var(--text-muted)] font-mono uppercase tracking-wider">
  Tap to check off as you go
  </p>
  <ul className="flex flex-col divide-y divide-[#f3f1ed]">
@@ -289,12 +289,12 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  className={`w-4.5 h-4.5 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
  isDone
  ?'bg-[#7C2D12] border-[#7C2D12] text-white'
- :'border-[#F5D1C9] dark:border-[#7C2D12]/40 bg-[#FAF9F6] dark:bg-[#111111]'
+ :'border-[var(--accent-tint-border)] bg-[#FAF9F6] dark:bg-[#111111]'
  }`}
  >
  {isDone && <Check className="w-3 h-3 stroke-[3]" />}
  </div>
- <span className="font-sans text-sm text-[#1A1A1A] dark:text-[#f5f5f5] leading-tight select-none">
+ <span className="font-sans text-sm text-[var(--charcoal)] leading-tight select-none">
  {displayIngredient}
  </span>
  </li>
@@ -307,7 +307,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {/* Steps Side */}
  <details className="md:col-span-7 group w-full" open>
  <summary className="list-none flex items-baseline justify-between cursor-pointer md:cursor-text md:pointer-events-none pb-2 border-b border-black dark:border-[#444] select-none outline-none">
- <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5]">
+ <h3 className="font-serif text-xl sm:text-2xl text-[var(--charcoal)]">
  How to make it
  </h3>
  <ChevronDown className="md:hidden w-4 h-4 text-[var(--charcoal)] opacity-50 ml-2 group-open:rotate-180 transition-transform flex-shrink-0" />
@@ -315,10 +315,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="flex flex-col gap-6 pt-4">
  {r.steps.map((step, idx) => (
  <div key={idx} className="flex gap-4 group/step">
- <div className="font-mono text-xs font-bold w-7 h-7 rounded-full border border-black/10 dark:border-white/15 bg-white/70 dark:bg-white/10 text-[#1A1A1A] dark:text-[#f5f5f5] flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5 transition-colors group-hover/step:border-[#7C2D12] group-hover/step:text-[#7C2D12] dark:group-hover/step:text-[#fca5a5]">
+ <div className="font-mono text-xs font-bold w-7 h-7 rounded-full border border-black/10 dark:border-white/15 bg-white/70 dark:bg-white/10 text-[var(--charcoal)] flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5 transition-colors group-hover/step:border-[#7C2D12] group-hover/step:text-[#7C2D12] dark:group-hover/step:text-[#fca5a5]">
  {idx + 1}
  </div>
- <p className="font-sans text-sm sm:text-[15px] leading-relaxed text-[#1A1A1A] dark:text-[#f5f5f5] pt-0.5">
+ <p className="font-sans text-sm sm:text-[15px] leading-relaxed text-[var(--charcoal)] pt-0.5">
  {step}
  </p>
  </div>
@@ -358,7 +358,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {/* Grocery delivery & dine-out follow-ups — recipes only */}
  {!r.id.startsWith('eat') && (
  <div className="border-t border-black dark:border-[#444] pt-8 mt-4 select-none">
- <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-4">
+ <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold block mb-4">
  Get it sorted
  </span>
  {/* Three hand-drawn retailer logos in their own brand colours — a teal pill, a
@@ -431,7 +431,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="pt-8 border-t border-black dark:border-[#444] flex items-center justify-start gap-4">
  <button
  onClick={onRegenerate}
- className="px-6 py-3.5 bg-transparent border border-[#7C2D12] text-[#7C2D12] dark:text-[#fca5a5] hover:bg-[#7C2D12] hover:text-white rounded-xl font-sans text-sm font-bold transition-all cursor-pointer"
+ className="px-6 py-3.5 bg-transparent border border-[#7C2D12] text-[var(--accent-terracotta)] hover:bg-[#7C2D12] hover:text-white rounded-xl font-sans text-sm font-bold transition-all cursor-pointer"
  >
  {isRandomMode ?'Surprise me again' :'Find different recipes'}
  </button>
@@ -462,15 +462,15 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  return (
  <div className="max-w-[1000px] mx-auto w-full sm:px-8 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col gap-2 mb-8 sm:mb-12">
- <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold">
+ <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
  Here's what we found
  </span>
- <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">
+ <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[var(--charcoal)]">
  {recipes.some((r) => r.id.startsWith('eat'))
  ? `We found ${recipes.length} ${recipes.length === 1 ?'eatery' :'eateries'} near ${city}`
  : `We found ${recipes.length} ${recipes.length === 1 ?'recipe' :'recipes'} for you`}
  </h2>
- <p className="text-[#6E6A64] dark:text-[#a3a3a3] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
+ <p className="text-[var(--text-muted)] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
  {recipes.some((r) => r.id.startsWith('eat'))
  ?'Tap any eatery for directions, contact details, and wait times.'
  :'Tap any recipe to see the full ingredients and step-by-step home cooking checklist.'}
@@ -544,21 +544,21 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  )}
 
  {/* Name */}
- <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug mb-4 pr-8">
+ <h3 className="font-serif text-xl sm:text-2xl text-[var(--charcoal)] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug mb-4 pr-8">
  {rawEatery.name}
  </h3>
 
  {/* Rating · price · distance · open now */}
- <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-mono text-[#6E6A64] dark:text-[#a3a3a3]">
- <span className="flex items-center gap-1 text-[#1A1A1A] dark:text-[#f5f5f5] font-bold">
+ <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-mono text-[var(--text-muted)]">
+ <span className="flex items-center gap-1 text-[var(--charcoal)] font-bold">
  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {rawEatery.rating}
  </span>
  <span className="opacity-30">·</span>
- <span className="font-bold text-[#1A1A1A] dark:text-[#f5f5f5]" aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
+ <span className="font-bold text-[var(--charcoal)]" aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
  {typeof r.tags[1] ==='string' && r.tags[1].includes('km') && (
  <>
  <span className="opacity-30">·</span>
- <span className="flex items-center gap-1 text-[#7C2D12] dark:text-[#fca5a5] font-bold">
+ <span className="flex items-center gap-1 text-[var(--accent-terracotta)] font-bold">
  <MapPin className="w-3 h-3" /> {r.tags[1]}
  </span>
  </>
@@ -605,7 +605,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-60 mix-blend-multiply pointer-events-none transition-opacity duration-300 group-hover:opacity-40" />
  
  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
- <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full text-[#7C2D12] dark:text-[#fca5a5]">
+ <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full text-[var(--accent-terracotta)]">
  {React.createElement(cuisineIcon(r.category), {
 'aria-hidden':'true',
  strokeWidth: 2,
@@ -624,7 +624,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  className={`tap-44 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm border transition-all ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E]'
- :'bg-white/80 dark:bg-black/50 backdrop-blur-md text-[#7C2D12] dark:text-[#fca5a5] border-white/40 dark:border-white/20 hover:scale-110'
+ :'bg-white/80 dark:bg-black/50 backdrop-blur-md text-[var(--accent-terracotta)] border-white/40 dark:border-white/20 hover:scale-110'
  }`}
  title={savedIds.includes(r.id) ?'Remove Recipe' :'Save Recipe'}
  >
@@ -635,23 +635,23 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Core copy */}
  <div className="p-6 flex flex-col flex-1 gap-2.5">
- <span className="font-mono text-xs text-[#6E6A64] dark:text-[#a3a3a3] uppercase tracking-wider block">
+ <span className="font-mono text-xs text-[var(--text-muted)] uppercase tracking-wider block">
  {r.area} Cuisine
  </span>
- <h3 className="font-serif text-lg sm:text-xl text-[#1A1A1A] dark:text-[#f5f5f5] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug line-clamp-2">
+ <h3 className="font-serif text-lg sm:text-xl text-[var(--charcoal)] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug line-clamp-2">
  {r.name}
  </h3>
- <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] line-clamp-3 leading-relaxed mt-1 mb-3">
+ <p className="text-xs sm:text-sm text-[var(--text-muted)] line-clamp-3 leading-relaxed mt-1 mb-3">
  {r.instructions ||'A crowd-pleasing dish worth making at home.'}
  </p>
  
- <div className="mt-auto pt-4 border-t border-[#f3f1ed] flex items-center justify-between text-[#6E6A64] dark:text-[#a3a3a3]">
+ <div className="mt-auto pt-4 border-t border-[#f3f1ed] flex items-center justify-between text-[var(--text-muted)]">
  {/* Venue cards carry an empty prepTime now that "Check with venue" is gone —
  Places doesn't publish a wait time. A lone clock icon with nothing beside it
  reads as a value that failed to load, so drop the whole pair. */}
  {r.prepTime && (
  <span className="flex items-center gap-1 text-xs font-mono">
- <Clock className="w-3.5 h-3.5 text-[#7C2D12] dark:text-[#fca5a5]" /> {r.prepTime}
+ <Clock className="w-3.5 h-3.5 text-[var(--accent-terracotta)]" /> {r.prepTime}
  </span>
  )}
  {r.cookTime && (
@@ -667,7 +667,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
 
  <div className="mt-12 text-center pt-8 border-t border-black dark:border-[#444]">
- <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] font-sans mb-4">
+ <p className="text-xs text-[var(--text-muted)] font-sans mb-4">
  Not quite right?
  </p>
  <button

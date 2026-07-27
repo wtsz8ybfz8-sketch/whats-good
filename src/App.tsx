@@ -1013,7 +1013,7 @@ export default function App() {
 
  <button
  onClick={() => setIsDark((d) => !d)}
- className="hit-44 flex w-10 h-10 items-center justify-center rounded-full text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
+ className="hit-44 flex w-10 h-10 items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
  aria-label={isDark ?'Switch to light mode' :'Switch to dark mode'}
  >
  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -1027,7 +1027,7 @@ export default function App() {
  className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='mood'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
+ :'text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
  Find a Place
@@ -1040,7 +1040,7 @@ export default function App() {
  className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
+ :'text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
  Stay In
@@ -1066,7 +1066,7 @@ export default function App() {
  className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='saved-recipes'
  ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
+ :'text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
  }`}
  >
  <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-white fill-current' :'text-[var(--accent-terracotta)]'}`} />
@@ -1241,11 +1241,11 @@ export default function App() {
  />
 ) : dimensions.searchQuery ? (
  <div className="max-w-[450px] mx-auto text-center py-16 px-8 surface rounded-3xl">
- <div className="w-12 h-12 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mx-auto mb-4">
- <Search className="w-5 h-5 text-[#7C2D12] dark:text-[#fca5a5]" />
+ <div className="w-12 h-12 rounded-full bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mx-auto mb-4">
+ <Search className="w-5 h-5 text-[var(--accent-terracotta)]" />
  </div>
- <h3 className="font-serif text-xl mb-2 text-[#1A1A1A] dark:text-[#f5f5f5]">No matching places</h3>
- <p className="text-xs text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-6">
+ <h3 className="font-serif text-xl mb-2 text-[var(--charcoal)]">No matching places</h3>
+ <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-6">
  We checked {city} for "{dimensions.searchQuery}" but did not find a strong match. Try simpler searches like "Italian", "brunch", "seafood", or "drinks".
  </p>
  <button
@@ -1374,13 +1374,13 @@ export default function App() {
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--rule)] pb-6 mb-8 gap-4">
  <div>
- <span className="font-mono text-xs uppercase tracking-wider text-[#7C2D12] dark:text-[#fca5a5] font-bold block mb-1">
+ <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold block mb-1">
  {activeTab ==='saved-recipes' ?'Your shortlist' :'Grocery basket'}
  </span>
- <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[#1A1A1A] dark:text-[#f5f5f5]">
+ <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[var(--charcoal)]">
  {activeTab ==='saved-recipes' ?'Saved Places & Recipes' :'Basket'}
  </h2>
- <p className="text-[#6E6A64] dark:text-[#a3a3a3] font-sans text-sm mt-1">
+ <p className="text-[var(--text-muted)] font-sans text-sm mt-1">
  {activeTab ==='saved-recipes'
  ?'Restaurants first, recipes when you are staying in.'
  :'Ingredients from Stay In recipes will collect here later.'}
@@ -1398,13 +1398,13 @@ export default function App() {
 
  {(activeTab ==='saved-recipes' ? savedRecipes : []).length === 0 ? (
  <div className="text-center py-16 sm:py-24 px-4 flex flex-col items-center justify-center surface rounded-2xl border-dashed">
- <div className="w-14 h-14 rounded-full bg-[#FAF2F0] dark:bg-[#7C2D12]/20 flex items-center justify-center mb-6 border border-[#F5D1C9] dark:border-[#7C2D12]/40">
- <Heart className="w-6 h-6 text-[#7C2D12] dark:text-[#fca5a5]" />
+ <div className="w-14 h-14 rounded-full bg-[var(--accent-tint)] flex items-center justify-center mb-6 border border-[var(--accent-tint-border)]">
+ <Heart className="w-6 h-6 text-[var(--accent-terracotta)]" />
  </div>
- <h3 className="font-serif text-xl sm:text-2xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-2 leading-tight">
+ <h3 className="font-serif text-xl sm:text-2xl text-[var(--charcoal)] mb-2 leading-tight">
  {activeTab ==='saved-recipes' ?'Your shortlist is empty' :'Basket is coming next'}
  </h3>
- <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[360px] mb-8">
+ <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed max-w-[360px] mb-8">
  {activeTab ==='saved-recipes'
  ?"Save restaurants you want to try, plus recipes for nights in."
  :"Once the grocery basket is wired, ingredients from Stay In recipes will appear here."}
@@ -1437,18 +1437,18 @@ export default function App() {
  {/* Title and metadata details */}
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-2 mb-1">
- <span className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider bg-[#FAF2F0] dark:bg-[#7C2D12]/20 text-[#7C2D12] dark:text-[#fca5a5] px-2 py-0.5 rounded font-bold">
+ <span className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider bg-[var(--accent-tint)] text-[var(--accent-terracotta)] px-2 py-0.5 rounded font-bold">
  {React.createElement(
  cuisineIcon(r.id.startsWith('eat') ? (r as any).rawEatery?.cuisine : r.category),
  { 'aria-hidden':'true', strokeWidth: 2, className:'w-3 h-3 flex-shrink-0' },
 )}
  {r.id.startsWith('eat') ? (r as any).rawEatery?.cuisine : r.category}
  </span>
- <span className="font-mono text-xs text-[#6E6A64] dark:text-[#a3a3a3] uppercase">
+ <span className="font-mono text-xs text-[var(--text-muted)] uppercase">
  {r.id.startsWith('eat') ? r.tags[1] : r.area} Culture
  </span>
  </div>
- <h4 className="font-serif text-lg text-[#1A1A1A] dark:text-[#f5f5f5] truncate group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-tight">
+ <h4 className="font-serif text-lg text-[var(--charcoal)] truncate group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-tight">
  {r.id.startsWith('eat') ? (r as any).rawEatery?.name || r.name : r.name}
  </h4>
  </div>
@@ -1461,7 +1461,7 @@ export default function App() {
  e.stopPropagation();
  handleToggleSave(r);
  }}
- className="w-9 h-9 rounded-xl flex items-center justify-center text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 transition-colors"
+ className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-muted)] hover:text-[#7C2D12] dark:hover:text-[#fca5a5] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 transition-colors"
  title="Remove from saved"
  >
  <Trash2 className="w-4 h-4" />

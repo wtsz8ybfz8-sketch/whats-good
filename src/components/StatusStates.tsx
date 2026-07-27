@@ -93,10 +93,10 @@ export const ErrorState: React.FC<ErrorProps> = ({
  >
  {isNotice ? <Info className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
  </div>
- <h4 className="font-serif text-lg sm:text-xl text-[#1A1A1A] dark:text-[#f5f5f5] mb-3 leading-snug">
+ <h4 className="font-serif text-lg sm:text-xl text-[var(--charcoal)] mb-3 leading-snug">
  {title}
  </h4>
- <p className="text-xs sm:text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed mb-8 last:mb-0">
+ <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-8 last:mb-0">
  {message}
  </p>
  {showRetry && (
@@ -139,7 +139,7 @@ export const EmptyState: React.FC<EmptyProps> = ({
  return (
  <div className="max-w-2xl mx-auto animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="text-left py-10 sm:py-14 px-7 sm:px-9 surface rounded-3xl flex flex-col justify-center">
- <div className="w-12 h-12 rounded-2xl bg-[#FAF2F0] dark:bg-[#7C2D12]/20 border border-[#F5D1C9] dark:border-[#7C2D12]/40 flex items-center justify-center mb-6">
+ <div className="w-12 h-12 rounded-2xl bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mb-6">
  <Compass className="w-5 h-5 text-[var(--accent-terracotta)]" />
  </div>
  <p className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold mb-3">
@@ -148,7 +148,7 @@ export const EmptyState: React.FC<EmptyProps> = ({
  <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-semibold text-[var(--heading-color)] mb-4 leading-tight">
  Where are we eating?
  </h3>
- <p className="text-sm text-[#6E6A64] dark:text-[#a3a3a3] leading-relaxed max-w-[420px] mb-8">
+ <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-[420px] mb-8">
  Pick a cuisine, budget, distance, and mood. We will surface the best nearby fit first, then keep recipes for nights in.
  </p>
  <button

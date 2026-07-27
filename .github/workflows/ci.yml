@@ -71,25 +71,31 @@ jobs:
       # broken on a tired afternoon. Each one below has actually been violated in this
       # repo's history, which is why it earned a check rather than a paragraph.
 
-      # §7: .glass belongs on exactly two chrome surfaces (the fixed header and the mobile
-      # CTA bar). On a card it puts backdrop-filter cost on every row of a scrolling list
-      # — the specific regression the .surface classes were introduced to prevent.
+      # §7: .glass belongs on CHROME ONLY — the fixed header and the mobile CTA bar,
+      # both of which live in App.tsx. On a card it puts backdrop-filter cost on every
+      # row of a scrolling list, the exact regression the .surface classes were added to
+      # prevent.
+      #
+      # This used to count occurrences and cap them at 2, which could not fail the thing
+      # the rule is about: moving .glass off the header and onto a card keeps the count
+      # at 1 and passed. It now checks PLACEMENT — no .glass anywhere in components/,
+      # which is where every card lives — and caps App.tsx's chrome at 2.
       # `.glass-range` is a different class (the Sidebar slider) and is excluded.
-      # NOTE: the real count is 1, not 2 — only the header carries it; the mobile CTA bar
-      # dropped it (see index.css:124). The ceiling stays 2 because §7 still describes two
-      # legitimate chrome surfaces, but be aware it currently permits one new use. This
-      # counts surfaces, not placement: moving .glass from the header onto a card keeps
-      # the count at 1 and passes. §7's "never on a card" is agent discipline (§13.2).
-      - name: .glass stays off cards
+      - name: .glass stays off cards (placement, not count)
         run: |
-          hits=$(grep -rnE '\bglass\b' src --include='*.tsx' | grep -v 'glass-range' || true)
-          count=$(printf '%s' "$hits" | grep -c . || true)
-          if [ "$count" -gt 2 ]; then
-            echo "$hits"
-            echo "::error::.glass appears on $count surfaces; only the header and mobile CTA bar may use it (§7)."
+          cards=$(grep -rnE '\bglass\b' src/components --include='*.tsx' | grep -v 'glass-range' || true)
+          if [ -n "$cards" ]; then
+            echo "$cards"
+            echo "::error::.glass appears in src/components — that is a card, not chrome. Only the header and mobile CTA bar in App.tsx may use it (§7)."
             exit 1
           fi
-          echo "OK — .glass on $count surface(s)"
+          chrome=$(grep -nE '\bglass\b' src/App.tsx | grep -v 'glass-range' | grep -c . || true)
+          if [ "$chrome" -gt 2 ]; then
+            grep -nE '\bglass\b' src/App.tsx | grep -v 'glass-range'
+            echo "::error::.glass on $chrome surfaces in App.tsx; §7 allows two (header, mobile CTA bar)."
+            exit 1
+          fi
+          echo "OK — .glass on $chrome chrome surface(s), 0 in components/"
 
       # §12: vite-plugin-pwa precached index.html, so three sessions of work deployed and
       # were invisible on the live URL. public/sw.js is now a self-destructing kill switch
@@ -151,9 +157,10 @@ jobs:
           ratchet "hand-formatted numbers outside locale.ts (§6)" 0 "$c"
 
           # §7 — colour comes from tokens in index.css. Reported as 233, drifted down to
-          # 211 unnoticed, 203 after the RecipeView migration. A ceiling left above the
-          # real count is not a ratchet — it is 8 free regressions. Lower it every time.
+          # 211 unnoticed, then 203, now 81 after collapsing every light/dark hex PAIR
+          # that had an exact token onto that token. A ceiling left above the real count
+          # is not a ratchet — it is free regressions. Lower it every time.
           c=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
-          ratchet "hardcoded hex (§7)" 203 "$c"
+          ratchet "hardcoded hex (§7)" 81 "$c"
 
           exit $fail
