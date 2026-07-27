@@ -136,7 +136,7 @@ broken layout reach the user in every session so far.
 ```bash
 cd verify && npm install                      # playwright-core lives HERE, never in root
 cd .. && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &
-sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 11 checks; exit 0 = pass
+sleep 5 && cd verify && NO_PROXY='*' node checks.mjs      # 18 checks; exit 0 = pass
 NO_PROXY='*' node driver.mjs && NO_PROXY='*' node driver.mjs --dark
 ```
 
