@@ -57,6 +57,18 @@ export interface DetectedLocality {
   countryCode: string | null;
 }
 
+/**
+ * Whether venue discovery is configured at all.
+ *
+ * Without a key `fetchVenues` returns [] and the caller cannot tell "we searched and
+ * found nothing" from "we never searched". Those are different answers and the user
+ * deserves the real one: the app's primary tab promised "real places near you" and
+ * then rendered a generic empty state, with no way forward (§5, Recover).
+ */
+export function isPlacesConfigured(): boolean {
+  return getGooglePlacesKey().length > 0;
+}
+
 function getGooglePlacesKey(): string {
   return (
     (import.meta.env.VITE_GOOGLE_PLACES_KEY as string | undefined) ||

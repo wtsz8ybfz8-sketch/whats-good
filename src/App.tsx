@@ -16,7 +16,7 @@ import { getHappyHourStatus } from'./venueExtras';
 import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon } from'lucide-react';
 import type { Venue } from'./venue';
-import { fetchVenues, detectCityFromCoords, formatPriceTier } from'./placesService';
+import { fetchVenues, detectCityFromCoords, formatPriceTier, isPlacesConfigured } from'./placesService';
 import { useSavedRecipes } from'./useSavedRecipes';
 import { cuisineIcon } from'./cuisineIcon';
 
@@ -376,6 +376,30 @@ export default function App() {
  try {
  const activeMode = customMode || dimensions.locationMode;
  if (activeMode ==='dineout') {
+ // Two failures used to look identical on screen: "we searched and found nothing"
+ // and "we never searched at all". Both rendered the generic empty state under a
+ // heading promising real places nearby, which is the Recover stage skipped (§5).
+ // Name them instead — each one has a different next step for the user.
+ if (!isPlacesConfigured()) {
+ setRecipes([]);
+ setError(
+'Venue search is not configured on this deployment, so there are no places to show. ' +
+'Cooking still works — the Stay In tab needs no key.',
+);
+ setIsLoading(false);
+ return;
+ }
+ if (!city && !userCoords) {
+ // The query would have been "best restaurants in " — a real request, sent to a
+ // real API, guaranteed to be meaningless. Ask for the one thing that is missing.
+ setRecipes([]);
+ setError(
+'Set a location first — tap the badge in the header, or allow location access — ' +
+'and we will find places near you.',
+);
+ setIsLoading(false);
+ return;
+ }
  const searchQuery = (customQuery !== undefined ? customQuery : dimensions.searchQuery).trim().toLowerCase();
  const priceFilter = customQuery ? null : dimensions.capacity;
 
