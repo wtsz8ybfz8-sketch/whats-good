@@ -1,0 +1,13 @@
+{
+  "name": "whats-good-verify",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Browser verification harness. Deliberately NOT part of the app: playwright-core is a heavy dep and CLAUDE.md §9 keeps the root dependency list small on purpose.",
+  "scripts": {
+    "verify": "node driver.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
