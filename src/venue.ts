@@ -31,8 +31,10 @@ export interface Venue {
   signatureIngredients: string[];
   digestiveNote: string;
   externalLink: string;
-  latitude: number; // For real distance sorting
-  longitude: number;
+  /** Optional: Places does not guarantee a location. Callers must handle absence
+   *  rather than cast it away — a NaN distance sorts unpredictably. */
+  latitude?: number;
+  longitude?: number;
   phone: string;
   estimatedWait: string;
   photoUrl?: string; // Optional override for dynamic sources (e.g. Google Places)

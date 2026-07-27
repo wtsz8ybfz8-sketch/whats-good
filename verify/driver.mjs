@@ -229,6 +229,14 @@ async function main() {
     locale: 'en-GB',
     timezoneId: 'Europe/London',
   });
+  // Seed a city the way a returning user has one. The app deliberately refuses to
+  // search with no location — it would build "best restaurants in " — so without this
+  // the venue journey is unreachable and reads as a broken view rather than a guard
+  // working correctly.
+  await context.addInitScript(() => {
+    try { localStorage.setItem('whats_good_city', 'London'); } catch {}
+  });
+
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
 

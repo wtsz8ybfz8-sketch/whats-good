@@ -127,7 +127,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {(
  <button
  onClick={() => onSelectRecipe(null)}
- className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
+ className="hit-44 flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[#6E6A64] dark:text-[#a3a3a3] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] mb-6 transition-colors bg-none border-none cursor-pointer"
  >
  <ChevronLeft className="w-3.5 h-3.5" />
  {isSavedTab ? (
@@ -159,7 +159,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <button
  onClick={() => onToggleSave(r)}
  aria-pressed={savedIds.includes(r.id)}
- className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-[13px] font-medium transition-colors cursor-pointer ${
+ className={`hit-44 flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border text-[13px] font-medium transition-colors cursor-pointer ${
  savedIds.includes(r.id)
  ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
  :'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
@@ -435,7 +435,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {recipes.length > 1 && (
  <button
  onClick={() => onSelectRecipe(null)}
- className="px-6 py-3.5 bg-none border-none text-[#5b7993] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5] font-sans text-sm font-bold transition-all cursor-pointer"
+ className="hit-44 px-6 py-3.5 bg-none border-none text-[var(--text-muted)] hover:text-[var(--charcoal)] font-sans text-sm font-bold transition-all cursor-pointer"
  >
  See other matches ({recipes.length - 1} more)
  </button>

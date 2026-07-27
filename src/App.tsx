@@ -76,13 +76,13 @@ function createEateryResult(
  let distanceStr = eatery.fallbackDistance;
  let distVal = 999999;
 
- if (userCoords) {
+ if (userCoords && typeof eatery.latitude === 'number' && typeof eatery.longitude === 'number') {
  const dist = getDistance(userCoords.latitude, userCoords.longitude, eatery.latitude, eatery.longitude);
- distVal = dist;
+ distVal = Number.isFinite(dist) ? dist : 999999;
  // Only show a distance when the venue is plausibly local. Pinning a remote
  // destination (e.g. searching Paris from Cape Town) otherwise renders a
  // nonsensical "9341 km away"; past ~150km we drop it rather than mislead.
- distanceStr = dist <= 150 ? `${dist.toFixed(1)} km away` : '';
+ distanceStr = Number.isFinite(dist) && dist <= 150 ? `${dist.toFixed(1)} km away` : '';
  }
 
  const imgUrl = eatery.photoUrl || eateryPlaceholderImage(eatery.name);
@@ -416,7 +416,16 @@ export default function App() {
  return;
  }
  const searchQuery = (customQuery !== undefined ? customQuery : dimensions.searchQuery).trim().toLowerCase();
- const priceFilter = customQuery ? null : dimensions.capacity;
+ // `capacity` carries the price band here and a cook-effort string on Stay In, so it
+ // is parsed rather than trusted: anything non-numeric is "no price filter", never a
+ // NaN handed to the API. Until React types were installed this string was passed
+ // straight into a `number` parameter and compared with `!==` against a number — both
+ // silently always-false, so the budget filter did nothing at all.
+ const parsedTier = Number(dimensions.capacity);
+ const priceFilter =
+ customQuery || !Number.isInteger(parsedTier) || parsedTier < 1 || parsedTier > 4
+ ? null
+ : parsedTier;
 
  // Build a Places API search string from available filters.
  // Vibe is translated to a dining keyword; price is passed separately so
@@ -778,21 +787,39 @@ export default function App() {
  >
  {/* Logo */}
  <div 
- className="flex items-center gap-2.5 cursor-pointer group hover:opacity-80 transition-opacity" 
- onClick={resetHome}
- role="button"
- tabIndex={0}
+ className="flex items-center gap-2.5 group"
  >
- <div className="w-6.5 h-6.5 bg-[#1A1A1A] dark:bg-[#2a2a2a] rounded-full flex items-center justify-center transform transition-transform group-hover:scale-105">
- <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5">
+ {/*
+   This whole row used to be one `div role="button" tabIndex={0}` with an onClick and
+   no aria-label — and the city button lived INSIDE it. Three defects in one element:
+   a button nested in a button, which is invalid and makes a tap near the badge
+   ambiguous; a control announced to screen readers as an unlabelled "button"; and a
+   28px target that no amount of .hit-44 could fix, because its own child was
+   stopPropagation-ing the clicks back out.
+
+   The home affordance is now a real <button> around the mark and wordmark only. The
+   city badge is its sibling, not its descendant, so each owns its own hit area.
+ */}
+ <button
+ type="button"
+ onClick={resetHome}
+ aria-label="What's Good — back to the start"
+ className="tap-44 flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0"
+ >
+ <span className="w-6.5 h-6.5 bg-[var(--charcoal)] dark:bg-[#2a2a2a] rounded-full flex items-center justify-center transform transition-transform group-hover:scale-105">
+ <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5" aria-hidden="true">
  <path
  d="M12 3C8 3 5 7 5 11c0 3 1.5 5.5 4 7v2h6v-2c2.5-1.5 4-4 4-7 0-4-3-8-7-8z"
  fill="white"
  />
  </svg>
- </div>
+ </span>
+ <span className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
+ <span>What's</span> <span className="text-[var(--accent-terracotta)] italic font-normal">Good</span>
+ </span>
+ </button>
+
  <div className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
- <span>What's</span> <span className="text-[#7C2D12] dark:text-[#fca5a5] italic font-normal">Good</span>
  {/* City badge doubles as a destination picker — search a city you're not in. */}
  <span className="relative ml-1" onClick={(e) => e.stopPropagation()}>
  <button
@@ -800,12 +827,14 @@ export default function App() {
  onClick={() => setCityMenuOpen((o) => !o)}
  title="Search another city"
  aria-label={city ? `Location: ${city}. Tap to search another city.` : 'No location set. Tap to choose a city.'}
- // Was ~20px tall at 10px mono — a control you are meant to tap to change
- // city, drawn at caption size. Deliberately NOT given `tap-44`: a 44px-tall
- // black slab in a 60px header would dominate the wordmark next to it. Grown
- // to a ~32px target instead, which is the honest compromise for a badge that
- // doubles as a button. Flagged rather than silently left at 20px.
- className="flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
+ // Measured 28px. The note that used to sit here called that "the honest
+ // compromise" for a badge that doubles as a button — fair when the app
+ // defaulted to a city and this was a nicety. It is not a nicety now: with no
+ // default city, this is the primary control for the one piece of state the
+ // whole Find journey depends on, and it was the smallest target on screen.
+ // `.hit-44` buys the reach without drawing a 44px slab beside the wordmark,
+ // which is the thing that note was right to refuse.
+ className="hit-44 flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
  >
  {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
  <span>{city || 'Set location'}</span>
@@ -1274,7 +1303,7 @@ export default function App() {
  </p>
  <button
  onClick={() => activeTab ==='saved-recipes' ? handleTabSwitch('mood') : handleTabSwitch('random')}
- className="inline-flex items-center gap-2 px-6 py-3 bg-[#7C2D12] hover:bg-[#5E220E] text-white rounded-xl font-sans text-xs font-bold shadow-md transition-all cursor-pointer"
+ className="hit-44 inline-flex items-center gap-2 px-6 py-3 bg-[var(--accent-terracotta)] hover:opacity-90 text-[var(--accent-contrast)] rounded-xl font-sans text-xs font-bold shadow-md transition-all cursor-pointer"
  >
  {activeTab ==='saved-recipes' ?'Find a Place' :'Go to Stay In'}
  </button>

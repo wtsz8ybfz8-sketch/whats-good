@@ -83,20 +83,21 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
   const entries = useMemo<Entry[]>(() => {
     if (when === 'live') return allEntries.filter((e) => e.status.state === 'live');
     if (when === 'today') {
-      return allEntries.filter(
-        (e) => e.status.state === 'live' || e.status.state === 'starting-soon',
-      );
+      return allEntries.filter((e) => e.status.state !== 'another-day');
     }
     return allEntries;
   }, [allEntries, when]);
 
   const liveCount = allEntries.filter((e) => e.status.state === 'live').length;
-  const soonCount = allEntries.filter((e) => e.status.state === 'starting-soon').length;
+  // "On today" means anything not on another day — live, starting soon, or later this
+  // evening. Excluding `later-today` made this filter identical to "Live now" in every
+  // realistic case: two controls, one result, one of them pointless.
+  const todayCount = allEntries.filter((e) => e.status.state !== 'another-day').length;
 
   const filters: { key: typeof when; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: allEntries.length },
     { key: 'live', label: 'Live now', count: liveCount },
-    { key: 'today', label: 'Live or soon', count: liveCount + soonCount },
+    { key: 'today', label: 'On today', count: todayCount },
   ];
 
   if (!covered) {

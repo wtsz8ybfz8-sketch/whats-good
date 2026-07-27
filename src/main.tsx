@@ -37,12 +37,16 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
 }
 
 import App from './App.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
+// The boundary wraps App rather than living inside it: a throw during App's own render
+// — bad cached state, a malformed localStorage value — has to be caught by something
+// mounted above it, or the tree unmounts to a blank page with nothing left to render.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    
+    <ErrorBoundary>
       <App />
-    
+    </ErrorBoundary>
   </StrictMode>,
 );

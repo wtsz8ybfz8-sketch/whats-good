@@ -118,7 +118,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         {/* Back — top left */}
         <button
           onClick={() => onSelectRecipe(null)}
-          className="absolute top-5 left-5 flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
+          className="tap-44 absolute top-5 left-5 flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
         >
           <ChevronLeft className="w-3 h-3" />
           {isSavedTab ? `Saved (${recipes.length})` : `Results (${recipes.length})`}
@@ -128,7 +128,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         <button
           onClick={() => onToggleSave(r)}
           aria-label={isSaved ? 'Remove from saved' : 'Save eatery'}
-          className={`absolute top-5 right-5 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer ${
+          className={`tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer ${
             isSaved
               ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
               : 'bg-black/20 text-white hover:bg-black/35'
@@ -348,7 +348,10 @@ export const EateryView: React.FC<EateryViewProps> = ({
                   className="surface-quiet rounded-2xl px-3 py-3.5 min-h-[84px] flex flex-col justify-between"
                 >
                   <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
-                    {React.createElement(t.icon, { 'aria-hidden': 'true', className: 'w-3 h-3 flex-shrink-0' })}
+                    {/* Decorative: the label beside it carries the meaning, so it is hidden from
+                        assistive tech by the wrapper rather than by a prop the icon type
+                        does not accept. */}
+                    {React.createElement(t.icon, { className: 'w-3 h-3 flex-shrink-0' })}
                     {t.label}
                   </span>
                   <span className={`font-sans text-[14px] font-semibold leading-tight ${t.tone ?? 'text-[var(--charcoal)]'}`}>
@@ -465,7 +468,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
       <div className="px-5 sm:px-10 pt-6 pb-[140px] lg:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
         <button
           onClick={() => onSelectRecipe(null)}
-          className="font-mono text-xs uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"
+          className="hit-44 font-mono text-xs uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"
         >
           <ChevronLeft className="w-3 h-3" /> Back to results
         </button>

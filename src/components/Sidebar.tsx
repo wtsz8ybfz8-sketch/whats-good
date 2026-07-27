@@ -471,12 +471,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--charcoal)]">Budget</span>
  <GlassSlider
  ariaLabel="Budget"
+ // Bands, not currency. These were 'R' | 'RR' | 'RRR' | 'RRRR' — the Rand glyph
+ // repeated — which survived the regional pass because this file never says
+ // "Rand" or "Cape Town" anywhere. The value is the Places tier (1-4); the dots
+ // are how it is drawn, and they mean the same thing in every country.
  stops={[
  { label:'Any', value: null },
- { label:'R', sub:'Budget', value:'R' },
- { label:'RR', sub:'Moderate', value:'RR' },
- { label:'RRR', sub:'Fine', value:'RRR' },
- { label:'RRRR', sub:'Luxury', value:'RRRR' },
+ { label:'\u25CF\u25CB\u25CB\u25CB', sub:'Inexpensive', value:'1' },
+ { label:'\u25CF\u25CF\u25CB\u25CB', sub:'Moderate', value:'2' },
+ { label:'\u25CF\u25CF\u25CF\u25CB', sub:'Expensive', value:'3' },
+ { label:'\u25CF\u25CF\u25CF\u25CF', sub:'Very expensive', value:'4' },
  ]}
  selectedValue={dimensions.capacity}
  onSelect={(value) => onChange({ ...dimensions, capacity: value })}

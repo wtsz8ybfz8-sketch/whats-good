@@ -253,7 +253,13 @@ export async function fetchVenues(
         name,
         address,
         cuisine: cuisineFromType(place.primaryType, place.primaryTypeDisplayName?.text),
-        vibeMatch: 'feeling adventurous',
+        /* Empty, not 'feeling adventurous'. That string was stamped on every single
+           venue Google returned, then rendered under a "VIBE & ATMOSPHERE" heading as
+           though it were a finding about that restaurant. It is the same failure as the
+           synthesised menus: a template presented as knowledge. CLAUDE.md 8 requires a
+           Vibe Match to be tied to a real signal — Places publishes no such field, so
+           there is none, and the render site already omits an empty value. */
+        vibeMatch: '',
         fallbackDistance: '',
         rating,
         priceTier,
@@ -273,10 +279,12 @@ export async function fetchVenues(
         externalLink: website,
         /* No coordinate fallback. This was `?? -33.9249, 18.4241` — Cape Town's City
            Hall — so a venue with no published location silently claimed to be in South
-           Africa and then sorted by a distance computed from that lie. NaN propagates
-           into a hidden distance, which is the honest outcome. */
-        latitude: place.location?.latitude as number,
-        longitude: place.location?.longitude as number,
+           Africa and sorted by a distance computed from that lie. The first fix cast the
+           undefined away with `as number`, which was no better: getDistance returned NaN,
+           and while NaN <= 150 is false so the distance hid itself, NaN also poisoned the
+           sort comparator and made result ordering arbitrary. Optional is the truth. */
+        latitude: place.location?.latitude,
+        longitude: place.location?.longitude,
         phone,
         estimatedWait: '', // Not published by Places. "Check with venue" is filler, not a wait time.
         photoUrl,
