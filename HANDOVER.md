@@ -2,6 +2,20 @@
 
 ## Status
 
+**Basics that had never been fixed, now fixed and each pinned to a check.**
+`border-black` — a 100%-opacity rule that reads as a hard printed line on warm paper —
+was fixed once on the Saved screen months ago and left in **10 other places**, framing
+the entire recipe detail page in black. All now bound to `--rule`; CI ratchet 0. Hex
+81 → 71. The **Scaled chip**, the one thing prior sessions shipped twice on "the markup
+is token-bound", is now verified by three checks that read the rendered element:
+`Scaled x1,5` in de-DE, colour `rgb(124, 45, 18)` = `--accent-terracotta`. **34/34, 0
+skipped.**
+
+**Dev servers no longer outlive the work.** `verify/serve.mjs up|down` is idempotent,
+bakes in `VITE_GOOGLE_PLACES_KEY`, and is the only sanctioned way to start the app;
+`.claude/settings.json` runs `down` on `SessionEnd` as a backstop. Every session before
+this left a ~250MB Vite tree running, billed to the user for nothing.
+
 **The "fixture gap" was a missing env var, and it hid the venue surface for a whole
 session.** `verify/` never had a gap: the dev server was being started without
 `VITE_GOOGLE_PLACES_KEY`, so `fetchVenues` returned `[]` before any request reached the

@@ -19,12 +19,13 @@ would have been red.
 ```bash
 npm install                                                   # once
 cd verify && npm install                                      # once — playwright-core lives HERE, never in root package.json
-cd /home/user/whats-good && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &   # the key is NOT optional — see below
+cd /home/user/whats-good && cd /home/user/whats-good && node verify/serve.mjs up          # idempotent; bakes in the key
 sleep 5
 cd verify && NO_PROXY='*' node checks.mjs                     # exit 0 = pass; quote the total IT prints, never a number from a doc
 NO_PROXY='*' node driver.mjs                                  # 6 views, screenshots -> verify/out/
 NO_PROXY='*' node driver.mjs --dark                           # same, dark
 cd .. && npx tsc --noEmit && npx vite build
+node verify/serve.mjs down                                    # ALWAYS — never leave it running
 ```
 
 `NO_PROXY='*'` is required — without it localhost requests go through the agent proxy

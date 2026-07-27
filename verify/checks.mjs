@@ -23,6 +23,31 @@ import { NEARBY_RESPONSE, SEARCH_TEXT_RESPONSE } from './fixtures/places.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3000/';
+
+/**
+ * TheMealDB and Places, answered locally. Extracted from main() so every context this
+ * suite opens gets the same fixtures — a second context that quietly lacked them would
+ * report an empty app as a failing app.
+ */
+async function installFixtures(page) {
+  await page.route('**/*', (r) => {
+    const u = r.request().url();
+    if (u.startsWith('http://localhost') || u.startsWith('http://127.0.0.1')) return r.continue();
+    if (u.includes('themealdb.com')) {
+      const U = new URL(u);
+      if (U.pathname.endsWith('/list.php')) return r.fulfill(json(AREA_LIST_RESPONSE));
+      if (U.pathname.endsWith('/search.php')) return r.fulfill(json(searchResponse(U.searchParams.get('s'))));
+      if (U.pathname.endsWith('/random.php')) return r.fulfill(json(randomResponse()));
+      return r.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 });
+    }
+    if (u.includes('places.googleapis.com')) {
+      if (u.includes(':searchText')) return r.fulfill(json(SEARCH_TEXT_RESPONSE));
+      if (u.includes(':searchNearby')) return r.fulfill(json(NEARBY_RESPONSE));
+      return r.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 });
+    }
+    return r.abort();
+  });
+}
 const CHROME = resolveChrome();   // never a pinned build number — see chromePath.mjs
 const json = (b) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
 
@@ -132,23 +157,7 @@ async function main() {
     try { localStorage.setItem('whats_good_city', 'London'); } catch {}
   });
   const page = await ctx.newPage();
-  await page.route('**/*', (r) => {
-    const u = r.request().url();
-    if (u.startsWith('http://localhost')) return r.continue();
-    if (u.includes('themealdb.com')) {
-      const U = new URL(u);
-      if (U.pathname.endsWith('/list.php')) return r.fulfill(json(AREA_LIST_RESPONSE));
-      if (U.pathname.endsWith('/search.php')) return r.fulfill(json(searchResponse(U.searchParams.get('s'))));
-      if (U.pathname.endsWith('/random.php')) return r.fulfill(json(randomResponse()));
-      return r.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 });
-    }
-    if (u.includes('places.googleapis.com')) {
-      if (u.includes(':searchText')) return r.fulfill(json(SEARCH_TEXT_RESPONSE));
-      if (u.includes(':searchNearby')) return r.fulfill(json(NEARBY_RESPONSE));
-      return r.fulfill({ status: 200, contentType: 'image/png', body: PNG_1X1 });
-    }
-    return r.abort();
-  });
+  await installFixtures(page);
 
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2200);
@@ -311,6 +320,53 @@ async function main() {
       lang: navigator.language,
     }));
     check('de-DE distance uses a comma', fmt.dist.includes(','), `${fmt.lang} -> ${fmt.dist}`);
+    await de.close();
+  }
+
+  /**
+   * The scaled-recipe chip, in a comma-decimal locale, with its colours read off the
+   * rendered element.
+   *
+   * This exists because the chip was the single thing in a whole session's diff that
+   * nothing had ever looked at: it only renders when `plates !== defaultPlates`, so no
+   * screenshot in the sweep reached it, and it was shipped twice on "the markup is
+   * token-bound" — which is a reading of the source, not a verification.
+   *
+   * Red when: the quantity comes back "x1.5" (toFixed is back, or Intl was bypassed),
+   * or any colour resolves to a raw hex instead of the token.
+   */
+  {
+    const de = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' });
+    const dp = await de.newPage();
+    await installFixtures(dp);
+    await dp.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await dp.locator('nav[aria-label="Primary"] button:has-text("Stay In")').first().click();
+    await dp.waitForTimeout(1500);
+    const card = dp.locator('[role="button"][aria-label^="View "]:visible').first();
+    let chip = null;
+    if (await card.count()) {
+      await card.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await dp.waitForTimeout(300);
+      const box = await card.boundingBox();
+      if (box) {
+        await dp.mouse.click(box.x + box.width / 2, box.y + Math.min(box.height / 2, 200));
+        await dp.waitForTimeout(1200);
+        const plus = dp.locator('button[aria-label*="ncrease"], button:has-text("+")').first();
+        if (await plus.count()) { await plus.click(); await dp.waitForTimeout(500); }
+        const el = dp.locator('span:has-text("Scaled x")').first();
+        if (await el.count()) {
+          chip = await el.evaluate((n) => {
+            const c = getComputedStyle(n);
+            return { text: n.textContent.trim(), color: c.color, bg: c.backgroundColor };
+          });
+        }
+      }
+    }
+    check('scaled chip renders at all', !!chip, chip ? chip.text : 'never reached — recipe fixture or stepper changed');
+    check('scaled quantity uses the locale decimal separator',
+      !!chip && /x\d+,\d/.test(chip.text), chip ? chip.text : 'n/a');
+    check('scaled chip colour comes from the accent token',
+      !!chip && chip.color === 'rgb(124, 45, 18)', chip ? chip.color : 'n/a');
     await de.close();
   }
 

@@ -238,14 +238,23 @@ An entire session measured only 390px light and shipped a rail clipped mid-word,
 targets and a duplicated headline to 1440. A viewport you do not measure is a viewport
 you are shipping blind.
 
+**NEVER leave a dev server running, and never start one by hand.** `node verify/serve.mjs up`
+is idempotent — it reuses a healthy server on :3000 and never starts a second — and it
+bakes in `VITE_GOOGLE_PLACES_KEY`, which a bare `npx vite` omits (that omission hid the
+entire venue surface for a session). Pair every `up` with a `down`. A detached Vite tree
+is ~250MB that outlives the task, the turn and usually the session, and it is billed to
+the user for nothing; several accumulated in one sitting before this rule existed.
+`.claude/settings.json` also runs `down` on `SessionEnd`, so a forgotten server cannot
+survive the session — but the hook is the backstop, not the plan.
+
 **THE WAY TO SEE THIS APP — drive a real browser yourself. Never ask the user for a
 screenshot.** Verified working 2026-07-27. It takes about 90 seconds end to end.
 
 ```bash
 npm install                                  # ~15s
-# The key gate must pass before the app will call Places at all — without it every
-# venue view renders empty and the fixtures are never consulted.
-VITE_GOOGLE_PLACES_KEY=k nohup npx vite --port 3000 > /tmp/dev.log 2>&1 &
+node verify/serve.mjs up      # idempotent: reuses a healthy server, never starts a 2nd
+# ... work ...
+node verify/serve.mjs down    # ALWAYS. See below.
 sleep 6 && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/   # expect 200
 
 # playwright-core goes in a scratch dir, NEVER in package.json (§9: deps stay small)

@@ -174,7 +174,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
 
  {/* Hero Recipe Image */}
- <div className="w-full h-64 sm:h-96 rounded-3xl overflow-hidden border border-black dark:border-[#444] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06),0_12px_40px_rgba(0,0,0,0.05)] relative group bg-[#F2F1EE] dark:bg-[#222222]">
+ <div className="w-full h-64 sm:h-96 rounded-3xl overflow-hidden border border-[var(--rule)] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06),0_12px_40px_rgba(0,0,0,0.05)] relative group bg-[#F2F1EE] dark:bg-[#222222]">
  <img
  src={r.image}
  alt={r.name}
@@ -187,7 +187,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </div>
 
  {/* Structured Ticket Stats */}
- <div className="grid grid-cols-3 border-t border-b border-dashed border-black dark:border-[#444] py-5 my-2 max-w-[500px]">
+ <div className="grid grid-cols-3 border-t border-b border-dashed border-[var(--rule)] py-5 my-2 max-w-[500px]">
  <div className="text-center">
  <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block">
  {r.prepTime}
@@ -215,7 +215,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  aria-label="One fewer plate"
  onClick={() => handleAdjustPlates(-1)}
  disabled={plates <= 1}
- className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[var(--charcoal)] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-[var(--rule)] flex items-center justify-center leading-none text-[var(--charcoal)] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
  >
  -
  </button>
@@ -226,7 +226,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  type="button"
  aria-label="One more plate"
  onClick={() => handleAdjustPlates(1)}
- className="hit-44 w-6 h-6 rounded-full border border-black dark:border-[#444] flex items-center justify-center leading-none text-[var(--charcoal)] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
+ className="hit-44 w-6 h-6 rounded-full border border-[var(--rule)] flex items-center justify-center leading-none text-[var(--charcoal)] hover:bg-[#FAF2F0] dark:hover:bg-[#7C2D12]/20 hover:text-[#7C2D12] dark:hover:text-[#fca5a5] cursor-pointer transition-colors"
  >
  +
  </button>
@@ -249,7 +249,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
  {/* Ingredients Side */}
  <details className="md:col-span-5 group w-full" open>
- <summary className="list-none flex items-baseline justify-between cursor-pointer md:cursor-text md:pointer-events-none pb-2 border-b border-black dark:border-[#444] select-none outline-none">
+ <summary className="list-none flex items-baseline justify-between cursor-pointer md:cursor-text md:pointer-events-none pb-2 border-b border-[var(--rule)] select-none outline-none">
  <h3 className="font-serif text-xl sm:text-2xl text-[var(--charcoal)]">
  Ingredients
  {plates !== defaultPlates && (
@@ -306,7 +306,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Steps Side */}
  <details className="md:col-span-7 group w-full" open>
- <summary className="list-none flex items-baseline justify-between cursor-pointer md:cursor-text md:pointer-events-none pb-2 border-b border-black dark:border-[#444] select-none outline-none">
+ <summary className="list-none flex items-baseline justify-between cursor-pointer md:cursor-text md:pointer-events-none pb-2 border-b border-[var(--rule)] select-none outline-none">
  <h3 className="font-serif text-xl sm:text-2xl text-[var(--charcoal)]">
  How to make it
  </h3>
@@ -329,7 +329,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Links Row */}
  {(r.youtube || r.source) && (
- <div className="border-t border-black dark:border-[#444] pt-6 flex flex-wrap gap-6">
+ <div className="border-t border-[var(--rule)] pt-6 flex flex-wrap gap-6">
  {r.youtube && (
  <a
  href={r.youtube}
@@ -357,7 +357,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Grocery delivery & dine-out follow-ups — recipes only */}
  {!r.id.startsWith('eat') && (
- <div className="border-t border-black dark:border-[#444] pt-8 mt-4 select-none">
+ <div className="border-t border-[var(--rule)] pt-8 mt-4 select-none">
  <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold block mb-4">
  Get it sorted
  </span>
@@ -428,7 +428,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 )}
 
  {/* Alternative action buttons */}
- <div className="pt-8 border-t border-black dark:border-[#444] flex items-center justify-start gap-4">
+ <div className="pt-8 border-t border-[var(--rule)] flex items-center justify-start gap-4">
  <button
  onClick={onRegenerate}
  className="px-6 py-3.5 bg-transparent border border-[#7C2D12] text-[var(--accent-terracotta)] hover:bg-[#7C2D12] hover:text-white rounded-xl font-sans text-sm font-bold transition-all cursor-pointer"
@@ -666,7 +666,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  })}
  </div>
 
- <div className="mt-12 text-center pt-8 border-t border-black dark:border-[#444]">
+ <div className="mt-12 text-center pt-8 border-t border-[var(--rule)]">
  <p className="text-xs text-[var(--text-muted)] font-sans mb-4">
  Not quite right?
  </p>

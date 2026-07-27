@@ -157,10 +157,19 @@ jobs:
           ratchet "hand-formatted numbers outside locale.ts (§6)" 0 "$c"
 
           # §7 — colour comes from tokens in index.css. Reported as 233, drifted down to
-          # 211 unnoticed, then 203, now 81 after collapsing every light/dark hex PAIR
-          # that had an exact token onto that token. A ceiling left above the real count
-          # is not a ratchet — it is free regressions. Lower it every time.
+          # 211 unnoticed, then 203, then 81 after collapsing every light/dark hex PAIR
+          # onto its token, now 71 with the black borders bound to --rule. A ceiling left
+          # above the real count is not a ratchet — it is free regressions. Lower it every time.
           c=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
-          ratchet "hardcoded hex (§7)" 81 "$c"
+          ratchet "hardcoded hex (§7)" 71 "$c"
+
+          # §7 — `border-black` is a 100%-opacity rule. On warm off-white paper it reads
+          # as a hard printed line and out-shouts the heading it sits under. This was
+          # fixed once, on the Saved screen (9de1226), and left in 10 other places for
+          # months — the whole recipe detail page was framed in it. --rule is the token
+          # for this weight. Opacity variants (border-black/5, /10) are real hairlines
+          # and are excluded by the lookahead.
+          c=$(grep -rnoP 'border-black(?![-/\w])' src --include='*.tsx' | grep -c . || true)
+          ratchet "full-strength black borders (§7)" 0 "$c"
 
           exit $fail
