@@ -2,6 +2,19 @@
 
 ## Status
 
+**The "fixture gap" was a missing env var, and it hid the venue surface for a whole
+session.** `verify/` never had a gap: the dev server was being started without
+`VITE_GOOGLE_PLACES_KEY`, so `fetchVenues` returned `[]` before any request reached the
+Places fixture. Every venue view reported "no venue card present", which reads as a
+fixture limitation — so it was recorded as one, the back-restores-scroll check was
+downgraded to a SKIP, and `venue-detail` went unrendered while EateryView's action bar
+was actively being changed. With the key set: **`checks.mjs` 31/31, 0 skipped, exit 0**
+and `driver.mjs` **6/6 views, 0 unreachable**. The back-restores-scroll check ran for
+the first time and passed. `venue-detail` was rendered and read: the Directions/Call bar
+sits flush on the tab bar, confirming the `--tabbar-h` fix visually.
+`checks.mjs` now **exits 3 naming the missing command** instead of skipping, because a
+misconfigured harness must never degrade into a softer verdict about the app.
+
 **Latest session — §13.3 violations fixed, shipped.** Three of the six flagged items were
 **false positives** and were left alone: `openNow` was already guarded by
 `!== undefined` at every site, and two "hardcoded offsets" were the comments *describing*

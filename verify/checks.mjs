@@ -193,6 +193,31 @@ async function main() {
     'otherwise the browser overrides restoration on popstate',
   );
 
+  /**
+   * PREFLIGHT, not a check: no venue card means the HARNESS is misconfigured.
+   *
+   * This cost a full session. The dev server had been started without
+   * VITE_GOOGLE_PLACES_KEY, so fetchVenues returns [] before any request is made —
+   * the Places fixture is never even consulted. The symptom was
+   * "no venue card to test", which reads as a fixture gap, so it was recorded as a
+   * permanent limitation of the environment, the check was downgraded to a SKIP, and
+   * the venue detail view — §8's first-class product surface — went unrendered and
+   * unmeasured while its action bar was actively being changed.
+   *
+   * A misconfigured harness must never degrade into a softer verdict about the app.
+   * Exit 3, say exactly which lever is missing.
+   */
+  const cardCount = await page.locator('[role="button"][aria-label^="View "]').count();
+  if (cardCount === 0) {
+    console.error(
+      '\nNo venue card rendered. The fixture supplies venues, so this means the dev\n' +
+      'server was started WITHOUT a Places key and the app short-circuits to an empty\n' +
+      'list before any request reaches the fixture.\n\n' +
+      '  Restart it as:  VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000\n\n' +
+      'This is NOT a fixture gap and NOT a reason to skip the venue checks.',
+    );
+    process.exit(3);
+  }
   const card = page.locator('[role="button"][aria-label^="View "]:visible').first();
   let restored = null;
   if (await card.count()) {

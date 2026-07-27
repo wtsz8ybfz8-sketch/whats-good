@@ -155,10 +155,18 @@ resolves a binary and **exits 3 rather than skipping**, because a suite that sil
 drops its browser reports green while measuring nothing. Every check in it exists because that bug
 shipped and *the user* found it.
 
-**A skip is not a pass.** `checks.mjs` prints `⚠ SKIPPED` and counts skips separately
-in its summary line. One check is skipped today — back-restores-scroll needs a rendered
-venue card and no environment reachable from here produces one. Read the summary line,
-not the exit code alone.
+**A skip is not a pass**, and a misconfigured harness must never degrade into a softer
+verdict about the app. `checks.mjs` prints `⚠ SKIPPED` and counts skips separately in its
+summary line — read that line, not the exit code alone. It currently skips nothing.
+
+**The venue checks need a key on the DEV SERVER, and their failure mode lies to you.**
+Start it as `VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000` — with no key, `fetchVenues`
+returns `[]` *before any request is made*, so the Places fixture is never consulted and
+every venue view reports "no venue card present". That reads as a fixture gap. It is not.
+A whole session recorded it as a permanent limitation of this container, downgraded the
+back-restores-scroll check to a skip, and left the venue detail view — §8's first-class
+product surface — unrendered and unmeasured while its action bar was being changed.
+`checks.mjs` now **exits 3 with the exact command** rather than skipping.
 
 **A check that cannot fail is not evidence.** Before trusting a green result, name the
 result that would have been red. Rendering at 390px in headless Chromium cannot fail an
@@ -235,7 +243,9 @@ screenshot.** Verified working 2026-07-27. It takes about 90 seconds end to end.
 
 ```bash
 npm install                                  # ~15s
-nohup npx vite --port 3000 > /tmp/dev.log 2>&1 &
+# The key gate must pass before the app will call Places at all — without it every
+# venue view renders empty and the fixtures are never consulted.
+VITE_GOOGLE_PLACES_KEY=k nohup npx vite --port 3000 > /tmp/dev.log 2>&1 &
 sleep 6 && curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/   # expect 200
 
 # playwright-core goes in a scratch dir, NEVER in package.json (§9: deps stay small)

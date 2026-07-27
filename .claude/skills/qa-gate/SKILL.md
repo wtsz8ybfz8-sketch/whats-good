@@ -19,7 +19,7 @@ would have been red.
 ```bash
 npm install                                                   # once
 cd verify && npm install                                      # once — playwright-core lives HERE, never in root package.json
-cd /home/user/whats-good && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &
+cd /home/user/whats-good && VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000 &   # the key is NOT optional — see below
 sleep 5
 cd verify && NO_PROXY='*' node checks.mjs                     # exit 0 = pass; quote the total IT prints, never a number from a doc
 NO_PROXY='*' node driver.mjs                                  # 6 views, screenshots -> verify/out/
@@ -65,6 +65,14 @@ When the user reports a defect, add a check for it to `verify/checks.mjs` in the
 change that fixes it. A bug the user had to find twice is a process failure, not a
 coding one.
 
+
+## If it says "no venue card"
+
+That is the harness, not the app. Without `VITE_GOOGLE_PLACES_KEY` on the **dev server**,
+`fetchVenues` returns `[]` before any request is made, so the fixtures are never
+consulted and every venue view comes up empty. `checks.mjs` exits 3 and prints the
+command. Do not read it as a fixture gap and do not skip the venue checks — a session
+did exactly that and shipped the venue detail view unrendered and unmeasured.
 
 ## Then say what was NOT checked
 
