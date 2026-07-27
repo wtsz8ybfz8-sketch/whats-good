@@ -465,7 +465,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           restyled. */}
 
       {/* Footer */}
-      <div className="px-5 sm:px-10 pt-6 pb-[140px] lg:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
+      <div className="px-5 sm:px-10 pt-6 pb-[calc(var(--tabbar-h)+5rem+env(safe-area-inset-bottom))] lg:pb-12 flex flex-wrap gap-4 items-center justify-between border-t border-[var(--rule)]">
         <button
           onClick={() => onSelectRecipe(null)}
           className="hit-44 font-mono text-xs uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--charcoal)] flex items-center gap-1.5 cursor-pointer transition-colors"

@@ -102,7 +102,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
 
   if (!covered) {
     return (
-      <div className="max-w-[820px] mx-auto w-full sm:px-10 pb-[120px] md:pb-16">
+      <div className="max-w-[820px] mx-auto w-full sm:px-10 pb-[calc(var(--tabbar-h)+2rem+env(safe-area-inset-bottom))] md:pb-16">
         <div className="surface rounded-3xl px-7 py-12 text-center mt-2">
           <div className="w-12 h-12 rounded-full bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mx-auto mb-5">
             <Martini className="w-5 h-5 text-[var(--accent-terracotta)]" strokeWidth={1.75} />
@@ -123,7 +123,7 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
   return (
     // Desktop gets the width it has. A single 820px column of short rows on a 1440px
     // screen is most of the screen doing nothing.
-    <div className="max-w-[820px] xl:max-w-[1180px] mx-auto w-full sm:px-10 pb-[120px] md:pb-16">
+    <div className="max-w-[820px] xl:max-w-[1180px] mx-auto w-full sm:px-10 pb-[calc(var(--tabbar-h)+2rem+env(safe-area-inset-bottom))] md:pb-16">
 
       {/* Status header — the focal element is the live count, nothing else competes */}
       <div className="pt-2 pb-7">

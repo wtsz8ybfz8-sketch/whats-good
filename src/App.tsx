@@ -974,7 +974,7 @@ export default function App() {
  {/* Mobile tab bar — this is an app, so navigation lives at the thumb, not the
  forehead. Safe-area padding keeps it clear of the iOS home indicator. */}
  <nav
- className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--bg-warm)] border-t border-[var(--rule)]"
+ className="md:hidden fixed bottom-0 left-0 right-0 z-50 min-h-[var(--tabbar-h)] bg-[var(--bg-warm)] border-t border-[var(--rule)]"
  style={{ paddingBottom:'env(safe-area-inset-bottom)' }}
  aria-label="Primary"
  >
@@ -1381,7 +1381,7 @@ export default function App() {
  // Pinned to the thumb on mobile; on desktop a permanently-docked bar over a
  // half-empty viewport is a phone pattern wearing a desktop costume — there it
  // sits inline under the filters where the eye already is.
- <div className="action-bar fixed bottom-[64px] left-0 right-0 z-40 px-5 pb-4 pt-3 flex justify-center md:static md:bg-transparent md:border-0 md:shadow-none md:px-0 md:pt-8 md:pb-4 md:z-auto md:before:hidden">
+ <div className="action-bar fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-40 px-5 pb-4 pt-3 flex justify-center md:static md:bottom-auto md:bg-transparent md:border-0 md:shadow-none md:px-0 md:pt-8 md:pb-4 md:z-auto md:before:hidden">
  <button
  onClick={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  className="w-full max-w-md py-4 rounded-2xl font-sans font-semibold text-base tracking-[-0.01em] transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] hover:opacity-90 hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-[0.97]"
