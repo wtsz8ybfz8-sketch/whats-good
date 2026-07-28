@@ -2,9 +2,21 @@
 
 ## Status
 
-**`claude/codebase-analysis-priorities-h4cvnv` is at `16aaf6b`, committed but NOT
-pushed.** Working tree clean, no dev server running. `ce5e22f` and earlier are on the
-remote; `16aaf6b` and this handover commit are local only. Not merged to `main`; no PR.
+**`claude/codebase-analysis-priorities-h4cvnv` is at `16aaf6b`, pushed.** Working tree
+clean, no dev server running. Not merged to `main`; no PR opened (none was asked for).
+
+**The commits on this branch are unsigned and GitHub will show them Unverified.** Author
+and committer are already `Claude <noreply@anthropic.com>` — the usual `--reset-author`
+advice does not apply and would only rewrite hashes. The cause is that
+`/root/.gitconfig` sets `commit.gpgsign=true` and `gpg.format=ssh` pointing at
+`/home/claude/.ssh/commit_signing_key.pub`, which is a **0-byte file with no private key
+beside it**; `openssh-client` was also absent until this session installed it. Generating
+a replacement key was **blocked by the permission classifier**. GPG is not a substitute:
+GitHub matches a GPG key's UID against a *verified account email*, and
+`noreply@anthropic.com` cannot be verified on a user's account, whereas SSH signing
+verifies on the registered key alone. **GitHub verifies at display time**, so once a real
+signing key exists and its public half is registered, newly signed commits verify — the
+already-pushed unsigned ones never will.
 
 `verify/checks.mjs` **46/46, 0 skipped, exit 0** on chromium (43 before this session; the
 three new ones are the venue-action checks below). `npx tsc --noEmit` **exit 0 — it
