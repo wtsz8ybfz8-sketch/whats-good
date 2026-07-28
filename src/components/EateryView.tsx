@@ -101,7 +101,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         // negative margins to keep in sync with an ancestor's padding, and no w-screen
         // (which mis-centres against a scrollbar). The -mt cancels <main>'s top padding
         // so the photo also runs up under the header.
-        className="bleed relative -mt-6 sm:-mt-10 lg:-mt-16 h-[46vh] sm:h-[56vh] md:h-[60vh] overflow-hidden group"
+        className="bleed relative -mt-6 sm:-mt-10 lg:-mt-16 h-[46dvh] sm:h-[56dvh] md:h-[60dvh] overflow-hidden group"
       >
         <motion.img
           src={r.image}
@@ -488,7 +488,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           two opaque bars. The safe-area inset belongs in the OFFSET (the bar it stacks
           on already clears the home indicator), so the padding below is a flat 0.5rem —
           counting the inset in both places would double it. */}
-      <div className="lg:hidden fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-40 px-4 pb-2 pt-2 bg-[var(--bg-warm)]/90 backdrop-blur-md border-t border-[var(--rule)] flex gap-3">
+      <div className="action-bar lg:hidden fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-40 pb-2 pt-2 flex gap-3">
         <a
           href={directionsUrl}
           target="_blank"

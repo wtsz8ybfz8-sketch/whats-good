@@ -887,7 +887,7 @@ export default function App() {
  Dynamic Island. Padding the fixed header by the top inset keeps the logo and the
  controls clear of it; in a normal browser tab the inset is 0 and nothing moves. */}
  <header
- className="glass safe-x flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 border-b border-black/5 select-none !rounded-none"
+ className="chrome-bar safe-x flex items-center justify-between px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 select-none !rounded-none"
  style={{ height:'calc(60px + env(safe-area-inset-top))', paddingTop:'env(safe-area-inset-top)' }}
  >
  {/* Logo */}

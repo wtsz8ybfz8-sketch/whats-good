@@ -158,7 +158,7 @@ const FilterSheet: React.FC<{
  // through the sheet, so the mood chips sat on top of the hero copy and neither
  // was legible. A sheet is a separate plane and has to be one: page canvas token
  // for the fill, surface border and shadow kept for the edge and lift.
- className="relative w-full sm:max-w-[460px] rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col sm:m-6 bg-[var(--bg-warm)] border border-[var(--border-color)] shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
+ className="relative w-full sm:max-w-[460px] rounded-t-3xl sm:rounded-3xl max-h-[85dvh] flex flex-col sm:m-6 bg-[var(--bg-warm)] border border-[var(--border-color)] shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:shadow-[0_18px_60px_rgba(0,0,0,0.24)]"
  >
  {/* Grabber — the affordance for the drag, visible before the drag */}
  <div className="pt-2.5 pb-1 flex justify-center flex-shrink-0 sm:hidden">

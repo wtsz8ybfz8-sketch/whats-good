@@ -13,7 +13,7 @@
 
 import { chromium } from 'playwright-core';
 import { resolveChrome } from './chromePath.mjs';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -83,7 +83,26 @@ function staticChecks() {
     'without it every env(safe-area-inset-*) is 0 on iOS',
   );
 
-  const srcFiles = ['src/App.tsx', 'src/index.css', 'src/components/ErrorBoundary.tsx'];
+  /**
+   * EVERY source file, enumerated — never a hardcoded list.
+   *
+   * This was `['src/App.tsx', 'src/index.css', 'src/components/ErrorBoundary.tsx']`, so
+   * Sidebar, EateryView, RecipeView, HappyHourView and StatusStates were never scanned
+   * by any static check. That is how h-[46vh]/[56vh]/[60vh] and max-h-[85vh] survived
+   * the entire life of a rule that bans them in bold: the check was green because it
+   * never opened the files. A check that cannot see the violation cannot fail.
+   *
+   * Walking the tree means a new component is covered the moment it exists, rather than
+   * when someone remembers to add it here.
+   */
+  const srcFiles = (function walk(dir, acc = []) {
+    for (const e of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(rel, acc);
+      else if (/\.(tsx|ts|css)$/.test(e.name)) acc.push(rel);
+    }
+    return acc;
+  })('src');
   // Strip comments before matching, or the note explaining why a pattern is banned
   // trips the check that bans it — a false positive that teaches you to ignore the suite.
   const cssRaw = readFileSync(resolve(ROOT, 'src/index.css'), 'utf8');
@@ -132,10 +151,15 @@ function staticChecks() {
       readFileSync(resolve(ROOT, f), 'utf8')
         .split('\n')
         .map((l, i) => ({ f, i: i + 1, l }))
-        .filter((x) => /\b100vh\b|min-h-screen/.test(x.l)),
+        .filter((x) => /(?<![dsl])\d+vh\b|min-h-screen/.test(x.l)),
     );
   check(
-    'no 100vh / min-h-screen',
+    // ANY bare vh, not just 100vh. On iOS Safari every `vh` unit resolves against the
+    // viewport with the browser chrome HIDDEN, so `46vh` is as wrong as `100vh` — just
+    // less obviously. This check tested only /100vh|min-h-screen/ for its whole life,
+    // while the venue hero shipped h-[46vh]/[56vh]/[60vh] and the filter sheet
+    // max-h-[85vh]. §6 says "never use 100vh"; the rule is the unit, not the number.
+    'no bare vh units / min-h-screen (use dvh)',
     vh.length === 0,
     vh.length ? vh.map((x) => `${x.f}:${x.i}`).join(', ') : 'dvh tracks iOS browser chrome',
   );
@@ -392,7 +416,17 @@ async function main() {
   // Neither was ever measured. Landscape is where the notch insets become non-zero and
   // where the unpainted-canvas bug was visible; desktop is where a clipped rail, 36px
   // targets and a duplicated headline shipped unseen. Both run on every check now.
-  for (const [w, h, name] of [[844, 390, 'landscape 844x390'], [1440, 900, 'desktop 1440x900']]) {
+  // 393x852 is the iPhone 15/16 Pro — the device the user actually holds, and a size
+  // this suite had NEVER measured. Everything was checked at 390x844 (iPhone 12/13/14),
+  // 3px narrower and 8px shorter. 430x932 is the Pro Max, 40px wider than anything that
+  // had ever been rendered. A viewport you do not measure is a viewport you ship blind,
+  // and "close enough to 390" is not a measurement.
+  for (const [w, h, name] of [
+    [393, 852, 'iPhone 15/16 Pro 393x852'],
+    [430, 932, 'iPhone Pro Max 430x932'],
+    [844, 390, 'landscape 844x390'],
+    [1440, 900, 'desktop 1440x900'],
+  ]) {
     const c = await browser.newContext({ viewport: { width: w, height: h }, locale: 'en-GB' });
     await c.addInitScript(() => { try { localStorage.setItem('whats_good_city', 'London'); } catch {} });
     const pg = await c.newPage();

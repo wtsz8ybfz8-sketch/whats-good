@@ -136,6 +136,26 @@
 
    The scrim above it fades scrolling content out instead of letting it collide with
    the bar's edge. */
+/* Top chrome. OPAQUE, deliberately.
+   
+   This was `.glass` — rgba(255,255,255,0.60) in light and rgba(255,255,255,0.055) in
+   DARK, i.e. 94% transparent — with a backdrop-filter doing the rest of the work.
+   backdrop-filter is the least reliable thing in this stylesheet on iOS Safari: it is
+   applied to a different layer, dropped under memory pressure, and skipped entirely
+   while the page is scrolling. When it is skipped, the declared background is all that
+   remains, and 6% white over scrolling content is a window, not a bar. The user's
+   report was "I can see through buttons and content when I'm scrolling through the
+   page", and this is it.
+   
+   Chrome that content passes UNDER is a material, not a window. The mobile CTA bar
+   already learned this (see .action-bar and the note at the top of this file); the
+   header did not, and kept the bug for everyone on a real phone. */
+.chrome-bar {
+  background: var(--bg-warm);
+  border-bottom: 1px solid var(--rule);
+  box-shadow: 0 2px 16px rgba(26, 15, 10, 0.05);
+}
+
 .action-bar {
   background: var(--bg-warm);
   border-top: 1px solid var(--rule);
