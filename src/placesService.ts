@@ -247,6 +247,9 @@ export async function fetchVenues(
       const rating = Math.round((place.rating ?? 4.0) * 10) / 10;
       const priceTier = priceLevelToTier(place.priceLevel);
       const phone = place.nationalPhoneNumber ?? '';
+      // A Maps search is a fair fallback destination, but it is not the venue's site,
+      // and the difference has to travel with the URL or the label will overclaim it.
+      const hasOwnWebsite = Boolean(place.websiteUri);
       const website =
         place.websiteUri ?? `https://www.google.com/maps/search/${encodeURIComponent(name)}`;
       const photoUrl = place.photos?.[0]?.name
@@ -284,6 +287,7 @@ export async function fetchVenues(
         signatureIngredients: [],
         digestiveNote: '',
         externalLink: website,
+        hasOwnWebsite,
         /* No coordinate fallback. This was `?? -33.9249, 18.4241` — Cape Town's City
            Hall — so a venue with no published location silently claimed to be in South
            Africa and sorted by a distance computed from that lie. The first fix cast the

@@ -31,6 +31,14 @@ export interface Venue {
   signatureIngredients: string[];
   digestiveNote: string;
   externalLink: string;
+  /**
+   * True only when the venue published its own site. Places has no website for many
+   * venues, so `externalLink` falls back to a Google Maps *search* for the name — a
+   * useful link, but not the venue's site, and labelling it "Official website" told
+   * the user something we had not been told. Render sites branch on this rather than
+   * on the presence of a URL, because a URL is always present.
+   */
+  hasOwnWebsite?: boolean;
   /** Optional: Places does not guarantee a location. Callers must handle absence
    *  rather than cast it away — a NaN distance sorts unpredictably. */
   latitude?: number;

@@ -425,6 +425,15 @@ No narrative history, no re-litigating past sessions, no duplicating this file. 
 engineering knowledge belongs here in CLAUDE.md; the handover carries only live state.
 Verification records **actual observed results**, including "did not complete."
 
+**Never type the commit hash. Stamp it: `npm run handover:stamp`.** Status must open
+with ``**`<branch>` is at `<sha>`, pushed.**`` — that exact shape, because a machine
+reads it. The file once claimed `main` was at `b6027f9` while HEAD was two commits
+further on, which is the worst kind of wrong: authoritative, specific and stale, so the
+next session re-does finished work or reconciles a contradiction it cannot see. CI runs
+`npm run handover:check`, which **fails** when the named commit does not exist or is not
+an ancestor of HEAD, and **warns** when code landed after it. Stamp last, after the code
+commit, so the hash names the state the handover actually describes.
+
 ---
 
 ## 11. Non-negotiable UX rules

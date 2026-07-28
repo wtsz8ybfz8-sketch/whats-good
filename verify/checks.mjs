@@ -295,6 +295,50 @@ async function main() {
     `left at ${restored.before}px, returned to ${restored.after}px`,
   );
 
+  /**
+   * A venue Places knows nothing about beyond its address (fixture `pl-6`).
+   *
+   * Two shipped defects, both invisible until the fixture could express absence:
+   * the Call pillar rendered unconditionally, so a venue with no published number got
+   * an action wired to `tel:` with an accessible name of "Call " — an action that
+   * cannot act; and `externalLink` falls back to a Google Maps *search* URL, which was
+   * labelled "Official website" and "See the full menu and photos". Neither is a thing
+   * we were told. §5 Trust: a label that overclaims its destination is the same
+   * category of failure as an invented fact, just cheaper to miss.
+   *
+   * What would be red: restore the ungated pillar and `tel:` reappears; restore either
+   * hardcoded label and the wording assertions fail.
+   */
+  const thin = page.locator('[role="button"][aria-label^="View Hoxton Steam Buns"]').first();
+  await thin.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await thin.count())) {
+    console.error(
+      '\nFixture venue "Hoxton Steam Buns" (pl-6) did not render a card. It is the only\n' +
+      'fixture with no phone and no website, so the venue-action checks below cannot\n' +
+      'run. This is a harness gap, not a pass.',
+    );
+    process.exit(3);
+  }
+  await thin.click();
+  await page.waitForTimeout(900);
+  const thinActions = await page.evaluate(() => {
+    const txt = document.body.innerText;
+    const labels = [...document.querySelectorAll('a[href],button')]
+      .map((el) => el.getAttribute('aria-label') || '');
+    return {
+      telLinks: document.querySelectorAll('a[href^="tel:"]').length,
+      claimsWebsite: labels.some((l) => /official website/i.test(l)) || /full menu and photos/i.test(txt),
+      offersMaps: /open in google maps/i.test(txt),
+      onVenuePage: /Hoxton Steam Buns/.test(txt),
+    };
+  });
+  check('venue with no phone renders no Call action', thinActions.onVenuePage && thinActions.telLinks === 0,
+    thinActions.onVenuePage ? `${thinActions.telLinks} tel: link(s)` : 'not on the venue page');
+  check('a Maps fallback is not labelled "Official website"', !thinActions.claimsWebsite);
+  check('a Maps fallback says so', thinActions.offersMaps);
+  await page.goBack().catch(() => {});
+  await page.waitForTimeout(900);
+
   // --- layout + hit targets, every view ---------------------------------------
   const MEASURE = () => {
     const miss = [];

@@ -39,6 +39,14 @@ export const EateryView: React.FC<EateryViewProps> = ({
   if (!rawEatery) return null;
 
   const directionsUrl = `https://maps.google.com/?q=${encodeURIComponent(rawEatery.address)}`;
+  // Venues saved to localStorage before this field existed carry no flag, and defaulting
+  // those to "no site" would mislabel a real website as Maps. The fallback URL has a
+  // known shape, so read the destination itself when the flag is absent; the flag stays
+  // authoritative when present, since a venue could legitimately publish a Maps link.
+  const hasOwnWebsite: boolean =
+    typeof rawEatery.hasOwnWebsite === 'boolean'
+      ? rawEatery.hasOwnWebsite
+      : !/^https?:\/\/(www\.)?google\.[^/]+\/maps\//.test(rawEatery.externalLink ?? '');
   const isSaved = savedIds.includes(r.id);
   // Only show distance when it's a real measured value, not a city-name fallback
   const distanceLabel = r.tags[1];
@@ -216,27 +224,38 @@ export const EateryView: React.FC<EateryViewProps> = ({
           </div>
           <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Directions</span>
         </a>
-        <a
-          href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
-          aria-label={`Call ${rawEatery.phone}`}
-          className="flex-1 flex flex-col items-center gap-2.5 cursor-pointer group press"
-        >
-          <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
-            <Phone className="w-4 h-4 text-[var(--accent-terracotta)]" />
-          </div>
-          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Call</span>
-        </a>
+        {/* Gated on a real number. Unguarded, a venue with no published phone still got
+            a Call pillar wired to `tel:` with an empty accessible name — an action that
+            cannot act, which is the same broken promise as a fabricated fact. */}
+        {rawEatery.phone && (
+          <a
+            href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
+            aria-label={`Call ${rawEatery.phone}`}
+            className="flex-1 flex flex-col items-center gap-2.5 cursor-pointer group press"
+          >
+            <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
+              <Phone className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            </div>
+            <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Call</span>
+          </a>
+        )}
         <a
           href={rawEatery.externalLink}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Official website"
+          aria-label={hasOwnWebsite ? `Official website for ${rawEatery.name}` : `Look up ${rawEatery.name} on Google Maps`}
           className="flex-1 flex flex-col items-center gap-2.5 cursor-pointer group press"
         >
           <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
-            <ExternalLink className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            {hasOwnWebsite ? (
+              <ExternalLink className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            ) : (
+              <MapPin className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            )}
           </div>
-          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Website</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
+            {hasOwnWebsite ? 'Website' : 'Maps'}
+          </span>
         </a>
       </div>
 
@@ -435,15 +454,17 @@ export const EateryView: React.FC<EateryViewProps> = ({
         )}
 
         {/* The menu itself lives with the venue. Send people there properly, as a real
-            action, instead of burying it in a footnote under fake prices. */}
+            action, instead of burying it in a footnote under fake prices. The copy
+            promises only what the destination is: the venue's own site may carry a
+            menu, a Maps listing carries photos and reviews and makes no menu promise. */}
         <a
           href={rawEatery.externalLink}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-full border border-[var(--rule)] text-[14px] font-medium text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)] transition-colors"
         >
-          <ExternalLink className="w-4 h-4" />
-          See the full menu and photos
+          {hasOwnWebsite ? <ExternalLink className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+          {hasOwnWebsite ? 'See the full menu and photos' : 'Open in Google Maps'}
         </a>
 
         <div className="mt-5 flex items-start gap-2.5">

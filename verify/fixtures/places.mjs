@@ -22,8 +22,13 @@ function place(id, name, address, lat, lng, opts = {}) {
     primaryType: opts.primaryType ?? 'italian_restaurant',
     primaryTypeDisplayName: { text: opts.cuisine ?? 'Italian restaurant' },
     photos: [{ name: `places/${id}/photos/fixture` }],
-    nationalPhoneNumber: opts.phone ?? '020 7946 0018',
-    websiteUri: opts.website ?? 'https://example.invalid/venue',
+    // `null` means "Places published no such field", which is different from "the
+    // fixture author did not override the default". Both are common in real responses
+    // and the app must render differently for each, so the fixture has to be able to
+    // express absence — until it could, every fixture venue had a phone and a site and
+    // the phoneless/siteless branches were unreachable from the suite.
+    ...(opts.phone === null ? {} : { nationalPhoneNumber: opts.phone ?? '020 7946 0018' }),
+    ...(opts.website === null ? {} : { websiteUri: opts.website ?? 'https://example.invalid/venue' }),
     regularOpeningHours: {
       openNow: opts.openNow,
       weekdayDescriptions: [
@@ -72,6 +77,25 @@ export const PLACES = [
     priceLevel: 'PRICE_LEVEL_VERY_EXPENSIVE',
     openNow: true,
     rating: 4.7,
+  }),
+  /**
+   * The thin listing: Places knows this venue exists and nothing else about how to
+   * reach it. Real responses look like this constantly — small venues, new listings,
+   * anywhere Google has an address but no claimed profile.
+   *
+   * It exists because the venue page shipped a Call pillar wired to `tel:` with an
+   * empty number and an empty accessible name, and labelled a Google Maps *search*
+   * URL "Official website". Both were invisible while every fixture venue carried a
+   * phone and a site.
+   */
+  place('pl-6', 'Hoxton Steam Buns', '41 Kingsland Road, London E2 8AG, UK', 51.5285, -0.0765, {
+    cuisine: 'Chinese restaurant',
+    primaryType: 'chinese_restaurant',
+    priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
+    openNow: true,
+    rating: 4.5,
+    phone: null,
+    website: null,
   }),
 ];
 
