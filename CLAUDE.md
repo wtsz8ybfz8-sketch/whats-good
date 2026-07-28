@@ -132,6 +132,14 @@ nothing about that deployment. A session burned real user trust reporting a prox
 "Vercel Deployment Protection is on" and sending the user to change a setting that may
 never have been set. Reachability is checked from a real device, or not at all.
 
+**A handover sentence is not evidence — it is a claim with an author and a date.** When
+you repeat one to the user, say where it came from. `HANDOVER.md` asserted for several
+sessions that the Places key was unset; a session with a live browser reported the
+opposite, having watched real venues render. Both were stated as fact, neither carried its
+provenance, and the contradiction only surfaced because the user remembered. **Record how
+a thing was established, not just what was concluded** — and when two records disagree,
+mark the item CONTESTED rather than picking the one that fits your plan.
+
 **Don't let a pipe swallow an exit code.** `npm run build | tail -20` reports `tail`'s
 status. Check `${PIPESTATUS[0]}`.
 

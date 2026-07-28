@@ -15,7 +15,18 @@ captured perfectly and then failed on both delivery routes. Run 4, carrying the 
 for both, was **still in progress when this session ended — its result is unknown and
 must be read, not assumed.**
 
-One blocker remains and it is a user action: **`VITE_GOOGLE_PLACES_KEY` in Vercel.**
+**`VITE_GOOGLE_PLACES_KEY` in Vercel — status CONTESTED, do not repeat either claim as
+fact.** This handover previously stated flatly that the key was unset and that setting it
+was the one remaining user action. A later session reported the opposite: that it had
+loaded the production URL, applied a cuisine filter (30 → 25 results) and opened a venue
+detail page with a real address, hours and working Directions/Call/Website buttons. Real
+venues cannot render without the key, so that report, if grounded, means the key is live
+and this line was stale.
+
+Neither claim is checkable from the agent container: **every outbound URL 403s here**
+(§6), so no session running without a browser connector can confirm or refute it. Resolve
+it by opening the deployed Find tab on a real device — venues means live, the
+missing-configuration state means unset — and only then write the answer down here.
 
 ## Objective
 
@@ -110,8 +121,10 @@ any iOS behaviour as verified until run 4's log and screenshots have been read.
    app in real Mobile Safari. Grep the job log for `PROBE_RESULT` for the device's real
    insets and `100vh` vs `100dvh`. If red, the two failures already fixed were
    `permissions: contents: write` and the probe beacon; anything else is new.
-2. **Set `VITE_GOOGLE_PLACES_KEY` in Vercel** (user action). Until then the deployed Find
-   tab shows its missing-configuration state, correctly and by design.
+2. **Establish whether `VITE_GOOGLE_PLACES_KEY` is actually set** before acting on it
+   either way — see Status. Ask the user what the deployed Find tab shows; do not repeat
+   this handover's earlier assertion that the key is missing, and do not assume it is
+   present. Write down the answer and how it was obtained.
 3. **Flip the WebKit steps in `ci.yml` from `continue-on-error` to a gate** — the arrival
    state is no longer unknown, it was 38/38 — and delete the paragraph that says to.
 
