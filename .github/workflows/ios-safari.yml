@@ -118,6 +118,15 @@ jobs:
           # already names a city — which is what CI loads. See src/App.tsx.
           echo "Booted $DEVICE ($UDID)"
 
+      # THE SLUGS ARE NOT THE TAB LABELS. `?tab=` is validated in src/App.tsx against
+      # ['mood','happy-hour','random','saved-recipes','saved-eateries'], and anything
+      # else deliberately falls back to 'mood' — the Find tab — rather than rendering an
+      # empty shell. Run 11 asked for `find stay-in happy-hour saved`: only `happy-hour`
+      # was real, so three of the four captures were the Find tab under another filename,
+      # and light-stay-in.png / light-saved.png came out byte-identical. The app was
+      # right; this harness was asking for tabs that do not exist. FILE=SLUG pairs below
+      # keep the readable filename without inventing a slug — if a slug is renamed in
+      # App.tsx, change it here too.
       - name: Capture — light
         run: |
           U="${{ steps.boot.outputs.udid }}"
@@ -129,21 +138,57 @@ jobs:
           xcrun simctl openurl "$U" "http://localhost:3000/safe-area-probe.html"
           sleep 8
           xcrun simctl io "$U" screenshot shots/00-safe-area-probe.png
-          for tab in find stay-in happy-hour saved; do
-            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$tab&city=London"
+          for pair in find=mood stay-in=random happy-hour=happy-hour saved=saved-recipes; do
+            name="${pair%%=*}"; slug="${pair#*=}"
+            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$slug&city=London"
             sleep 7
-            xcrun simctl io "$U" screenshot "shots/light-$tab.png"
+            xcrun simctl io "$U" screenshot "shots/light-$name.png"
           done
 
+      # Switching appearance under a RUNNING Safari does not repaint live web content:
+      # run 11 set `appearance dark` while Safari was still open from the light pass and
+      # every dark PNG came back with the app in light mode, with PROBE.txt reporting
+      # `"scheme":"light"` twice. The app was not at fault — with no stored preference it
+      # follows prefers-color-scheme (App.tsx:277), and the media query never flipped.
+      # Terminate Safari, set the appearance, then relaunch so the new trait is picked up
+      # at process start.
       - name: Capture — dark
         run: |
           U="${{ steps.boot.outputs.udid }}"
+          xcrun simctl terminate "$U" com.apple.mobilesafari || true
+          sleep 2
           xcrun simctl ui "$U" appearance dark
-          for tab in find stay-in happy-hour saved; do
-            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$tab&city=London"
+          sleep 3
+          # Confirm the switch actually reached web content before spending 4 captures on
+          # it. The probe reports prefers-color-scheme; if it still says light, the dark
+          # pass is measuring nothing and must fail loudly rather than upload 4 more
+          # light screenshots under dark filenames.
+          xcrun simctl openurl "$U" "http://localhost:3000/safe-area-probe.html"
+          sleep 8
+          xcrun simctl io "$U" screenshot shots/00-safe-area-probe-dark.png
+          for pair in find=mood stay-in=random happy-hour=happy-hour saved=saved-recipes; do
+            name="${pair%%=*}"; slug="${pair#*=}"
+            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$slug&city=London"
             sleep 7
-            xcrun simctl io "$U" screenshot "shots/dark-$tab.png"
+            xcrun simctl io "$U" screenshot "shots/dark-$name.png"
           done
+
+      # A green tick and a full artifact directory have twice now meant nothing (runs
+      # 2-7: the location prompt; run 11: wrong slugs + a dark pass that stayed light).
+      # Byte-identical siblings are the one failure this job CAN catch by itself, so it
+      # does, rather than leaving it to whoever reads the PNGs to remember.
+      - name: Fail if any two captures are byte-identical
+        run: |
+          cd shots
+          # macos runner: `md5 -q` prints one hash per line, in argument order.
+          total=$(ls light-*.png dark-*.png | wc -l | tr -d ' ')
+          uniq_n=$(md5 -q light-*.png dark-*.png | sort -u | wc -l | tr -d ' ')
+          echo "$uniq_n unique hashes across $total captures"
+          if [ "$uniq_n" != "$total" ]; then
+            echo "::error::Two or more captures are byte-identical — tabs are not navigating."
+            for f in light-*.png dark-*.png; do echo "$(md5 -q "$f")  $f"; done | sort
+            exit 1
+          fi
 
       # The measurement, as TEXT, in the job log — the half of this that is readable
       # without downloading anything.
