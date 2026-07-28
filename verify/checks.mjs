@@ -11,8 +11,7 @@
  * as a failure — a check that "did not complete" is not a check that passed.
  */
 
-import { chromium } from 'playwright-core';
-import { resolveChrome } from './chromePath.mjs';
+import { ENGINE, launchBrowser } from './browser.mjs';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +47,6 @@ async function installFixtures(page) {
     return r.abort();
   });
 }
-const CHROME = resolveChrome();   // never a pinned build number — see chromePath.mjs
 const json = (b) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
 
 const results = [];
@@ -81,6 +79,20 @@ function staticChecks() {
     'viewport-fit=cover present',
     /viewport-fit\s*=\s*cover/.test(html),
     'without it every env(safe-area-inset-*) is 0 on iOS',
+  );
+
+  // The typeface is this product's identity (§7) and must come from our own origin.
+  // A Google Fonts link means: a flash of fallback text and a reflow on every cold
+  // load, two extra round trips to a third origin before any text is right, and the
+  // user's IP handed to Google on every visit. Self-hosted via
+  // @fontsource-variable/schibsted-grotesk; this check is what keeps it that way.
+  // Comments are stripped first. The comment in index.html EXPLAINS the Google Fonts
+  // bug and therefore names the host; a check that reads its own documentation as a
+  // violation is the §13.3 trap, and it fired here on the first run.
+  check(
+    'no third-party font request',
+    !/fonts\.(googleapis|gstatic)\.com/.test(html.replace(/<!--[\s\S]*?-->/g, '')),
+    'a webfont from another origin means a FOUT reflow on every cold load',
   );
 
   /**
@@ -167,10 +179,10 @@ function staticChecks() {
 
 // ── Rendered checks ───────────────────────────────────────────────────────────
 async function main() {
-  console.log(`\n▶ regression checks — ${BASE}\n`);
+  console.log(`\n▶ regression checks — ${BASE}  [engine: ${ENGINE}]\n`);
   staticChecks();
 
-  const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
+  const browser = await launchBrowser();
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     hasTouch: true,

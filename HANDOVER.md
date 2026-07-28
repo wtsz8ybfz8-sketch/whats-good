@@ -2,125 +2,102 @@
 
 ## Status
 
-**Green and deployed at the user's real device size for the first time.**
-`verify/checks.mjs` **38/38, 0 skipped, exit 0**; `verify/driver.mjs` **6/6 views, 0
-unreachable**, light and dark. Working tree clean.
+**WebKit — the engine on the user's phone — now renders and measures this app in CI. It
+never had, on any machine, in the project's history.**
 
-The suite now measures **393×852 (iPhone 15/16 Pro — the user's actual phone)** and
-**430×932 (Pro Max)**. Before this it measured only 390×844, so the user's viewport had
-never been rendered or measured, at all, in the project's history.
+Local suite unchanged and green: `verify/checks.mjs` **38/38, 0 skipped, exit 0** on
+chromium. Working tree committed and pushed to `claude/handover-immediate-fixes-nwcsf6`.
 
-Outstanding lever: **`VITE_GOOGLE_PLACES_KEY` in Vercel**. Without it the deployed Find
-tab shows its missing-configuration state, correctly and by design. No key exists in
-this container, and reachability cannot be checked from here (§6: the proxy 403s every
-outbound host).
+Two blockers to *seeing* the app were removed this session; one remains and is a user
+action (`VITE_GOOGLE_PLACES_KEY` in Vercel).
 
 ## Objective
 
-Close the gap between what CLAUDE.md *claims* is guaranteed and what a machine actually
-refuses to let through — then fix what that gap was hiding, without ever reporting a
-check as evidence when it did not run.
+Remove what prevents this app being seen as the user sees it — on WebKit, at phone width
+— rather than inferred from headless Chromium.
 
 ## What changed
 
-**Three checks that could not fail, made able to fail.**
-1. The static checks read a **hardcoded list of three files** (`App.tsx`, `index.css`,
-   `ErrorBoundary.tsx`). `Sidebar`, `EateryView`, `RecipeView`, `HappyHourView` and
-   `StatusStates` were never scanned by anything. The suite now walks `src/` so a new
-   component is covered the moment it exists.
-2. The viewport rule tested `/100vh|min-h-screen/`. **Every bare `vh` unit** resolves
-   against the URL-bar-hidden viewport on iOS Safari, so `46vh` is as wrong as `100vh`.
-   The venue hero shipped `h-[46vh]/[56vh]/[60vh]` and the filter sheet `max-h-[85vh]`
-   for the project's whole life. All converted to `dvh`; the check now catches any `vh`.
-3. `.glass` was capped at a **count** of 2, so moving it from the header onto a card
-   passed. It now checks **placement**: 0 in `components/`, ≤2 in `App.tsx`.
+**1. `verify/serve.mjs up` was broken on every fresh clone.** `verify/out/` is
+gitignored, so `openSync('verify/out/dev.log')` threw ENOENT before Vite was ever
+spawned. That is the *first command* of §6's "way to see this app", and it failed in
+this container today. Now `mkdirSync(..., { recursive: true })` first.
 
-**The see-through chrome the user reported.** The header carried `.glass` —
-`rgba(255,255,255,0.60)` light and **`rgba(255,255,255,0.055)` dark, i.e. 94%
-transparent** — relying on `backdrop-filter`, which iOS Safari drops while scrolling.
-When it is dropped, 6% white over moving content is a window. New opaque `.chrome-bar`;
-EateryView's `/90 + backdrop-blur` action bar converted to the opaque `.action-bar` the
-main CTA bar already used. **Zero translucent chrome remains.**
+**2. New `verify/browser.mjs` — the harness picks an ENGINE, not a binary.**
+`PW_ENGINE=chromium` (default) or `webkit`. `checks.mjs` and `driver.mjs` both call
+`launchBrowser()`; neither knows about a browser path any more. WebKit launches through
+playwright-core's own registry. An absent WebKit or an unknown engine **exits 3** — it
+never falls back to Chromium, because a suite that quietly swaps engines while claiming
+to have measured WebKit is worse than one that does not run (same contract as
+`chromePath.mjs`).
 
-**Earlier in the session.** CI's browser checks had never executed (pinned Chromium path
-absent on the runner) — `chromePath.mjs` resolves and **exits 3 rather than skipping**.
-The "fixture gap" was a missing `VITE_GOOGLE_PLACES_KEY` on the dev server, which had
-been written into the docs as a permanent environment limitation; `checks.mjs` now exits
-3 naming the command. Bottom chrome derives from `--tabbar-h`; `formatQuantity()`
-replaced both `toFixed` calls; `border-black` (fixed once on Saved, left in ten other
-places) bound to `--rule`; hex 211 → 71. `verify/serve.mjs up|down` is idempotent, bakes
-in the key, and verifies termination; SessionStart/SessionEnd hooks install deps and stop
-the server.
+**3. CI runs the full suite on WebKit and uploads WebKit screenshots** at 393×852, light
+and dark, as a downloadable artifact. `driver.mjs` puts the engine in the filename, so a
+WebKit shot can never overwrite the Chromium shot of the same view.
+
+**Why the WebKit steps are `continue-on-error`.** This engine has never rendered this
+app, so its arrival state is unknown; a step red on arrival for unknown reasons is the
+kind that teaches everyone to ignore the pipeline. It is an **observation channel until
+one green run exists, then it becomes a gate** — the comment in `ci.yml` says so and
+says to delete itself. A WebKit that fails to *launch* is still recorded as a failure.
 
 ## Customer journey impact
 
-**Trust** and **Orient**. Chrome you can see through while scrolling reads as broken
-software before any content is judged — that was the user\'s first-named complaint and it
-is now structurally impossible rather than tuned away. **Explore**: the venue hero and
-filter sheet no longer size themselves against a viewport taller than the visible one on
-iOS. **Choose**: the recipe page\'s hierarchy was inverted by black rules louder than the
-headline above them.
+None directly — no `src/` change. **Trust**, indirectly and structurally: every
+iOS-shaped defect this app has shipped (`vh` against the chrome-hidden viewport,
+`env(safe-area-inset-*)`, `backdrop-filter` dropped mid-scroll) is one Chromium reports
+the *correct* value for and can never fail. Those checks could not fail. Now they can.
 
 ## Verification and actual results
 
 | What | Command | Actual result |
 |---|---|---|
-| Regression suite | `node verify/checks.mjs` | **38/38, 0 skipped, exit 0** |
-| Render sweep | `node verify/driver.mjs` (+`--dark`) | **6/6 views, 0 unreachable**, exit 0 |
-| `vh` check *can fail* | injected `max-h-[85vh]` | **✗ red, named `Sidebar.tsx:161`**, exit 1; restored |
-| Header opacity @393×852 | measured, scrolled to y=400 | `rgb(244,242,239)`, **alpha 1**, `backdrop-filter: none` |
-| Tab bar geometry @393×852 | measured | top 795, bottom 852, **gap below = 0** |
-| Scaled chip | in-suite | `Scaled x1,5`; `rgb(124, 45, 18)` = `--accent-terracotta` |
+| Chromium path unbroken by the refactor | `node verify/checks.mjs` | **38/38, 0 skipped, exit 0** |
+| Parse of all three edited harness files | `npx esbuild` | clean |
+| `serve.mjs up` on a dir-less clone | before / after | **ENOENT crash** → `server up on :3000` |
+| WebKit path *can fail* | `PW_ENGINE=webkit node verify/checks.mjs` | **exit 3**, named the install command, no fallback |
+| Unknown engine | `PW_ENGINE=firefox …` | **exit 3** |
+| Dev server stopped | `node verify/serve.mjs down` | `0 vite processes remain` |
 
-Screenshots read, not merely measured: 393×852 light and dark scrolled (header cuts
-content cleanly), `venue-detail`, `recipe-detail` both modes.
+**NOT verified.** The WebKit suite itself has **not been run** — it cannot be, here
+(`npx playwright install webkit` fails at the CDN behind the proxy, re-confirmed
+2026-07-28 with that exact error). Whether it passes, and what it says, is unknown until
+the first Actions run on this branch. **Read the Actions tab; do not assume.** The CI
+change is untested end-to-end for the same reason.
 
-**NOT verified — and this is the honest core of the user\'s question.** Everything above
-is **headless Chromium**. WebKit could not be installed (`npx playwright install webkit`
-fails: the proxy blocks the CDN), and the deployed URL is unreachable from here. So no
-statement in this document is an observation of Safari. iOS-specific behaviour —
-safe-area insets (reported as 0 here, which is also the correct value), rubber-band
-overscroll, `theme-color` chrome tint, `backdrop-filter` scheduling, and the visual-vs-
-layout viewport that produces the user\'s reported bottom gap — remains **inferred, not
-seen**. §13.2 stands.
+WebKit-on-Linux is not Safari-on-iOS: same engine, same viewport/safe-area/
+backdrop-filter semantics, different OS, no device chrome. Say "WebKit", never "iOS".
+§13.2 still stands for genuine device behaviour.
 
 ## Protected decisions
 
-- **Static checks walk `src/`; never reintroduce a hardcoded file list.** Three files
-  scanned is how four `vh` violations survived a bold rule.
-- **The `vh` ban is about the unit, not the number.** `46vh` is as wrong as `100vh`.
-- **Chrome that content passes under is opaque.** Never put `backdrop-filter` back on
-  the header or a docked bar; iOS drops it exactly when it matters.
-- **`chromePath.mjs` exits 3; it never falls back to "no browser."**
-- **No `openNow` ratchet** — all four sites are guarded; a grep would fire on correct code.
-- **Never start a bare `npx vite`** — use `serve.mjs up`/`down`.
-- **§7 is decided.** Do not invoke the design skills listed in §14.3.
-- **Never state a check count from prose** — quote what the run printed.
+- **`browser.mjs` never falls back.** Absent WebKit or unknown engine = exit 3.
+- **The engine belongs in the screenshot filename.** Silent overwrite is how "we looked
+  at it" becomes looking at the wrong picture.
+- **Flip the WebKit steps to blocking after the first green run** and delete the
+  paragraph that says so. Do not leave `continue-on-error` there indefinitely.
+- Everything carried forward: static checks walk `src/`; the `vh` ban is about the unit;
+  chrome that content passes under is opaque; no `openNow` ratchet; never a bare
+  `npx vite`; §7 is decided; never state a check count from prose.
 
 ## Next session: first three actions
 
-1. **Get a real-device observation.** Everything about iOS is inference. Either the user
-   confirms the bottom gap on the deployed build, or a WebKit-capable runner is added to
-   CI (GitHub runners can `playwright install webkit`; this container cannot). Until one
-   of those exists, no iOS claim should be made in either direction.
-2. **Set `VITE_GOOGLE_PLACES_KEY` in Vercel** (user action). Until then no venue
-   behaviour is confirmable in production.
-3. **Hex 71 → 0.** What remains has no exact token — status tints (emerald/amber), a few
-   one-off greys. Add the token to `:root` and `html.dark` first, then bind. Lower the
-   ratchet each time; never raise it.
+1. **Read the Actions run for this branch.** Specifically the WebKit step's summary
+   block. Every red line there is a real difference between the engine we have been
+   measuring and the one the user holds. Fix them, then flip the step to a gate.
+2. **Download the `webkit-screenshots` artifact and LOOK at it.** First true picture of
+   this app in the user's engine.
+3. **Set `VITE_GOOGLE_PLACES_KEY` in Vercel** (user action; unchanged, still the one
+   blocker on venue discovery in production).
 
 ## Known risks and open questions
 
-- **The user\'s reported bottom gap is NOT confirmed fixed.** The `vh` → `dvh` conversion
-  is a real and likely-relevant cause (the layout sizing itself against the taller,
-  chrome-hidden viewport), but the gap was never reproduced here and cannot be. Treat it
-  as open until seen on the device.
-- **`.chrome-bar` drops the header\'s frosted look** — a deliberate trade of material for
-  reliability. If the frosted look is wanted back, it needs an opaque base layer with the
-  blur as pure decoration, never as the thing providing opacity.
-- **`--charcoal` dark is `#EDE8E1`; the hex it replaced was `#f5f5f5`.** A slight warm
-  shift across dark-mode body text. Accepted; flag it if it reads wrong on a real screen.
-- **The scaled-chip check depends on the serves stepper\'s markup.** Restyling that
-  control will fail it — fix the selector, do not delete the check.
+- **The user's reported bottom gap is still not confirmed fixed.** The `vh` → `dvh`
+  conversion remains the likely cause. WebKit in CI may now be able to *show* it —
+  that is the point of this change — but nothing has been observed yet.
+- **The WebKit suite may be red on arrival** for reasons that are harness artifacts
+  (WebKit lacks some Chromium launch/route behaviour) rather than app defects. Read each
+  failure before believing it; §13.3's finding was that three of six grep-found
+  violations were false positives.
 - **`1,5 large, diced Onion`** — scaling discrete items yields fractional counts.
   Pre-existing, never in scope. Worth a product decision.

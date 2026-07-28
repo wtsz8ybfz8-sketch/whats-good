@@ -22,7 +22,7 @@
  * a forgotten server cannot outlive the session.
  */
 import { spawn, execSync } from 'node:child_process';
-import { openSync } from 'node:fs';
+import { openSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -82,6 +82,10 @@ async function up() {
   // A listener that is not answering 200 is worse than none — clear it first.
   if (pids().length) { await down(true); }
 
+  // verify/out/ is gitignored, so on a FRESH CLONE it does not exist and openSync threw
+  // ENOENT before Vite was ever spawned. That is the documented first command of §6's
+  // "way to see this app", and it failed on every new container — including this one.
+  mkdirSync(`${ROOT}/verify/out`, { recursive: true });
   const log = openSync(`${ROOT}/verify/out/dev.log`, 'a');
   const child = spawn('npx', ['vite', '--port', String(PORT)], {
     cwd: ROOT,

@@ -233,8 +233,8 @@ export const EateryView: React.FC<EateryViewProps> = ({
           aria-label="Official website"
           className="flex-1 flex flex-col items-center gap-2.5 cursor-pointer group press"
         >
-          <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--dusty-blue)] transition-colors">
-            <ExternalLink className="w-4 h-4 text-[var(--dusty-blue)]" />
+          <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
+            <ExternalLink className="w-4 h-4 text-[var(--accent-terracotta)]" />
           </div>
           <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Website</span>
         </a>
