@@ -42,6 +42,17 @@ createServer(async (req, res) => {
 
   // Path traversal guard: normalize, then refuse anything that climbs out of ROOT.
   const url = new URL(req.url, 'http://x');
+
+  // GET form of the same report. An image request is the crude, dependable channel:
+  // no preflight, no keepalive semantics, nothing to be silently dropped. The first
+  // run used sendBeacon alone and logged nothing at all after a perfect capture.
+  if (url.pathname === '/__probe') {
+    const d = url.searchParams.get('d');
+    if (d) console.log('PROBE_RESULT ' + d.replace(/\s+/g, ' ').trim());
+    res.writeHead(200, { 'Content-Type': 'image/gif' });
+    return res.end(Buffer.from('R0lGODlhAQABAAAAACw=', 'base64'));
+  }
+
   let p = normalize(decodeURIComponent(url.pathname));
   if (p.includes('..')) return res.writeHead(400).end();
   if (p === '/' || p === '\\') p = '/index.html';

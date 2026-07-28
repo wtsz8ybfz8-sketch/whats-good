@@ -57,6 +57,11 @@ jobs:
   simulator:
     runs-on: macos-15
     timeout-minutes: 25
+    # The default GITHUB_TOKEN is read-only, so the push to ci/ios-shots came back
+    # "Permission to ...git denied to github-actions[bot]" — after a fully successful
+    # capture. Screenshots only; this job never writes to main.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

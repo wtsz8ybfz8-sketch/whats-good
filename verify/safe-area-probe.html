@@ -55,12 +55,16 @@
     'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);';
   document.body.appendChild(probe);
   const c = getComputedStyle(probe);
-  const top = px(c.paddingTop), right = px(c.paddingRight),
-        bottom = px(c.paddingBottom), left = px(c.paddingLeft);
+  // NOT named top/right/bottom/left: `top` and `left` are existing properties of the
+  // global object, and a top-level `const top` in a classic script shadows one of the
+  // few globals engines treat specially. Cheap to avoid, expensive to debug on a CI
+  // runner where the only symptom is a missing log line.
+  const sTop = px(c.paddingTop), sRight = px(c.paddingRight),
+        sBottom = px(c.paddingBottom), sLeft = px(c.paddingLeft);
 
   const set = (id, v) => (document.getElementById(id).textContent = v);
-  set('it', top + 'px');  set('ir', right + 'px');
-  set('ib', bottom + 'px'); set('il', left + 'px');
+  set('it', sTop + 'px');  set('ir', sRight + 'px');
+  set('ib', sBottom + 'px'); set('il', sLeft + 'px');
   set('iw', innerWidth + 'px'); set('ih', innerHeight + 'px');
   set('dpr', String(devicePixelRatio));
   set('sch', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -77,23 +81,28 @@
   // this really is a notched device; all-zero on a device that HAS a notch means the
   // meta tag is not doing its job, which is the bug that hid for this project's life.
   document.getElementById('verdict').textContent =
-    (top || bottom || left || right)
-      ? `INSETS LIVE  ${top}/${right}/${bottom}/${left}`
+    (sTop || sBottom || sLeft || sRight)
+      ? `INSETS LIVE  ${sTop}/${sRight}/${sBottom}/${sLeft}`
       : 'ALL ZERO — cover not applied, or not a notched device';
 
   // Report back to the harness. simctl can screenshot the framebuffer but cannot read
   // the DOM, so without this the numbers above exist only as pixels on a CI runner and
   // remain exactly as unknown as they were before. ios-server.mjs prints the body to
   // stdout, which lands in the job log. Fails silently when opened outside CI.
-  try {
-    navigator.sendBeacon('/__probe', JSON.stringify({
-      insetTop: top, insetRight: right, insetBottom: bottom, insetLeft: left,
-      innerWidth, innerHeight, vh: Math.round(vh), dvh: Math.round(dvh),
-      dpr: devicePixelRatio,
-      scheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
-      ua: navigator.userAgent,
-    }));
-  } catch {}
+  const payload = JSON.stringify({
+    insetTop: sTop, insetRight: sRight, insetBottom: sBottom, insetLeft: sLeft,
+    innerWidth, innerHeight, vh: Math.round(vh), dvh: Math.round(dvh),
+    dpr: devicePixelRatio,
+    scheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+  });
+
+  // BOTH paths, because the first attempt used sendBeacon alone and the runner logged
+  // "no PROBE_RESULT" after an otherwise perfect capture — and a silent beacon is
+  // indistinguishable from a page that never ran. An image GET is the crude,
+  // dependable one: no preflight, no keepalive semantics, no permissions, and the
+  // server sees it as an ordinary request line it can log.
+  try { new Image().src = '/__probe?d=' + encodeURIComponent(payload) + '&t=' + Date.now(); } catch {}
+  try { navigator.sendBeacon('/__probe', payload); } catch {}
 </script>
 </body>
 </html>
