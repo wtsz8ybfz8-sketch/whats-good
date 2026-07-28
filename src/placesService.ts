@@ -155,12 +155,57 @@ function cuisineFromType(primaryType?: string, displayName?: string): string {
   return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Why a venue search produced no venues.
+ *
+ * Every one of these used to be the same value: `[]`. `searchTextOnce` returned it on
+ * `!response.ok`, `fetchVenues` caught everything into it, and `App` caught again — so
+ * an invalid key, an exhausted quota, a disabled API, a dead connection and a search
+ * that genuinely matched nothing all rendered the same empty state. Only the first of
+ * those is the user's problem to act on, and only the last means "try something else",
+ * yet the UI could not tell them apart and neither could anyone debugging it.
+ *
+ * `ok` with an empty array is a real, honest answer and must stay distinct from failure.
+ */
+export type VenueSearchFailure =
+  | { status: 'unconfigured' }
+  /** 401/403 — bad key, Places API not enabled, or a referrer/IP restriction. */
+  | { status: 'denied'; code: number }
+  /** 429 or RESOURCE_EXHAUSTED — the key works, the budget does not. */
+  | { status: 'quota' }
+  | { status: 'http'; code: number }
+  /** fetch itself threw: offline, DNS, TLS, or a proxy refusing the connection. */
+  | { status: 'network' }
+  /** Superseded by a newer search before it finished. Never user-visible. */
+  | { status: 'aborted' };
+
+export type VenueSearchResult = { status: 'ok'; venues: Venue[] } | VenueSearchFailure;
+
+type PlacesFetch = { status: 'ok'; places: Place[] } | VenueSearchFailure;
+
+/**
+ * Most-actionable failure wins when the two queries disagree. A user whose key is
+ * rejected needs to hear that, not "network problem" from the other call timing out.
+ */
+const FAILURE_RANK: Record<VenueSearchFailure['status'], number> = {
+  denied: 5,
+  quota: 4,
+  http: 3,
+  network: 2,
+  unconfigured: 1,
+  aborted: 0,
+};
+
 async function searchTextOnce(
   key: string,
   textQuery: string,
-  priceLevels?: string[],
-): Promise<Place[]> {
-  const response = await fetch(`${PLACES_BASE}/places:searchText`, {
+  priceLevels: string[] | undefined,
+  signal: AbortSignal,
+): Promise<PlacesFetch> {
+  let response: Response;
+  try {
+    response = await fetch(`${PLACES_BASE}/places:searchText`, {
+    signal,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -191,11 +236,100 @@ async function searchTextOnce(
       languageCode: placesLanguageCode(),
       ...(priceLevels ? { priceLevels } : {}),
     }),
-  });
+    });
+  } catch (err) {
+    // An aborted request is not a failure — it is a search the user replaced.
+    return (err as Error)?.name === 'AbortError' ? { status: 'aborted' } : { status: 'network' };
+  }
 
-  if (!response.ok) return [];
-  const data: PlacesSearchResponse = await response.json();
-  return data.places ?? [];
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      return { status: 'denied', code: response.status };
+    }
+    if (response.status === 429) return { status: 'quota' };
+    // Places answers 400 with RESOURCE_EXHAUSTED when billing is the problem rather
+    // than the request, so the body decides before the code does.
+    const body = await response.text().catch(() => '');
+    if (/RESOURCE_EXHAUSTED|quota/i.test(body)) return { status: 'quota' };
+    if (/PERMISSION_DENIED|API_KEY|not enabled/i.test(body)) {
+      return { status: 'denied', code: response.status };
+    }
+    return { status: 'http', code: response.status };
+  }
+
+  try {
+    const data: PlacesSearchResponse = await response.json();
+    return { status: 'ok', places: data.places ?? [] };
+  } catch {
+    return { status: 'network' };
+  }
+}
+
+/**
+ * In-flight deduplication. NOT a cache: the entry is dropped the moment the request
+ * settles, so nothing is ever served from storage and no result outlives its request.
+ *
+ * Two identical searches can be in the air at once for ordinary reasons — a filter
+ * toggled off and back on, a re-render, the two browse tabs sharing a term. Each one
+ * was a billed API call for an answer already on its way.
+ */
+const inFlight = new Map<
+  string,
+  { promise: Promise<PlacesFetch>; controller: AbortController; waiters: number }
+>();
+
+/**
+ * One shared request per identical query, cancelled only when the LAST caller lets go.
+ * A shared AbortController that any single caller could fire would cancel a request
+ * another caller is still waiting on.
+ */
+function searchTextShared(
+  key: string,
+  textQuery: string,
+  priceLevels: string[] | undefined,
+  signal: AbortSignal,
+): Promise<PlacesFetch> {
+  const cacheKey = JSON.stringify([textQuery, priceLevels ?? null, placesLanguageCode()]);
+  let entry = inFlight.get(cacheKey);
+
+  if (!entry) {
+    const controller = new AbortController();
+    const created: { promise: Promise<PlacesFetch>; controller: AbortController; waiters: number } = {
+      controller,
+      waiters: 0,
+      promise: Promise.resolve({ status: 'aborted' } as PlacesFetch),
+    };
+    created.promise = searchTextOnce(key, textQuery, priceLevels, controller.signal).finally(
+      () => {
+        inFlight.delete(cacheKey);
+      },
+    );
+    inFlight.set(cacheKey, created);
+    entry = created;
+  }
+
+  const held = entry;
+  held.waiters += 1;
+  const release = () => {
+    held.waiters -= 1;
+    if (held.waiters <= 0) held.controller.abort();
+  };
+
+  // A listener added to an already-aborted signal never fires.
+  if (signal.aborted) release();
+  else signal.addEventListener('abort', release, { once: true });
+
+  const detach = () => signal.removeEventListener('abort', release);
+  return held.promise.then(
+    (r) => {
+      detach();
+      return r;
+    },
+    (err) => {
+      detach();
+      throw err;
+    },
+  );
 }
 
 /**
@@ -204,16 +338,23 @@ async function searchTextOnce(
  * results (each call caps at the API's 20-result ceiling, so phrasing
  * variety is how we widen the pool). Price is filtered server-side via
  * priceLevels so all 20 slots per call hold matching venues.
- * Returns an empty array on any failure so callers can silently fall back.
+ *
+ * Returns a discriminated result, never a bare array: "we found nothing" and "we could
+ * not look" are different answers to the user and were previously the same value.
+ * Pass `signal` from the caller's effect so a superseded search stops costing money.
  */
 export async function fetchVenues(
   query: string,
   city: string,
   priceTier?: number | null,
-): Promise<Venue[]> {
+  signal?: AbortSignal,
+): Promise<VenueSearchResult> {
   const key = getGooglePlacesKey();
 
-  if (!key) return [];
+  if (!key) return { status: 'unconfigured' };
+
+  const controller = new AbortController();
+  const abortSignal = signal ?? controller.signal;
 
   try {
     const priceLevels = tierToPriceLevels(priceTier);
@@ -227,21 +368,44 @@ export async function fetchVenues(
           `popular local eateries in ${city}`,
         ];
 
-    const resultSets = await Promise.all(
-      queries.map((q) => searchTextOnce(key, q, priceLevels).catch(() => [] as Place[])),
+    // Both phrasings are kept deliberately — the API caps each call at 20 results, so
+    // phrasing variety is the only way to widen the pool. Identical queries share one
+    // request (searchTextShared), which is where the duplicate spend actually was.
+    const outcomes = await Promise.all(
+      queries.map((q) =>
+        searchTextShared(key, q, priceLevels, abortSignal).catch(
+          (): PlacesFetch => ({ status: 'network' }),
+        ),
+      ),
     );
 
+    const succeeded = outcomes.filter(
+      (o): o is { status: 'ok'; places: Place[] } => o.status === 'ok',
+    );
+
+    // One phrasing succeeding is enough to answer the user. Only report a failure when
+    // nothing came back at all, and report the most actionable one.
+    if (succeeded.length === 0) {
+      const failures = outcomes as VenueSearchFailure[];
+      return failures.reduce((worst, f) =>
+        FAILURE_RANK[f.status] > FAILURE_RANK[worst.status] ? f : worst,
+      );
+    }
+
     const seen = new Set<string>();
-    const places = resultSets.flat().filter((p) => {
-      const id = p.id ?? p.displayName?.text ?? '';
-      if (!id || seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
+    const places = succeeded
+      .flatMap((o) => o.places)
+      .filter((p) => {
+        const id = p.id ?? p.displayName?.text ?? '';
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
 
-    if (places.length === 0) return [];
+    // A real, sourced "nothing matched that combination" — not a failure.
+    if (places.length === 0) return { status: 'ok', venues: [] };
 
-    return places.map((place, index): Venue => {
+    const venues = places.map((place, index): Venue => {
       const name = place.displayName?.text ?? 'Restaurant';
       const address = place.formattedAddress ?? city;
       const rating = Math.round((place.rating ?? 4.0) * 10) / 10;
@@ -303,9 +467,13 @@ export async function fetchVenues(
         hoursToday,
       };
     });
-  } catch {
-    // Silently fall back — never surface API errors to the user
-    return [];
+
+    return { status: 'ok', venues };
+  } catch (err) {
+    // Reached only if the mapping above throws — the fetches classify their own
+    // failures. Previously this swallowed everything into `[]`, which is how a broken
+    // key and an empty neighbourhood became the same screen.
+    return (err as Error)?.name === 'AbortError' ? { status: 'aborted' } : { status: 'network' };
   }
 }
 

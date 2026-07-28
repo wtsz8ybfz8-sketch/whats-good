@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from'react';
-import { Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
+import { type Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
 import { FALLBACK_AREAS, fetchAreas, orderAreasForCountry } from'./cuisineRail';
 import { Sidebar } from'./components/Sidebar';
@@ -14,9 +14,9 @@ import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
 import { HappyHourView, hasHappyHourData } from'./components/HappyHourView';
 import { getHappyHourStatus } from'./venueExtras';
 import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
-import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon } from'lucide-react';
+import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon, X } from'lucide-react';
 import type { Venue } from'./venue';
-import { fetchVenues, detectCityFromCoords, formatPriceTier, isPlacesConfigured } from'./placesService';
+import { fetchVenues, detectCityFromCoords, formatPriceTier, isPlacesConfigured, type VenueSearchFailure } from'./placesService';
 import { formatDistance } from'./locale';
 import { useSavedRecipes } from'./useSavedRecipes';
 import { cuisineIcon } from'./cuisineIcon';
@@ -41,6 +41,76 @@ export function eateryPlaceholderImage(name: string): string {
  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue},48%,26%)"/><stop offset="1" stop-color="hsl(${hue + 18},42%,14%)"/></linearGradient></defs><rect width="800" height="600" fill="url(#g)"/><circle cx="670" cy="90" r="180" fill="hsl(${hue},50%,32%)" opacity="0.35"/><circle cx="110" cy="520" r="140" fill="hsl(${hue},45%,20%)" opacity="0.5"/><text x="400" y="316" font-family="Georgia, serif" font-size="150" font-weight="bold" fill="rgba(255,245,238,0.92)" text-anchor="middle" dominant-baseline="middle">${initials}</text><text x="400" y="430" font-family="ui-monospace, monospace" font-size="22" letter-spacing="6" fill="rgba(255,245,238,0.45)" text-anchor="middle">NO PHOTO YET</text></svg>`;
  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
+
+/**
+ * A venue search that could not run, told truthfully.
+ *
+ * All five of these used to render "Nothing matched that combination" — an answer that
+ * blames the user's filters for a problem with the key, the budget or the connection,
+ * and offers a next step (widen your search) that provably cannot work. §5's Recover
+ * stage asks whether the user is given a way forward; a wrong diagnosis is not one.
+ * `canRetry` is false wherever pressing the button changes nothing.
+ */
+function venueFailureNotice(
+ failure: VenueSearchFailure,
+): { title: string; message: string; canRetry: boolean } {
+ switch (failure.status) {
+ case'unconfigured':
+ return {
+ title:'Venue search is not switched on',
+ message:
+'This deployment has no Google Places key, so there are no places to look through. ' +
+'Nothing is broken and retrying will not help. Stay In needs no key and works now.',
+ canRetry: false,
+ };
+ case'denied':
+ return {
+ title:'Google turned the search down',
+ message:
+'The key this app uses was rejected, which usually means it is restricted to another ' +
+'site or the Places API is not enabled for it. Nothing you can do from here will fix ' +
+'it, and Stay In still works.',
+ canRetry: false,
+ };
+ case'quota':
+ return {
+ title:'Venue search has hit its limit for now',
+ message:
+'The key is valid but its Places budget is spent, so Google is refusing new searches. ' +
+'This usually clears on its own. Stay In does not use it and works now.',
+ canRetry: false,
+ };
+ case'network':
+ return {
+ title:'Could not reach Google',
+ message:
+'The search never left the building — that is usually a dropped connection rather ' +
+'than anything to do with what you searched for. Worth another try.',
+ canRetry: true,
+ };
+ case'http':
+ return {
+ title:'Google answered, but not with venues',
+ message:
+`The Places API returned an unexpected response (${failure.code}). That is on our side, ` +
+'not yours. Trying again sometimes clears it.',
+ canRetry: true,
+ };
+ default:
+ // 'aborted' — a superseded search. The caller returns before rendering anything,
+ // so this exists to keep the switch total rather than to be seen.
+ return { title:'Search cancelled', message:'A newer search replaced this one.', canRetry: true };
+ }
+}
+
+/**
+ * How long the filters must settle before a search is worth paying for.
+ *
+ * Long enough that dragging through cuisines does not bill a search per chip, short
+ * enough that a deliberate single change still feels immediate. Not a user-facing
+ * setting; if it needs tuning, tune it here.
+ */
+const SEARCH_DEBOUNCE_MS = 300;
 
 // Mood values are conversational ("tired & cosy") — map them to terms Google
 // Places actually understands so the vibe widens the search instead of muddying it.
@@ -197,6 +267,49 @@ export default function App() {
   */
  const [notice, setNotice] = useState<{ title: string; message: string; canRetry: boolean } | null>(null);
  const [filtersOpen, setFiltersOpen] = useState(true);
+
+ /**
+  * The filters currently narrowing the search, each with the means to drop it.
+  *
+  * Derived from state the app already holds, so an empty result can say which
+  * constraint to relax instead of "nothing matched that combination" — an answer that
+  * makes the user re-guess the whole set. Empty when nothing is set, which is how the
+  * zero-result screen tells "you have narrowed too far" apart from "you have not asked
+  * for anything yet" and shows the opening invitation instead.
+  */
+ const activeConstraints = useMemo(() => {
+ const set = (patch: Partial<Dimensions>) => () => setDimensions((prev) => ({ ...prev, ...patch }));
+ return [
+ dimensions.searchQuery.trim()
+ ? { key:'q', label:'Search', value: dimensions.searchQuery.trim(), clear: set({ searchQuery:'' }) }
+ : null,
+ dimensions.regional
+ ? { key:'cuisine', label:'Cuisine', value: dimensions.regional, clear: set({ regional: null }) }
+ : null,
+ dimensions.vibe
+ ? { key:'vibe', label:'Mood', value: dimensions.vibe, clear: set({ vibe: null }) }
+ : null,
+ dimensions.diet
+ ? { key:'diet', label:'Diet', value: dimensions.diet, clear: set({ diet: null }) }
+ : null,
+ dimensions.capacity && Number.isInteger(Number(dimensions.capacity))
+ ? {
+ key:'price',
+ label:'Budget',
+ value: formatPriceTier(Number(dimensions.capacity) as 1 | 2 | 3 | 4),
+ clear: set({ capacity: null }),
+ }
+ : null,
+ ].filter(Boolean) as { key: string; label: string; value: string; clear: () => void }[];
+ }, [dimensions.searchQuery, dimensions.regional, dimensions.vibe, dimensions.diet, dimensions.capacity]);
+
+ /**
+  * Search lifecycle. `searchRunIdRef` is the generation counter that decides which
+  * response is still wanted; `searchAbortRef` cancels the requests of the search it
+  * replaced. Refs, not state — a render must never be triggered by either.
+  */
+ const searchRunIdRef = useRef(0);
+ const searchAbortRef = useRef<AbortController | null>(null);
 
  // Premium tactical geolocation tracking
  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -491,14 +604,29 @@ export default function App() {
  // Re-run the search whenever a filter changes, on both browse tabs. Stay In gets the
  // same live-filtering behaviour as Find — it's a browse surface now, not a slot machine,
  // so landing on it should already show food rather than an empty pitch card.
+ //
+ // Debounced, because this fires on every filter keystroke and toggle. Choosing a
+ // cuisine, then a vibe, then a price used to be three full searches — six billed Places
+ // calls — for two answers nobody ever read. The delay is short enough to feel immediate
+ // when the user stops, and the cleanup cancels a search the user has already replaced.
  useEffect(() => {
- if (activeTab ==='mood' || activeTab ==='random') {
- handleTriggerMatch();
- }
+ if (activeTab !=='mood' && activeTab !=='random') return;
+ const timer = setTimeout(() => { handleTriggerMatch(); }, SEARCH_DEBOUNCE_MS);
+ return () => clearTimeout(timer);
  }, [activeTab, dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.capacity, userCoords, city]);
 
  // Perform fetching from TheMealDB or local structures
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
+ // Every search takes a ticket. Only the holder of the newest one is allowed to write
+ // state, so a slow first response can no longer land on top of a fast second and show
+ // results for a filter the user has already moved off. The previous search's requests
+ // are aborted rather than left to finish unread — they cost money either way.
+ const runId = ++searchRunIdRef.current;
+ searchAbortRef.current?.abort();
+ const abortController = new AbortController();
+ searchAbortRef.current = abortController;
+ const isCurrent = () => runId === searchRunIdRef.current;
+
  setIsLoading(true);
  setError(null);
  setNotice(null);
@@ -514,13 +642,7 @@ export default function App() {
  // Name them instead — each one has a different next step for the user.
  if (!isPlacesConfigured()) {
  setRecipes([]);
- setNotice({
- title:'Venue search is not switched on',
- message:
-'This deployment has no Google Places key, so there are no places to look through. ' +
-'Nothing is broken and retrying will not help. Stay In needs no key and works now.',
- canRetry: false,
- });
+ setNotice(venueFailureNotice({ status:'unconfigured' }));
  setIsLoading(false);
  return;
  }
@@ -568,14 +690,26 @@ export default function App() {
  // someone a venue 9,000 km away is worse than showing them none.
  let eateryList: Venue[] = [];
  let usingPlacesApi = false;
- try {
- const placesResults = await fetchVenues(placesSearchTerms, city, priceFilter);
- if (placesResults.length > 0) {
- eateryList = placesResults;
- usingPlacesApi = true;
- }
- } catch {
- // Keep hardcoded list
+ const outcome = await fetchVenues(placesSearchTerms, city, priceFilter, abortController.signal);
+
+ // A search the user has already replaced must not write anything — not results, not
+ // a notice, not even the loading flag, which the newer search now owns.
+ if (!isCurrent()) return;
+
+ if (outcome.status ==='ok') {
+ eateryList = outcome.venues;
+ usingPlacesApi = outcome.venues.length > 0;
+ } else if (outcome.status ==='aborted') {
+ return;
+ } else {
+ // Each of these was previously an empty list under "Nothing matched that
+ // combination" — an answer that blames the user's filters for the app's
+ // configuration or Google's budget, and offers a next step that cannot work.
+ const failure = venueFailureNotice(outcome);
+ setRecipes([]);
+ setNotice(failure);
+ setIsLoading(false);
+ return;
  }
 
  const tempRecipes: ParsedRecipe[] = [];
@@ -617,6 +751,7 @@ export default function App() {
  return userCoords ? (a.distanceVal || 0) - (b.distanceVal || 0) : 0;
  });
 
+ if (!isCurrent()) return;
  setRecipes(tempRecipes);
  if (tempRecipes.length === 1) {
  setSelectedRecipe(tempRecipes[0]);
@@ -679,13 +814,14 @@ export default function App() {
  }
  }
 
+ if (!isCurrent()) return;
  if (finalMeals.length === 0) {
  setRecipes([]);
  setSelectedRecipe(null);
  } else {
  const parsed = finalMeals.map((m) => parseMealToRecipe(m, dimensions.capacity));
  setRecipes(parsed);
- 
+
  if (parsed.length === 1) {
  setSelectedRecipe(parsed[0]);
  } else {
@@ -694,10 +830,13 @@ export default function App() {
  }
  }
  } catch (err) {
+ if (!isCurrent()) return;
  console.error('Error fetching recipes:', err);
  setError('Something went wrong while fetching results. Check your connection and try again.');
  } finally {
- setIsLoading(false);
+ // The newest search owns the loading flag. Clearing it from a superseded run puts
+ // the app back to "done" while the search the user is waiting for is still running.
+ if (isCurrent()) setIsLoading(false);
  }
  };
 
@@ -1208,6 +1347,22 @@ export default function App() {
  savedIds={savedIds}
  onToggleSave={handleToggleSave}
  isSavedTab={activeTab ==='saved-recipes' || activeTab ==='saved-eateries'}
+ // What the user actually asked for. The venue page can then say why THIS place
+ // is in front of them without inventing a single fact about it. Omitted on the
+ // saved tabs, where the filters on screen are not the ones that found the venue.
+ intent={
+ activeTab ==='saved-recipes' || activeTab ==='saved-eateries'
+ ? undefined
+ : {
+ vibe: dimensions.vibe,
+ cuisine: dimensions.regional,
+ diet: dimensions.diet,
+ priceTier: Number.isInteger(Number(dimensions.capacity))
+ ? Number(dimensions.capacity)
+ : null,
+ query: dimensions.searchQuery.trim(),
+ }
+ }
  />
 ) : (
  <RecipeView
@@ -1257,21 +1412,59 @@ export default function App() {
  onToggleSave={handleToggleSave}
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
  />
-) : dimensions.searchQuery ? (
- <div className="max-w-[450px] mx-auto text-center py-16 px-8 surface rounded-3xl">
- <div className="w-12 h-12 rounded-full bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mx-auto mb-4">
+) : activeConstraints.length > 0 ? (
+ /* Contextual recovery (§5, the stage this app most often skipped). "Nothing matched
+    that combination" is true and useless: it does not say WHICH part of the
+    combination emptied the list, so the only way forward is to guess and re-guess.
+    The constraints are the app's own state — naming them costs nothing and each one
+    is removable in a tap, which re-runs the search through the normal debounced
+    path. Nothing here claims anything about venues; it describes the query. */
+ <div className="max-w-[520px] mx-auto py-14 px-7 sm:px-9 surface rounded-3xl">
+ <div className="w-12 h-12 rounded-2xl bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mb-6">
  <Search className="w-5 h-5 text-[var(--accent-terracotta)]" />
  </div>
- <h3 className="font-serif text-xl mb-2 text-[var(--charcoal)]">No matching places</h3>
- <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-6">
- We checked {city} for "{dimensions.searchQuery}" but did not find a strong match. Try simpler searches like "Italian", "brunch", "seafood", or "drinks".
+ <h3 className="font-serif text-2xl sm:text-3xl text-[var(--heading-color)] mb-3 leading-tight">
+ Nothing in {city ||'this area'} matched all of that
+ </h3>
+ <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-6 max-w-[44ch]">
+ {activeConstraints.length === 1
+ ?'One filter is doing the narrowing. Drop it and the search runs again:'
+ :'These are the filters narrowing the search. Drop whichever matters least:'}
  </p>
+ <ul className="flex flex-wrap gap-2.5">
+ {activeConstraints.map((c) => (
+ <li key={c.key}>
  <button
- onClick={() => handleTriggerMatch('Italian')}
- className="px-5 py-2.5 bg-[#7C2D12] hover:bg-[#5E220E] text-white text-xs font-bold rounded-2xl cursor-pointer shadow-sm transition-transform active:scale-95"
+ onClick={c.clear}
+ aria-label={`Remove the ${c.label} filter, ${c.value}`}
+ className="hit-44 inline-flex items-center gap-2 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] px-4 py-2.5 cursor-pointer transition-colors hover:border-[var(--accent-terracotta)]"
  >
- Try searching "Italian"
+ <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
+ {c.label}
+ </span>
+ <span className="font-sans text-[14px] font-semibold text-[var(--accent-terracotta)]">
+ {c.value}
+ </span>
+ <X className="w-3.5 h-3.5 flex-shrink-0 text-[var(--accent-terracotta)]" aria-hidden="true" />
  </button>
+ </li>
+))}
+ </ul>
+ {activeConstraints.length > 1 && (
+ <button
+ onClick={() => setDimensions((prev) => ({
+ ...prev,
+ vibe: null,
+ diet: null,
+ regional: null,
+ capacity: null,
+ searchQuery:'',
+ }))}
+ className="hit-44 mt-6 font-mono text-xs uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--charcoal)] cursor-pointer transition-colors"
+ >
+ Clear all filters
+ </button>
+)}
  </div>
 ) : (
  <EmptyState

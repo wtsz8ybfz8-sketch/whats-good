@@ -14,6 +14,15 @@ import { cuisineIcon } from '../cuisineIcon';
 import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier, priceTierLabel } from '../placesService';
 
+/** What the user asked for. Absent on the saved tabs — see App.tsx. */
+export interface SearchIntent {
+  vibe: string | null;
+  cuisine: string | null;
+  diet: string | null;
+  priceTier: number | null;
+  query: string;
+}
+
 interface EateryViewProps {
   recipes: ParsedRecipe[];
   selectedRecipe: ParsedRecipe;
@@ -22,6 +31,90 @@ interface EateryViewProps {
   savedIds: string[];
   onToggleSave: (recipe: ParsedRecipe) => void;
   isSavedTab?: boolean;
+  intent?: SearchIntent;
+}
+
+/**
+ * Why this venue, for this person, right now — assembled ONLY from what we were told.
+ *
+ * This is the decision layer CLAUDE.md §1 asks for, and the reason it took so long to
+ * exist is that the obvious version of it is a lie. Places publishes no atmosphere, no
+ * signature dish and no editorial summary, so "intimate lighting and a lively bar" would
+ * have to be written by us about a venue we have never been to — the same failure as the
+ * synthesised menus, wearing better prose.
+ *
+ * What IS true and was simply never said out loud: this venue is on screen because it
+ * satisfied specific constraints the user set, and Google published specific facts about
+ * it. Each line below is one of those, and each names its source. A reason we cannot
+ * substantiate is not softened — it is absent, and when none survive the section does
+ * not render.
+ */
+function buildFitReasons(
+  rawEatery: any,
+  intent: SearchIntent | undefined,
+  distanceLabel: string | null,
+): { text: string; source: string }[] {
+  const reasons: { text: string; source: string }[] = [];
+  const cuisine: string = rawEatery.cuisine ?? '';
+
+  // Cuisine: claimed only when Places' own type data actually corroborates the filter.
+  // A venue can arrive in the result set from the free-text query alone, and saying
+  // "matches your Italian filter" about a venue Google typed as a bar would be the
+  // search engine's guess restated as a fact about the venue.
+  if (intent?.cuisine && cuisine && cuisine.toLowerCase().includes(intent.cuisine.toLowerCase())) {
+    // Places' display name is already "Italian restaurant", so "Italian restaurant
+    // kitchen" is what the naive join produces. Trim the noun this sentence supplies.
+    const kitchen = cuisine.replace(/\s*restaurants?$/i, '').trim() || cuisine;
+    reasons.push({ text: `${kitchen} kitchen, which is what you filtered for`, source: 'Google Places' });
+  }
+
+  // Price band: a confirmed equality, not "affordable".
+  if (intent?.priceTier && rawEatery.priceTier === intent.priceTier) {
+    reasons.push({
+      text: `Sits in the ${priceTierLabel(rawEatery.priceTier)} band you set`,
+      source: 'Google Places',
+    });
+  }
+
+  // Open/closed is the fact most likely to change the decision, and `false` is a real
+  // answer — compared against undefined, never truthiness.
+  if (rawEatery.openNow === true) {
+    reasons.push({
+      text: rawEatery.hoursToday ? `Open now — today ${rawEatery.hoursToday}` : 'Open right now',
+      source: 'Google Places',
+    });
+  } else if (rawEatery.openNow === false) {
+    reasons.push({
+      text: rawEatery.hoursToday ? `Closed right now — today ${rawEatery.hoursToday}` : 'Closed right now',
+      source: 'Google Places',
+    });
+  }
+
+  if (distanceLabel) {
+    reasons.push({ text: `${distanceLabel} from where you are`, source: 'your location' });
+  }
+
+  if (typeof rawEatery.rating === 'number' && rawEatery.rating > 0) {
+    reasons.push({ text: `Rated ${rawEatery.rating} by Google reviewers`, source: 'Google Places' });
+  }
+
+  return reasons;
+}
+
+/**
+ * The terms that actually went to Google, shown back to the user.
+ *
+ * The mood filter is the one input with no verifiable counterpart in the response: we
+ * translate "tired & cosy" into a search term and Google matches on it, but nothing
+ * comes back saying this venue IS cosy. Printing the terms is the honest form of that —
+ * it says how the venue was found, which is true, instead of what it feels like inside,
+ * which we do not know.
+ */
+function matchedTerms(intent: SearchIntent | undefined): string[] {
+  if (!intent) return [];
+  return [intent.query, intent.cuisine, intent.vibe, intent.diet].filter(
+    (t): t is string => typeof t === 'string' && t.trim().length > 0,
+  );
 }
 
 export const EateryView: React.FC<EateryViewProps> = ({
@@ -32,6 +125,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
   savedIds,
   onToggleSave,
   isSavedTab,
+  intent,
 }) => {
   const r = selectedRecipe;
   const rawEatery = (r as any).rawEatery;
@@ -57,6 +151,9 @@ export const EateryView: React.FC<EateryViewProps> = ({
   // we genuinely have a confirmed window for this place, never fabricated per-venue.
   const realHH = findCuratedHappyHour(rawEatery.name);
   const hhStatus = realHH ? getHappyHourStatus(realHH) : null;
+
+  const fitReasons = buildFitReasons(rawEatery, intent, hasRealDistance ? (distanceLabel as string) : null);
+  const terms = matchedTerms(intent);
 
   // Utility Block source of truth. Assembled then filtered, so a field we don't have
   // produces one fewer tile instead of a tile rendering an empty string. `openNow` is
@@ -133,16 +230,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </button>
 
         {/* Save — top right */}
+        {/* Saved state says so in words as well as colour. A filled heart is the only
+            feedback a tap used to produce, which is both a weak confirmation and
+            invisible to anyone who cannot separate the two fills at a glance;
+            `aria-pressed` gives assistive tech the toggle state the shape implies. The
+            label is the ink that grows, not the target — the tap area stays `tap-44`. */}
         <button
           onClick={() => onToggleSave(r)}
-          aria-label={isSaved ? 'Remove from saved' : 'Save eatery'}
-          className={`tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer ${
+          aria-label={isSaved ? `Remove ${rawEatery.name} from saved` : `Save ${rawEatery.name}`}
+          aria-pressed={isSaved}
+          className={`tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md transition-all cursor-pointer ${
             isSaved
-              ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
+              ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] px-3.5'
               : 'bg-black/20 text-white hover:bg-black/35'
           }`}
         >
           <Heart className={`w-4 h-4 transition-transform ${isSaved ? 'fill-current scale-110' : ''}`} />
+          {isSaved && (
+            <span className="font-mono text-xs uppercase tracking-wider">Saved</span>
+          )}
         </button>
 
         {/* Name overlay — bottom of hero.
@@ -194,21 +300,20 @@ export const EateryView: React.FC<EateryViewProps> = ({
       {/* Two-column on desktop: the menu is the main column; everything actionable
           (address, contact, happy hour) lives in a sticky sidebar so wide screens are
           used, not left mostly empty. Collapses to a single column below lg. */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-8 lg:items-start">
+      {/* Below lg this is a flex column purely so the two children can be REORDERED:
+          the sidebar is first in the DOM (desktop needs it in the right-hand track) but
+          on a phone that put the address and three action pillars above every reason to
+          act — the page asked you to call before it told you why. Desktop is unaffected
+          because both children are placed explicitly by column and row, which ignores
+          source order; `order-*` is what the flex column below lg honours. */}
+      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-8 lg:items-start">
 
-      {/* SIDEBAR (right on desktop, top on mobile) */}
-      <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 self-start lg:pt-4">
+      {/* SIDEBAR (right on desktop, BELOW the reasons on mobile) */}
+      <aside className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 self-start lg:pt-4">
 
-      {/* Address */}
-      <div className="px-5 sm:px-10 pt-5">
-        <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs font-mono">
-          <MapPin className="w-3 h-3 flex-shrink-0" />
-          <span>{rawEatery.address}</span>
-        </div>
-      </div>
-
-      {/* Rule */}
-      <div className="mx-5 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
+      {/* On mobile this column now follows the content, so it opens with its own rule
+          rather than the page's top padding. */}
+      <div className="mx-5 sm:mx-10 mt-2 mb-7 h-px bg-[var(--rule)] lg:hidden" />
 
       {/* Contact — minimalist icon pillars */}
       <div className="px-5 sm:px-10 flex items-start">
@@ -306,8 +411,18 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
       </aside>
 
-      {/* MAIN column (left on desktop) — the menu is the reason to look at this page */}
-      <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
+      {/* MAIN column (left on desktop, FIRST on mobile) — the reasons to consider this
+          place, which is what the page is for. */}
+      <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 lg:pt-4">
+
+      {/* Address — moved out of the action column. It is identity, not an action: where
+          the place is belongs beside the reasons to go, not stacked on the buttons. */}
+      <div className="px-5 sm:px-10 pt-5 pb-6">
+        <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs font-mono">
+          <MapPin className="w-3 h-3 flex-shrink-0" />
+          <span>{rawEatery.address}</span>
+        </div>
+      </div>
 
       {/* WHAT TO EXPECT — replaces the invented menu and the invented "specials".
        *
@@ -329,6 +444,45 @@ export const EateryView: React.FC<EateryViewProps> = ({
        * content on screen, all of it load-bearing. Real happy-hour data still renders
        * in the sidebar; that comes from happyHourData.ts and is human-confirmed. */}
       <div className="px-5 sm:px-10 mb-8">
+
+        {/* ── WHY THIS ONE ─────────────────────────────────────────────────────────
+            The decision layer, and the first thing under the hero because it is the
+            question the user is actually holding: not "what are the facts" but "why am I
+            looking at this place". Every line is a real field or a constraint the user
+            themselves set, and each carries its source — see buildFitReasons.
+
+            When nothing survives (a saved venue opened with no active filters, a listing
+            Places knows almost nothing about) the section does not render at all. An
+            honest gap beats a confident sentence about a restaurant nobody here has
+            visited. */}
+        {fitReasons.length > 0 && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              Why this one
+            </p>
+            <ul className="flex flex-col gap-2.5">
+              {fitReasons.map((reason) => (
+                <li key={reason.text} className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[7px] w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0"
+                  />
+                  <span className="font-sans text-[15px] leading-snug text-[var(--charcoal)] max-w-[52ch]">
+                    {reason.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {terms.length > 0 && (
+              /* How it was found, stated as such. The mood term reached Google; whether
+                 the room is cosy is not something we were told, and this line is careful
+                 to claim only the former. */
+              <p className="mt-3.5 font-mono text-xs text-[var(--text-muted)] leading-relaxed">
+                Found by searching {terms.map((t) => `“${t}”`).join(' · ')}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── VIBE & ATMOSPHERE MATCH ──────────────────────────────────────────────
             Answers "is this place right for how I feel", which is the question the whole
