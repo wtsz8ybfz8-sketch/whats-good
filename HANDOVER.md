@@ -11,11 +11,14 @@ are four comment lines whose `§` cross-references were renumbered.
 `verify/checks.mjs` **43/43, PASSED 43 / FAILED 0 / SKIPPED 0, exit 0** on chromium, run
 after every edit in this session.
 
-**Corrected this session: `VITE_GOOGLE_PLACES_KEY` is NOT missing from Vercel.** It is set
-in Production, Preview and Development, added 2026-07-06 (Production/Preview marked
-Sensitive). Every earlier handover called it the one blocker on venue discovery; that claim
-was never checked and was wrong. What is actually unknown is whether Google *accepts* the
-key from the deployed origin — see the risks section.
+**CLOSED: venue discovery works in production.** Observed by the user in the live site's
+Network tab on 2026-07-28, after a clean no-cache redeploy: 21 requests to
+`places.googleapis.com` (2 × `places:searchText`, 19 photo fetches), **all HTTP 200**, no
+Google error body, the `key=` parameter present, and a real venue rendered on screen.
+
+`VITE_GOOGLE_PLACES_KEY` was never missing — it has been set in Production, Preview and
+Development since 2026-07-06. Every earlier handover called it "the one blocker on venue
+discovery". Nobody had checked it; the claim survived on repetition. It is now retired.
 
 ## Objective
 
