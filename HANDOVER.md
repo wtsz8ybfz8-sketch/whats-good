@@ -2,7 +2,7 @@
 
 ## Status
 
-**Merged to `main` and deployed to production.** Two things that made this app read as
+**Merged to `main` and deployed to production.** Latest: `aefdc70`. Two things that made this app read as
 unfinished are fixed, and the engine the user's phone runs now measures this app in CI
 for the first time in the project's history.
 
@@ -47,7 +47,29 @@ the app renders in `ui-sans-serif` — with every check green, a plausible scree
 therefore declared by hand under the real family name, italic included — the display
 headings set `italic`, and with no italic face the browser shears the upright.
 
-**4. A second accent on a first-class surface.** `--dusty-blue` coloured exactly one
+**4. The logo was touching the screen edge — the user found this, on Safari.**
+`.safe-x` REPLACED the horizontal padding of the two full-bleed fixed surfaces rather
+than adding to it: `padding-left: max(0px, env(safe-area-inset-left))`. It is
+*unlayered* CSS, and Tailwind's utilities live in `@layer utilities` — **unlayered
+always beats layered in the cascade**, whatever the specificity or source order. So the
+header's `px-6` was discarded and the winning value was 0, because
+`env(safe-area-inset-left)` is 0 on any phone in portrait. Measured before the fix at
+393x852: **header `padding-left: 0px`, logo left edge at `x=0`**. The gutter is now a
+floor, not a competitor: `max(var(--safe-gutter), env(...))`. After: header 24px, tab
+bar 20px, all four viewports. Landscape is unaffected — the ~59px notch inset still
+wins, and the fill stays edge-to-edge because this is padding, not margin.
+
+**5. A way to SEE this in real Mobile Safari, without asking the user.**
+`.github/workflows/ios-safari.yml` runs the production build inside the **real iOS
+Simulator** on a macOS runner and captures Mobile Safari's own framebuffer — four tabs
+x light/dark, including Dynamic Island, status bar and home indicator. Real device
+insets, not the zeros headless Chromium reports. `verify/safe-area-probe.html` is
+captured first and prints the device's actual inset values and `100vh` vs `100dvh`,
+with a painted band over each inset region. Free: Actions minutes are unmetered for
+public repos on all runner types. **If this repo goes private, macOS bills at 10x** —
+drop the push trigger and keep `workflow_dispatch`.
+
+**6. A second accent on a first-class surface.** `--dusty-blue` coloured exactly one
 control — the Website icon on the venue page — so it sat between a terracotta Directions
 and a terracotta Call as the only blue thing on screen, with **no `html.dark` value**.
 Deleted, along with `--blue-light`, which was referenced nowhere at all.
@@ -63,7 +85,10 @@ terracotta and one blue.
 
 | What | Command | Actual result |
 |---|---|---|
-| Regression suite (chromium) | `node verify/checks.mjs` | **39/39, 0 skipped, exit 0** |
+| Regression suite (chromium) | `node verify/checks.mjs` | **43/43, 0 skipped, exit 0** |
+| Bezel clearance, before | measured at 393x852 | **header pad 0px, logo left edge 0** |
+| Bezel clearance, after | new check, 4 viewports | header L24/R24, tab bar L20/R20 |
+| Both workflows parse | `yaml.safe_load` | OK |
 | Regression suite (**WebKit**, CI) | `PW_ENGINE=webkit …` | **38/38**, run 30331903951 |
 | Build | `npm run build` | **exit 0**, four woff2 hashed into `/assets/` |
 | Font actually loads | read `document.fonts` | 2 faces `loaded`, 2 same-origin woff2 requested |
