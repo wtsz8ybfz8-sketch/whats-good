@@ -465,5 +465,12 @@ Switches only the user can throw. Not agent work:
    `Bash(node driver.mjs*)`, `Bash(NO_PROXY=* *)`, `Bash(npx esbuild *)`, `Bash(grep *)`.
 2. **Delete any standing permission for `rm .../.git/index.lock`** in
    `.claude/settings.local.json` — §4 forbids that action outright.
-3. **`VITE_GOOGLE_PLACES_KEY` in Vercel.** The one blocker on venue discovery in production.
-   No key exists in this container, and reachability cannot be confirmed from here.
+3. **Confirm what the deployed Places key actually does.** The variable **is set** in
+   Vercel — Production, Preview and Development, since 2026-07-06 (Production and Preview
+   are marked Sensitive). Earlier docs called it missing; that was wrong. `VITE_*` is
+   inlined at build time, so any build after that date carries it.
+   **The open question is no longer "is it set" but "is it accepted"** — referrer
+   restrictions, whether Places API (New) is enabled, and billing. None of that is
+   answerable from this container, and `placesService.ts` swallows API errors
+   (`.catch(() => [])`), so the UI shows the same empty state either way. Read the browser
+   Network tab on the live site, or nothing.

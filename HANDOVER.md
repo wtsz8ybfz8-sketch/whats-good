@@ -11,8 +11,11 @@ are four comment lines whose `§` cross-references were renumbered.
 `verify/checks.mjs` **43/43, PASSED 43 / FAILED 0 / SKIPPED 0, exit 0** on chromium, run
 after every edit in this session.
 
-Carried forward, unchanged and still open: **`VITE_GOOGLE_PLACES_KEY` in Vercel** is a user
-action and the one blocker on venue discovery in production.
+**Corrected this session: `VITE_GOOGLE_PLACES_KEY` is NOT missing from Vercel.** It is set
+in Production, Preview and Development, added 2026-07-06 (Production/Preview marked
+Sensitive). Every earlier handover called it the one blocker on venue discovery; that claim
+was never checked and was wrong. What is actually unknown is whether Google *accepts* the
+key from the deployed origin — see the risks section.
 
 ## Objective
 
@@ -113,6 +116,14 @@ comments and `checks.mjs` (nothing was pushed, so no run exists); anything about
 
 ## Known risks and open questions
 
+- **A rejected Places key is indistinguishable from "no results" in the UI.**
+  `placesService.ts:231` does `.catch(() => [])` and line 302 says "Silently fall back —
+  never surface API errors to the user". So `REQUEST_DENIED` (bad referrer restriction,
+  Places API (New) not enabled, billing off) renders the same empty state as a genuine
+  empty area. Against §5's **Recover** stage this is a real defect, and it is why the
+  current deploy cannot be judged by looking at it. Diagnose from the browser Network tab
+  (`places.googleapis.com`), not from the screen. Fixing it means distinguishing the two
+  states in `StatusStates.tsx` — not yet done, and not in this session's scope.
 - **The Find tab opens on a form, not on food.** Nothing on the first screen answers
   "what's good right now" until the user fills something in and taps. Against §5's Orient
   stage, the largest remaining product gap. A design decision, raised and not acted on.
