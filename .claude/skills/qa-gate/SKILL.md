@@ -41,13 +41,16 @@ measurement and obvious in the screenshot. Measure geometry AND look at the pict
 
 ## Gate: do not report success unless all of these are true
 
-- [ ] `verify/checks.mjs` exits 0 (31/31)
+- [ ] `verify/checks.mjs` exits 0, with **0 SKIPPED** — quote the summary line it printed
+      (`PASSED n FAILED n SKIPPED n`). SKIPPED is not PASSED; exit 3 is an unmet
+      precondition and says nothing about the app
 - [ ] `tsc --noEmit` exits 0 — and `@types/react` is installed, or it is checking nothing
 - [ ] `vite build` exits 0 (check `${PIPESTATUS[0]}`, not the tail's status)
 - [ ] All 6 views rendered, **light and dark**
-- [ ] All 4 tabs measured at **390×844 (portrait), 844×390 (landscape) AND 1440×900** —
-      desktop went unmeasured for a whole session (clipped rail, 36px tabs, duplicated
-      headline) and landscape was where the unpainted-canvas bug was actually visible
+- [ ] Every viewport in the suite measured — portrait phones, landscape **and** 1440×900
+      desktop. Desktop went unmeasured for a whole session (clipped rail, 36px tabs,
+      duplicated headline) and landscape was where the unpainted-canvas bug was visible.
+      `checks.mjs` runs them; read its output rather than assuming the list
 - [ ] `html` has a background and nothing uses `background-attachment: fixed` — an
       unpainted canvas shows as a see-through band against the browser's own chrome
 - [ ] Screenshots actually opened and read, not just written
@@ -77,18 +80,21 @@ did exactly that and shipped the venue detail view unrendered and unmeasured.
 
 ## Then say what was NOT checked
 
-Passing this gate is not the same as the change being safe, and the difference is
-written down: **CLAUDE.md §13.2 lists every rule in this project that no machine can
-fail.** `openNow` truthiness, hardcoded bottom offsets, hand-formatted numbers, hex vs
-tokens, invented restaurant facts, content stranded behind an animation, and every
-iOS-Safari behaviour — a green run says nothing about any of them.
+Passing this gate is not the same as the change being safe, and the difference is written
+down: **CLAUDE.md §7 lists what the machine enforces and, at the end, everything it does
+not.** `openNow` truthiness, invented restaurant facts, content stranded behind an
+animation, grown ink on a hit target, **dark mode**, and every iOS-Safari behaviour — a
+green run says nothing about any of them. Everything CLAUDE.md labels
+**[HUMAN_DECISION]** is unverified until you say you checked it by hand.
 
-Before writing **verified / working / fixed / clean / done**, do all four (§13.4):
+Before writing **verified / working / fixed / clean / done**, do all four (CLAUDE.md §6):
 
-1. Name the §6 rung reached and the real exit code.
+1. Name the rung reached and the real exit code.
 2. Name the result that would have been **red**.
-3. Name anything in §13.2 your change touched that nothing checked — in those words.
+3. Name anything [HUMAN_DECISION] your change touched that nothing checked — in those words.
 4. A timed-out typecheck is **"did not complete"**, never "passed".
 
-Never quote a check count from prose. This file has carried 11, then 18, then 31, and
-each drifted, because checks run inside loops over six viewport/mode combinations.
+Never quote a check count from prose — not from CLAUDE.md, and not from this file. Both
+have carried totals that drifted (11, 18, 31, while the suite was at 43), because checks
+are added inside loops over viewport combinations. Quote the summary line of the run you
+actually did.

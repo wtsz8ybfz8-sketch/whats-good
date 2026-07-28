@@ -82,7 +82,7 @@ async function installRoutes(page) {
  * Hit targets are probed with elementFromPoint, never with getBoundingClientRect
  * heights: the 44px target lives on an invisible pseudo-element, so a rect-based
  * audit reports a false failure and then "fixes" it with padding — which grows the
- * visual ink and breaks §11.3. The probe asks the only question that matters: if a
+ * visual ink and breaks §10.3. The probe asks the only question that matters: if a
  * thumb lands one pixel outside the visible control, does this element receive it?
  */
 const MEASURE = () => {

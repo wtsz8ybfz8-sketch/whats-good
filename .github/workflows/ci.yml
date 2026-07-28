@@ -70,7 +70,7 @@ jobs:
       # Every measurement this project has ever made was headless Chromium, which
       # reports the CORRECT value for every iOS-shaped bug this app has shipped:
       # safe-area insets, the URL-bar-hidden viewport behind `vh`, backdrop-filter
-      # scheduling. CLAUDE.md §13.2 lists "iOS Safari behaviour of any kind" as
+      # scheduling. CLAUDE.md §7 lists "iOS Safari behaviour of any kind" as
       # unverifiable, and it has been true for the project's whole life — WebKit cannot
       # be installed in the agent container (the proxy blocks the Playwright CDN,
       # re-confirmed 2026-07-28). A runner installs it in seconds. This is the only
@@ -149,7 +149,7 @@ jobs:
           fi
           echo "OK — .glass on $chrome chrome surface(s), 0 in components/"
 
-      # §12: vite-plugin-pwa precached index.html, so three sessions of work deployed and
+      # §11: vite-plugin-pwa precached index.html, so three sessions of work deployed and
       # were invisible on the live URL. public/sw.js is now a self-destructing kill switch
       # and must stay. What must never come back is a plugin that registers a NEW worker.
       # Matches real wiring only — an import or a VitePWA() call — so the explanatory
@@ -157,12 +157,12 @@ jobs:
       - name: No service worker plugin in the build
         run: |
           if grep -nE "^[^/]*(from '.*vite-plugin-pwa'|VitePWA\()" vite.config.ts ; then
-            echo "::error::vite-plugin-pwa is wired into vite.config.ts. It precaches index.html and makes deploys invisible (§12)."
+            echo "::error::vite-plugin-pwa is wired into vite.config.ts. It precaches index.html and makes deploys invisible (§11)."
             exit 1
           fi
           echo "OK — no PWA plugin wired into vite.config.ts"
 
-      # §13.2/§13.3: rules stated as absolutes in CLAUDE.md that nothing could fail.
+      # §7: rules stated as absolutes in CLAUDE.md that nothing could fail.
       #
       # Each is a RATCHET, not a pass/fail: the current count is the ceiling, so the
       # pipeline is green on arrival but a NEW violation turns it red. That is the only
@@ -170,7 +170,7 @@ jobs:
       # variant that teaches everyone to ignore the pipeline.
       #
       # Lower a baseline whenever you remove a violation. Never raise one.
-      - name: Structural ratchets (§13)
+      - name: Structural ratchets (§7)
         run: |
           fail=0
           ratchet() {
@@ -178,17 +178,17 @@ jobs:
             echo "$name: $count (ceiling $baseline)"
             echo "- $name: **$count** / ceiling $baseline" >> "$GITHUB_STEP_SUMMARY"
             if [ "$count" -gt "$baseline" ]; then
-              echo "::error::$name went up: $count > $baseline. See CLAUDE.md §13."
+              echo "::error::$name went up: $count > $baseline. See CLAUDE.md §7 (ratchets)."
               fail=1
             fi
           }
-          echo "### Structural ratchets (§13)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Structural ratchets (§7)" >> "$GITHUB_STEP_SUMMARY"
 
           # NOTE: there is deliberately NO openNow ratchet. The audit that added this
           # step flagged 4 sites, then reading them showed all 4 sit inside an outer
           # `openNow !== undefined` guard — the code was already correct and the grep
           # could not see the guard. A grep cannot distinguish a guarded ternary from a
-          # bare one, so this rule stays agent-discipline only (§13.2) rather than
+          # bare one, so this rule stays agent-discipline only (§7) rather than
           # shipping a check that fires on correct code.
 
           # §6 — bottom chrome derives from --tabbar-h, never a number. A guessed offset

@@ -2,7 +2,7 @@
 #
 # WHY THIS EXISTS
 #
-# Every claim this project has ever made about iOS was an inference. CLAUDE.md §13.2
+# Every claim this project has ever made about iOS was an inference. CLAUDE.md §7
 # says so in those words — "iOS Safari behaviour of any kind" is listed as unverifiable,
 # because headless Chromium reports every `env(safe-area-inset-*)` as 0 and 0 is also
 # the correct answer on a desktop Linux box. A check that cannot fail is not evidence.

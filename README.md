@@ -4,19 +4,36 @@ Mood-and-location-driven food discovery — an elevated, human alternative to a 
 directory. Find somewhere to eat or something to cook, based on how you feel and where
 you are.
 
-**Working on this project? Read [CLAUDE.md](CLAUDE.md) first** — it is the single
-authoritative instruction file (operating mode, validation ladder, design system, hard
-rules). This README only covers running it.
+**Working on this project? Read [CLAUDE.md](CLAUDE.md) first** — the operating contract
+(how to work, what is enforced, the design system). This README only covers running it.
 
 This folder is ONE project: the **What's Good** app. It is unrelated to the `work-os` /
 "Claude Code" folder, which is a separate app.
 
-| File | Holds |
-|---|---|
-| [CLAUDE.md](CLAUDE.md) | How to work on this project. Authoritative. Start and stay here. |
-| [HANDOVER.md](HANDOVER.md) | Live state of the last session only. A record, never a mandate. |
-| [IDEATION_BRIEF.md](IDEATION_BRIEF.md) | Original product intent. Background, not instruction. |
-| README.md | How to run it. |
+## Where things are
+
+| File | Holds | Authority |
+|---|---|---|
+| [CLAUDE.md](CLAUDE.md) | How to work on this project. Every rule labelled [ENFORCED_BY_CI] or [HUMAN_DECISION]. | **Rules.** Start here. |
+| [verify/checks.mjs](verify/checks.mjs) · [.github/workflows/ci.yml](.github/workflows/ci.yml) | The regression suite and the pipeline. | **What is actually enforced.** Beats any document. |
+| [HANDOVER.md](HANDOVER.md) | Live state of the last session only. | A record, never a mandate. |
+| [AUDIT_HISTORY.md](AUDIT_HISTORY.md) | Bugs that shipped, closed audits, retired claims. | **Historical. Not policy.** |
+| [IDEATION_BRIEF.md](IDEATION_BRIEF.md) | Original product intent. | Background, not instruction. |
+| [.claude/skills/qa-gate/](.claude/skills/qa-gate/SKILL.md) | The gate to run before claiming anything works. | Procedure. |
+
+## Verify it
+
+```bash
+npm install && npm --prefix verify install   # playwright-core lives in verify/, not root
+node verify/serve.mjs up                     # idempotent; bakes in the Places key
+NO_PROXY='*' node verify/checks.mjs          # the regression suite
+NO_PROXY='*' node verify/driver.mjs --dark   # screenshots -> verify/out/ (the only dark pass)
+node verify/serve.mjs down                   # always
+```
+
+`checks.mjs` reports **PASS / FAIL / SKIPPED**, exits **3** on an unmet precondition (a
+misconfigured harness — not a verdict about the app), and prints what it does *not* cover.
+Read its summary line rather than quoting a count from any document.
 
 ## Run locally
 

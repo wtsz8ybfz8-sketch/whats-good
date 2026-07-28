@@ -1,14 +1,33 @@
 /**
  * The regression suite. Run this before claiming anything works.
  *
- * Every check here exists because the corresponding bug SHIPPED, was reported by the
- * user, and was found by looking rather than by reasoning. They are ordered by how
- * expensive the failure was, not by how clever the check is.
+ * This file — not any document — is the authority on what is machine-enforced in this
+ * project. CLAUDE.md §7 describes it; where the two disagree, this file is right and the
+ * document is stale. Every check here exists because the corresponding bug SHIPPED and
+ * was found by the user rather than by any check (see AUDIT_HISTORY.md).
  *
  *   node verify/checks.mjs            # against a dev server on :3000
  *
- * Exit code 0 only when every check passes. Anything else is a failure you must report
- * as a failure — a check that "did not complete" is not a check that passed.
+ * PRECONDITIONS — if any is unmet the run is not evidence:
+ *   1. npm --prefix verify install        playwright-core lives here, not in the root
+ *   2. node verify/serve.mjs up           bakes in VITE_GOOGLE_PLACES_KEY; a bare
+ *                                         `npx vite` omits it and every venue view
+ *                                         comes up empty (exit 3, not a skip)
+ *   3. NO_PROXY='*'                       or localhost requests return 000
+ *   4. A resolvable browser                verify/chromePath.mjs / PW_ENGINE (exit 3)
+ *
+ * FOUR OUTCOMES, and they are not interchangeable:
+ *   exit 0  every check PASSED (read the summary — it may still report SKIPPED checks)
+ *   exit 1  at least one check FAILED, or the suite DID NOT COMPLETE (threw part-way)
+ *   exit 3  a PRECONDITION is unmet. The harness is wrong; this says nothing about the
+ *           app. Never report it as either a pass or a failure of the code.
+ *   SKIPPED a check whose precondition could not be met. NOT a pass. Counted separately.
+ *
+ * WHAT THIS SUITE DOES NOT COVER — state these as unverified whenever you touch them:
+ *   - dark mode (only verify/driver.mjs --dark renders it, into PNGs someone must open)
+ *   - iOS Safari behaviour (headless Chromium reports every safe-area inset as 0)
+ *   - deployment reachability (the agent proxy 403s every outbound URL)
+ *   - every rule CLAUDE.md labels [HUMAN_DECISION]
  */
 
 import { ENGINE, launchBrowser } from './browser.mjs';
@@ -50,9 +69,12 @@ async function installFixtures(page) {
 const json = (b) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
 
 const results = [];
+// The verdict is printed as a WORD, not only a glyph. A reader skimming for "✓" reads a
+// wall of ticks as coverage; PASS / FAIL / SKIPPED cannot be skimmed into each other,
+// and they survive being pasted into a report or a CI step summary.
 const check = (name, pass, detail = '') => {
   results.push({ name, pass, detail });
-  console.log(`  ${pass ? '✓' : '✗'} ${name}${detail ? '  — ' + detail : ''}`);
+  console.log(`  ${pass ? '✓ PASS   ' : '✗ FAIL   '} ${name}${detail ? '  — ' + detail : ''}`);
 };
 
 /**
@@ -60,11 +82,25 @@ const check = (name, pass, detail = '') => {
  *
  * There is exactly one honest way to report a check that did not get to run, and it is
  * not "✓". A skip is louder than a pass on purpose: it is a hole in the evidence, and
- * the summary line counts it separately so it can never be read as coverage.
+ * the summary counts it separately so it can never be read as coverage.
+ *
+ * `why` must name the MISSING PRECONDITION, not the symptom — "no venue card" sent one
+ * session chasing a fixture gap that was really an unset environment variable.
  */
 const skip = (name, why) => {
   results.push({ name, pass: true, skipped: true, detail: why });
-  console.log(`  ⚠ SKIPPED  ${name}  — ${why}`);
+  console.log(`  ⚠ SKIPPED  ${name}  — ${why}  [NOT a pass: this check did not run]`);
+};
+
+/**
+ * An unmet precondition of the whole run. The harness is wrong, and nothing can be said
+ * about the app until it is fixed. Exit 3 — never a skip, never a soft pass.
+ */
+const precondition = (what, howToFix) => {
+  console.error(`\n✗ PRECONDITION UNMET — ${what}\n\n  Fix:  ${howToFix}\n`);
+  console.error('The harness is misconfigured. This is NOT a result about the app:\n' +
+    'do not report it as a pass, a failure, or a reason to skip the checks below.\n');
+  process.exit(3);
 };
 
 // ── Static checks: things a browser cannot tell you ────────────────────────────
@@ -88,7 +124,8 @@ function staticChecks() {
   // @fontsource-variable/schibsted-grotesk; this check is what keeps it that way.
   // Comments are stripped first. The comment in index.html EXPLAINS the Google Fonts
   // bug and therefore names the host; a check that reads its own documentation as a
-  // violation is the §13.3 trap, and it fired here on the first run.
+  // violation is the false-positive trap in AUDIT_HISTORY.md, and it fired here on the
+  // first run.
   check(
     'no third-party font request',
     !/fonts\.(googleapis|gstatic)\.com/.test(html.replace(/<!--[\s\S]*?-->/g, '')),
@@ -254,14 +291,12 @@ async function main() {
    */
   const cardCount = await page.locator('[role="button"][aria-label^="View "]').count();
   if (cardCount === 0) {
-    console.error(
-      '\nNo venue card rendered. The fixture supplies venues, so this means the dev\n' +
-      'server was started WITHOUT a Places key and the app short-circuits to an empty\n' +
-      'list before any request reaches the fixture.\n\n' +
-      '  Restart it as:  VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000\n\n' +
-      'This is NOT a fixture gap and NOT a reason to skip the venue checks.',
+    precondition(
+      'no venue card rendered. The fixture supplies venues, so this means the dev server\n' +
+      '  was started WITHOUT a Places key: fetchVenues returns [] before any request is\n' +
+      '  made, so the Places fixture is never consulted. It is NOT a fixture gap.',
+      'node verify/serve.mjs up      (or: VITE_GOOGLE_PLACES_KEY=k npx vite --port 3000)',
     );
-    process.exit(3);
   }
   const card = page.locator('[role="button"][aria-label^="View "]:visible').first();
   let restored = null;
@@ -280,15 +315,13 @@ async function main() {
       restored = { before, after, ok: Math.abs(after - before) <= 24 };
     }
   }
-  // No card means the venue list was empty, which is a harness gap, not an app defect:
-  // neither the agent container nor a CI runner reaches Google Places, and the fixture
-  // does not currently produce a clickable card on this view. Reporting that as a
-  // FAILURE made the suite permanently red; reporting it as a PASS would be a lie about
-  // a bug the user has already been burned by once. So it skips, loudly, and the gap is
-  // recorded in HANDOVER.md until the fixture can render a card.
+  // An empty venue list is already handled above as an unmet PRECONDITION (exit 3), so
+  // reaching here with no measurement means the card was found but could not be laid
+  // out or clicked — a harness problem, still not a verdict about the app. It skips
+  // loudly rather than reporting either colour.
   if (!restored) {
     skip('browser back restores list scroll position',
-         'no venue card rendered — fixture gap, this check did NOT run');
+         'venue card present but not clickable (no bounding box) — could not measure');
   } else check(
     'browser back restores list scroll position',
     !!restored.ok,
@@ -450,7 +483,7 @@ async function main() {
       const cs = getComputedStyle(document.documentElement);
 
       /**
-       * §11.5 — content never hugs the bezel.
+       * §10.5 — content never hugs the bezel.
        *
        * This check exists because the header logo shipped at x=0, flush against the
        * screen edge, on every device in portrait, and the user found it. `.safe-x`
@@ -462,7 +495,7 @@ async function main() {
        *
        * Measured on the real chrome — the header and the mobile tab bar — since those
        * are the two full-bleed fixed surfaces, and the ones a person looks at first.
-       * The floor is 16px rather than §11.5's 20px so a deliberately tighter chrome
+       * The floor is 16px rather than §10.5's 20px so a deliberately tighter chrome
        * gutter is allowed; touching the bezel is not.
        */
       const edges = [];
@@ -505,9 +538,33 @@ async function main() {
   const failed = results.filter((r) => !r.pass);
   const skipped = results.filter((r) => r.skipped);
   const ran = results.length - skipped.length;
+
+  // Quote THIS line, never a count from a document. Totals change whenever a check is
+  // added inside one of the viewport loops, and every hardcoded count in this repo's
+  // docs has drifted (AUDIT_HISTORY.md).
   console.log(`\n${ran - failed.length}/${ran} checks passed` +
-    (skipped.length ? `, ${skipped.length} SKIPPED (did not run — not evidence)` : '') + '.\n');
+    (skipped.length ? `, ${skipped.length} SKIPPED (did not run — not evidence)` : '') + '.');
+  console.log(
+    `  PASSED ${ran - failed.length}   FAILED ${failed.length}   SKIPPED ${skipped.length}` +
+    `   [engine: ${ENGINE}]`);
+  if (skipped.length) {
+    console.log('\n  SKIPPED is not PASSED. These checks did not run:');
+    for (const s of skipped) console.log(`    - ${s.name}  (${s.detail})`);
+  }
+  console.log(
+    '\n  Not covered by this suite at all: dark mode (driver.mjs --dark), iOS Safari\n' +
+    '  behaviour, deployment reachability, and every [HUMAN_DECISION] rule in CLAUDE.md.\n');
   process.exit(failed.length ? 1 : 0);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+// A throw part-way through is DID NOT COMPLETE: the checks after the throw never ran, so
+// this is neither a pass nor a verdict on the app. Say which, rather than letting a bare
+// stack trace be read as "the suite failed".
+main().catch((e) => {
+  console.error(e);
+  console.error(
+    `\n✗ DID NOT COMPLETE — the suite threw after ${results.length} check(s).\n` +
+    '  Checks after this point never ran. Report it as "did not complete", not as a\n' +
+    '  pass and not as a failure of the app.\n');
+  process.exit(1);
+});

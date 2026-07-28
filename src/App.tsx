@@ -222,7 +222,7 @@ export default function App() {
  return () => { alive = false; };
  }, []);
  // Six is the cap: enough to feel like a real choice, few enough to stay one wrapped
- // row on a 384px viewport rather than becoming the carousel §11.4 forbids.
+ // row on a 384px viewport rather than becoming the carousel §10.4 forbids.
  const kitchens = useMemo(
  () => orderAreasForCountry(areas, countryCode).slice(0, 6),
  [areas, countryCode],

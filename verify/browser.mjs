@@ -9,7 +9,7 @@ import { resolveChrome } from './chromePath.mjs';
  * live: `100vh` against the URL-bar-hidden viewport, `env(safe-area-inset-*)` reported
  * as 0, `backdrop-filter` dropped mid-scroll, rubber-band overscroll painting the canvas.
  * Chromium reports the CORRECT value for all of them and can never fail one. CLAUDE.md
- * §13.2 says so in those words: "A green safe-area result on this machine is not
+ * §7 says so in those words: "A green safe-area result on this machine is not
  * evidence about iOS. It never has been."
  *
  * WebKit cannot be installed in the agent container — `npx playwright install webkit`

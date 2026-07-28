@@ -114,7 +114,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  const r = selectedRecipe;
  // px-5 below is the BASE, not sm:. This shipped as `sm:px-8` alone, so padding only
  // began at 640px and every phone got none — recipe title, back link, Save button and
- // hero card all sat flush against the bezel (§11.5). Nothing above this element carries
+ // hero card all sat flush against the bezel (§10.5). Nothing above this element carries
  // horizontal padding either: <main> is .page-grid (vertical padding only), and the
  // tab-content wrapper that owns mobile px-5 is not an ancestor of the detail branch.
  // This is the single owner of the horizontal margin here — don't pad a child, and don't

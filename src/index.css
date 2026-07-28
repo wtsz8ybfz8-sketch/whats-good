@@ -239,7 +239,7 @@
    the specificity or the source order. So the winning declaration was
    `max(0px, env(safe-area-inset-left))`, and on ANY phone in portrait
    `env(safe-area-inset-left)` is 0. Measured at 393×852: header padding-left 0px,
-   the logo's left edge at x=0, flush against the bezel. §11.5 says content never
+   the logo's left edge at x=0, flush against the bezel. §10.5 says content never
    hugs the bezel; it had been hugging it on every device, in the two places a person
    looks first.
 
@@ -249,7 +249,7 @@
    because this is padding, not margin. Sites that want a wider gutter set
    --safe-gutter rather than adding a px-* utility that this rule would eat. */
 .safe-x {
-  --safe-gutter: 20px;   /* §11.5 minimum — px-5 */
+  --safe-gutter: 20px;   /* §10.5 minimum — px-5 */
   padding-left: max(var(--safe-gutter), env(safe-area-inset-left));
   padding-right: max(var(--safe-gutter), env(safe-area-inset-right));
 }
@@ -727,7 +727,7 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   transform: scale(0.97);
 }
 
-/* 44pt touch target without growing the visual ink (§11.3).
+/* 44pt touch target without growing the visual ink (§10.3).
    Measured 2026-07-27 at 390px: the filter chips rendered 42px tall, the header icon
    buttons 40x40, "Surprise me" and "Try something different" 40px. All under the 44
    minimum — small misses, but this app is used one-handed on a street, where a 40px

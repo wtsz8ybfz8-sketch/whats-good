@@ -9,7 +9,7 @@
  *
  * So the probe page POSTs them here, and this process prints them to stdout, which
  * lands in the job log, which IS readable. That turns "a picture of a number" into a
- * number. These are the values CLAUDE.md §13.2 has always listed as unknowable from
+ * number. These are the values CLAUDE.md §7 has always listed as unknowable from
  * anywhere in this project's toolchain.
  *
  * Plain node http: no dependency, and `npx serve` cannot accept a POST.
