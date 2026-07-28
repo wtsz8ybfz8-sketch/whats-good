@@ -2,7 +2,23 @@
 
 ## Status
 
-**`main` is at `b6027f9`, pushed.** Working tree clean, no dev server running.
+**`origin/main` is at `e6f1d65` — this handover's own commit — verified 2026-07-28 by
+`git ls-remote origin refs/heads/main`, not by a tracking ref.** Everything from `aefdc70`
+through `b6027f9` (bezel/`.safe-x`, self-hosted typeface, iOS Simulator workflow, the
+`ci.yml` additions, the geolocation fix) IS on `main`. Working tree clean, no dev server
+running.
+
+**A previous session reported the opposite and was reading a stale ref.** It stated that
+`main` and `origin/main` were both at `5fa9c12` and that this work existed only on a
+feature branch. That was true when that session ran; `main` moved afterwards. A local
+`origin/main` is a cached ref, and a clone that predates a push shows the old value with
+no error. **`git fetch` before asserting where a branch is** — the same class of mistake
+as trusting a green CI tick without checking what it measured.
+
+**"On `main`" is not "in production", and nothing here establishes deployment.** No
+session can check that from this container (every outbound URL 403s, §6). An earlier
+version of this line said "deployed to production"; that was never evidence, and the claim
+is withdrawn rather than restated. Confirm from a real device or leave it unknown.
 
 `verify/checks.mjs` **43/43, 0 skipped, exit 0** on chromium. `tsc --noEmit` exit 0.
 `npm run build` exit 0. `driver.mjs` 6/6 views, 0 unreachable, 0 console errors.
@@ -185,6 +201,12 @@ typecheck — green or red.
 - **`simctl privacy` is not a route to suppressing web permission prompts.** Recorded
   here because it looks like the obvious fix and is not; the note in `ios-safari.yml`
   will stop a re-add, but only if it is read.
+- **One commit is off `main` and will be lost if nobody claims it.**
+  `origin/claude/mobile-emulation-testing-57d26v` (`66c7037`) adds `verify/devices.mjs`,
+  186 lines, a named-device emulation pass using Playwright device profiles. It is the
+  only work anywhere in this repo that is not on `main`. Nothing references it, so `main`
+  is not broken without it — but a session ran, measured with it, and left. Merge it or
+  delete the branch deliberately; do not leave it as a third answer to "where is the work".
 - **`ci/ios-shots` is force-pushed and orphaned every run.** History is discarded on
   purpose so PNGs cannot accumulate. Never put anything there you want to keep.
 - **Commit `243c7f5`'s message is slightly mangled** — unescaped backticks in the shell
