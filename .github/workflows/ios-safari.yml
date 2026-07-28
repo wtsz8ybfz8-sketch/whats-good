@@ -1,0 +1,134 @@
+# Real Mobile Safari, on a real simulated iPhone.
+#
+# WHY THIS EXISTS
+#
+# Every claim this project has ever made about iOS was an inference. CLAUDE.md §13.2
+# says so in those words — "iOS Safari behaviour of any kind" is listed as unverifiable,
+# because headless Chromium reports every `env(safe-area-inset-*)` as 0 and 0 is also
+# the correct answer on a desktop Linux box. A check that cannot fail is not evidence.
+# The user has been asked for phone screenshots repeatedly, which is the wrong way round.
+#
+# WebKit-on-Linux (see ci.yml) closed most of that gap: same engine, same viewport and
+# safe-area semantics. It does not close the last of it — no notch, no Dynamic Island,
+# no home indicator, no URL bar that hides on scroll, no rubber-band overscroll.
+#
+# A GitHub **macOS runner** ships Xcode, and Xcode ships the iOS Simulator, which runs
+# the real Mobile Safari build against a real device profile. That is the workaround.
+# `xcrun simctl` boots the device, opens the URL, and captures the framebuffer — so the
+# screenshot includes the Dynamic Island, the real status bar and the home indicator,
+# and the insets are the device's actual values rather than zero.
+#
+# COST: this repository is PUBLIC, and GitHub Actions minutes are free for public
+# repositories on all runner types, macOS included. If the repo is ever made private,
+# macOS minutes bill at 10x — at that point drop the schedule and keep it manual.
+#
+# WHAT THIS IS NOT: a simulator is not a physical handset. It uses the Mac's CPU/GPU,
+# so it says nothing about thermal or performance behaviour, and Simulator Safari has
+# no cellular radio. For layout, safe areas, viewport units and paint, it is the real
+# engine on the real device profile. Report it as "iOS Simulator", never as "an iPhone".
+
+name: iOS Safari
+
+on:
+  # Not on every push: this is slower and heavier than ci.yml, and its value is
+  # "what does the real thing look like now", not "did this commit break a rule".
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'Simulator device name'
+        default: 'iPhone 16 Pro'
+        required: false
+  push:
+    branches: [main]
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The simulator loads over the network like any client, so it needs a real
+      # server. The PRODUCTION build is served rather than the dev server: that is
+      # what a person actually receives, including the hashed font assets.
+      - name: Build
+        run: npm run build
+        env:
+          # Without a key `fetchVenues` returns [] before any request is made, so the
+          # venue surface never renders and the screenshots quietly show empty states.
+          # A fixture key at least drives the code path; real venue data still needs
+          # the key set in Vercel.
+          VITE_GOOGLE_PLACES_KEY: ci-fixture-key
+
+      - name: Serve the build
+        run: |
+          cp verify/safe-area-probe.html dist/safe-area-probe.html
+          npx --yes serve -s dist -l 3000 &
+          npx --yes wait-on -t 60000 http://localhost:3000/
+
+      - name: Boot the simulator
+        id: boot
+        run: |
+          DEVICE="${{ github.event.inputs.device || 'iPhone 16 Pro' }}"
+          echo "Available devices:"; xcrun simctl list devices available
+          # Resolve by name to a UDID. Never hardcode a UDID — it changes per runner
+          # image, which is the same trap that stopped ci.yml's browser half running
+          # for the life of that file.
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next((x['udid'] for rs in d.values() for x in rs if x['name']=='$DEVICE'), ''))")
+          if [ -z "$UDID" ]; then
+            echo "::error::Simulator '$DEVICE' not available on this runner image. See the list above and pass a different name via workflow_dispatch."
+            exit 1
+          fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          echo "Booted $DEVICE ($UDID)"
+
+      - name: Capture — light
+        run: |
+          U="${{ steps.boot.outputs.udid }}"
+          mkdir -p shots
+          xcrun simctl ui "$U" appearance light
+          # The probe first: this is the measurement, not just a picture. It prints the
+          # device's ACTUAL safe-area insets and its 100vh vs 100dvh values — the two
+          # numbers this project has only ever guessed at.
+          xcrun simctl openurl "$U" "http://localhost:3000/safe-area-probe.html"
+          sleep 8
+          xcrun simctl io "$U" screenshot shots/00-safe-area-probe.png
+          for tab in find stay-in happy-hour saved; do
+            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$tab&city=London"
+            sleep 7
+            xcrun simctl io "$U" screenshot "shots/light-$tab.png"
+          done
+
+      - name: Capture — dark
+        run: |
+          U="${{ steps.boot.outputs.udid }}"
+          xcrun simctl ui "$U" appearance dark
+          for tab in find stay-in happy-hour saved; do
+            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$tab&city=London"
+            sleep 7
+            xcrun simctl io "$U" screenshot "shots/dark-$tab.png"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-safari-screenshots
+          path: shots/*.png
+          if-no-files-found: error
+
+      - name: Shut down
+        if: always()
+        run: xcrun simctl shutdown all || true

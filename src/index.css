@@ -227,9 +227,39 @@
 /* Full-bleed fixed chrome: keep the FILL edge to edge, push the CONTENT clear of the
    notch. Applied to the header and the mobile tab bar. In portrait and on desktop both
    insets are 0 and this is inert. */
+/* ─── Full-bleed chrome that clears the notch WITHOUT eating its own gutter ───
+   This used to be:
+
+     .safe-x { padding-left: max(0px, env(safe-area-inset-left)); ... }
+
+   which REPLACED the element's horizontal padding instead of adding to it. The
+   header carried `px-6` and the mobile tab bar its own spacing, and both were
+   silently discarded: `.safe-x` is unlayered CSS and Tailwind's utilities live in
+   `@layer utilities`, and unlayered always beats layered in the cascade — no matter
+   the specificity or the source order. So the winning declaration was
+   `max(0px, env(safe-area-inset-left))`, and on ANY phone in portrait
+   `env(safe-area-inset-left)` is 0. Measured at 393×852: header padding-left 0px,
+   the logo's left edge at x=0, flush against the bezel. §11.5 says content never
+   hugs the bezel; it had been hugging it on every device, in the two places a person
+   looks first.
+
+   The gutter is now a floor, not a competitor: take whichever is larger, the design
+   gutter or the notch. Landscape still works — on a notched iPhone the inset is
+   ~59px, which wins over the gutter, and the element's FILL stays edge-to-edge
+   because this is padding, not margin. Sites that want a wider gutter set
+   --safe-gutter rather than adding a px-* utility that this rule would eat. */
 .safe-x {
-  padding-left: max(0px, env(safe-area-inset-left));
-  padding-right: max(0px, env(safe-area-inset-right));
+  --safe-gutter: 20px;   /* §11.5 minimum — px-5 */
+  padding-left: max(var(--safe-gutter), env(safe-area-inset-left));
+  padding-right: max(var(--safe-gutter), env(safe-area-inset-right));
+}
+
+/* The header sits optically wider than list content, and much wider on desktop.
+   Expressed as the gutter variable so `.safe-x` composes with it instead of
+   overriding it. */
+.safe-x-wide { --safe-gutter: 24px; }
+@media (min-width: 1024px) {
+  .safe-x-wide { --safe-gutter: 48px; }
 }
 
 .action-bar::before {

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<!-- viewport-fit=cover is the whole point: without it iOS reports every inset as 0. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Safe-area probe</title>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { margin: 0; background: #0F0C0A; color: #F5F0E8;
+               font: 500 16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  main { padding: max(12px, env(safe-area-inset-top)) 16px 16px; }
+  h1 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; opacity: .6; margin: 0 0 14px; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 18px; }
+  dt { opacity: .65; }
+  dd { margin: 0; font-weight: 700; color: #fca5a5; }
+  .big { font-size: 28px; font-weight: 800; color: #fca5a5; }
+  /* Painted bars pinned to each inset, so the screenshot SHOWS the region as well as
+     naming it — a number can be misread, a coloured band against the notch cannot. */
+  .band { position: fixed; background: #7C2D12; opacity: .85; }
+  #t { top: 0; left: 0; right: 0; height: env(safe-area-inset-top); }
+  #b { bottom: 0; left: 0; right: 0; height: env(safe-area-inset-bottom); }
+  #l { top: 0; bottom: 0; left: 0; width: env(safe-area-inset-left); }
+  #r { top: 0; bottom: 0; right: 0; width: env(safe-area-inset-right); }
+</style>
+</head>
+<body>
+  <div class="band" id="t"></div><div class="band" id="b"></div>
+  <div class="band" id="l"></div><div class="band" id="r"></div>
+  <main>
+    <h1>Safe-area probe</h1>
+    <dl>
+      <dt>inset-top</dt><dd id="it">–</dd>
+      <dt>inset-right</dt><dd id="ir">–</dd>
+      <dt>inset-bottom</dt><dd id="ib">–</dd>
+      <dt>inset-left</dt><dd id="il">–</dd>
+      <dt>innerWidth</dt><dd id="iw">–</dd>
+      <dt>innerHeight</dt><dd id="ih">–</dd>
+      <dt>100vh</dt><dd id="vh">–</dd>
+      <dt>100dvh</dt><dd id="dvh">–</dd>
+      <dt>dpr</dt><dd id="dpr">–</dd>
+      <dt>scheme</dt><dd id="sch">–</dd>
+    </dl>
+    <div class="big" id="verdict">–</div>
+  </main>
+<script>
+  // Read the insets the only way that is truthful: resolve them through the engine
+  // rather than assuming. A probe element is used because env() is not readable from
+  // getComputedStyle on the root in every engine.
+  const px = (v) => Math.round(parseFloat(v) || 0);
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;top:0;left:0;width:0;height:0;' +
+    'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);' +
+    'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);';
+  document.body.appendChild(probe);
+  const c = getComputedStyle(probe);
+  const top = px(c.paddingTop), right = px(c.paddingRight),
+        bottom = px(c.paddingBottom), left = px(c.paddingLeft);
+
+  const set = (id, v) => (document.getElementById(id).textContent = v);
+  set('it', top + 'px');  set('ir', right + 'px');
+  set('ib', bottom + 'px'); set('il', left + 'px');
+  set('iw', innerWidth + 'px'); set('ih', innerHeight + 'px');
+  set('dpr', String(devicePixelRatio));
+  set('sch', matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+  const m = document.createElement('div');
+  m.style.cssText = 'position:fixed;visibility:hidden;height:100vh;';
+  const m2 = document.createElement('div');
+  m2.style.cssText = 'position:fixed;visibility:hidden;height:100dvh;';
+  document.body.append(m, m2);
+  const vh = m.getBoundingClientRect().height, dvh = m2.getBoundingClientRect().height;
+  set('vh', Math.round(vh) + 'px'); set('dvh', Math.round(dvh) + 'px');
+
+  // The single line worth reading. Non-zero insets mean viewport-fit=cover is live and
+  // this really is a notched device; all-zero on a device that HAS a notch means the
+  // meta tag is not doing its job, which is the bug that hid for this project's life.
+  document.getElementById('verdict').textContent =
+    (top || bottom || left || right)
+      ? `INSETS LIVE  ${top}/${right}/${bottom}/${left}`
+      : 'ALL ZERO — cover not applied, or not a notched device';
+</script>
+</body>
+</html>

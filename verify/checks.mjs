@@ -448,14 +448,54 @@ async function main() {
     await pg.waitForTimeout(1800);
     const r = await pg.evaluate(() => {
       const cs = getComputedStyle(document.documentElement);
+
+      /**
+       * §11.5 — content never hugs the bezel.
+       *
+       * This check exists because the header logo shipped at x=0, flush against the
+       * screen edge, on every device in portrait, and the user found it. `.safe-x`
+       * was unlayered CSS setting `padding-left: max(0px, env(safe-area-inset-left))`,
+       * and unlayered beats Tailwind's `@layer utilities` in the cascade — so it
+       * REPLACED the header's `px-6` with 0. Nothing could fail: no overflow, no hit
+       * target missed, canvas painted, six viewports green, and a screenshot that a
+       * reader glances past. Only the distance from the edge says it.
+       *
+       * Measured on the real chrome — the header and the mobile tab bar — since those
+       * are the two full-bleed fixed surfaces, and the ones a person looks at first.
+       * The floor is 16px rather than §11.5's 20px so a deliberately tighter chrome
+       * gutter is allowed; touching the bezel is not.
+       */
+      const edges = [];
+      for (const [sel, what] of [['header', 'header'], ['[class*="tabbar-h"]', 'tab bar']]) {
+        const bar = document.querySelector(sel);
+        if (!bar) continue;
+        const kids = [...bar.querySelectorAll('button, a')].filter((el) => {
+          const b = el.getBoundingClientRect();
+          return b.width > 0 && b.height > 0;
+        });
+        if (!kids.length) continue;
+        const left = Math.min(...kids.map((el) => el.getBoundingClientRect().left));
+        const right = Math.max(...kids.map((el) => el.getBoundingClientRect().right));
+        edges.push({ what, left: Math.round(left), rightGap: Math.round(innerWidth - right) });
+      }
+
       return {
         over: document.body.scrollWidth > innerWidth,
         htmlBg: cs.backgroundColor,
         painted: cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent',
+        edges,
       };
     });
     check(`${name}: no overflow`, !r.over);
     check(`${name}: canvas painted`, r.painted, r.htmlBg);
+    const tooTight = r.edges.filter((e) => e.left < 16 || e.rightGap < 16);
+    check(
+      `${name}: chrome clears the bezel`,
+      r.edges.length > 0 && tooTight.length === 0,
+      r.edges.length === 0
+        ? 'no chrome found to measure — selector drift, not a pass'
+        : r.edges.map((e) => `${e.what} L${e.left}/R${e.rightGap}`).join('  '),
+    );
     await pg.screenshot({ path: resolve(HERE, 'out', `${name.split(' ')[0]}.png`) });
     await c.close();
   }
