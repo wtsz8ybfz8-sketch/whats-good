@@ -14,8 +14,7 @@
  * Output: verify/out/<view>.png and verify/out/report.json
  */
 
-import { chromium } from 'playwright-core';
-import { resolveChrome } from './chromePath.mjs';
+import { ENGINE, launchBrowser } from './browser.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,10 +26,11 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(HERE, 'out');
 const BASE = process.env.VERIFY_BASE_URL || 'http://localhost:3000/';
 const DARK = process.argv.includes('--dark');
-const SUFFIX = DARK ? '-dark' : '';
+// The engine is part of the filename, not just the log line. A WebKit screenshot that
+// silently overwrites the Chromium one of the same name is how "we looked at it" turns
+// into looking at the wrong picture.
+const SUFFIX = `${ENGINE === 'chromium' ? '' : `-${ENGINE}`}${DARK ? '-dark' : ''}`;
 
-/** Pre-installed in this image. Never run `playwright install`. */
-const CHROME = resolveChrome();   // never a pinned build number — see chromePath.mjs
 
 const json = (body) => ({
   status: 200,
@@ -218,10 +218,7 @@ async function openFirstCard(page) {
 async function main() {
   await mkdir(OUT, { recursive: true });
 
-  const browser = await chromium.launch({
-    executablePath: CHROME,
-    args: ['--no-sandbox'],
-  });
+  const browser = await launchBrowser();
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,

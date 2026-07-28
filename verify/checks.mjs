@@ -11,8 +11,7 @@
  * as a failure — a check that "did not complete" is not a check that passed.
  */
 
-import { chromium } from 'playwright-core';
-import { resolveChrome } from './chromePath.mjs';
+import { ENGINE, launchBrowser } from './browser.mjs';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +47,6 @@ async function installFixtures(page) {
     return r.abort();
   });
 }
-const CHROME = resolveChrome();   // never a pinned build number — see chromePath.mjs
 const json = (b) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
 
 const results = [];
@@ -167,10 +165,10 @@ function staticChecks() {
 
 // ── Rendered checks ───────────────────────────────────────────────────────────
 async function main() {
-  console.log(`\n▶ regression checks — ${BASE}\n`);
+  console.log(`\n▶ regression checks — ${BASE}  [engine: ${ENGINE}]\n`);
   staticChecks();
 
-  const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
+  const browser = await launchBrowser();
   const ctx = await browser.newContext({
     viewport: { width: 390, height: 844 },
     hasTouch: true,

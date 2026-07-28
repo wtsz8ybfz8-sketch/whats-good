@@ -65,6 +65,58 @@ jobs:
         env:
           PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
 
+      # The same suite, on the engine the USER's phone actually runs.
+      #
+      # Every measurement this project has ever made was headless Chromium, which
+      # reports the CORRECT value for every iOS-shaped bug this app has shipped:
+      # safe-area insets, the URL-bar-hidden viewport behind `vh`, backdrop-filter
+      # scheduling. CLAUDE.md §13.2 lists "iOS Safari behaviour of any kind" as
+      # unverifiable, and it has been true for the project's whole life — WebKit cannot
+      # be installed in the agent container (the proxy blocks the Playwright CDN,
+      # re-confirmed 2026-07-28). A runner installs it in seconds. This is the only
+      # place WebKit has ever rendered this app.
+      #
+      # WebKit on Linux is not Safari on iOS: same engine and same viewport/safe-area/
+      # backdrop-filter semantics, different OS and no real device chrome. It closes
+      # most of the gap, not all of it. Report it as "WebKit", never as "iOS".
+      #
+      # continue-on-error is deliberate AND TEMPORARY. This engine has never run against
+      # this app, so its arrival state is genuinely unknown; a step that is red on
+      # arrival for unknown reasons is the variant that teaches everyone to ignore the
+      # pipeline. It is an OBSERVATION channel until one green run exists — then flip
+      # this to a gate and delete this paragraph. Note what is NOT softened: a WebKit
+      # that fails to LAUNCH exits 3 from browser.mjs and is recorded as such, because a
+      # suite that quietly drops its browser reports green while measuring nothing.
+      - name: WebKit render sweep (observation, not yet a gate)
+        continue-on-error: true
+        run: |
+          npx --yes playwright install --with-deps webkit
+          echo "### WebKit (${{ github.sha }})" >> "$GITHUB_STEP_SUMMARY"
+          if PW_ENGINE=webkit node verify/checks.mjs 2>&1 | tee webkit.log ; then
+            echo "- WebKit suite: **passed**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- WebKit suite: **FAILED or did not launch** — see the step log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E '✗|⚠|checks passed|SKIPPED' webkit.log | head -40 >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # Screenshots from WebKit at the user's real phone width, downloadable from the
+      # run. "Anything visible must be looked at before you claim it works" (§6) has
+      # meant looking at a Chromium picture of a WebKit app. These are the real thing.
+      - name: WebKit screenshots at 393x852
+        continue-on-error: true
+        run: |
+          PW_ENGINE=webkit node verify/driver.mjs || true
+          PW_ENGINE=webkit node verify/driver.mjs --dark || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webkit-screenshots
+          path: verify/out/*.png
+          if-no-files-found: warn
+
       # --- Guards for rules CLAUDE.md states as prose and nothing enforces ---
       #
       # These exist because a written rule that only an agent reads is a rule that gets
