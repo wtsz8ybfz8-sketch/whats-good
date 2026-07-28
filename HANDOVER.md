@@ -2,102 +2,117 @@
 
 ## Status
 
-**WebKit — the engine on the user's phone — now renders and measures this app in CI. It
-never had, on any machine, in the project's history.**
+**Merged to `main` and deployed to production.** Two things that made this app read as
+unfinished are fixed, and the engine the user's phone runs now measures this app in CI
+for the first time in the project's history.
 
-Local suite unchanged and green: `verify/checks.mjs` **38/38, 0 skipped, exit 0** on
-chromium. Working tree committed and pushed to `claude/handover-immediate-fixes-nwcsf6`.
+`verify/checks.mjs` **39/39, 0 skipped, exit 0** on chromium locally, and **38/38 on
+WebKit** in CI (run 30331903951, before the 39th check existed). `npm run build` exit 0.
+Working tree clean.
 
-Two blockers to *seeing* the app were removed this session; one remains and is a user
-action (`VITE_GOOGLE_PLACES_KEY` in Vercel).
+One blocker remains and it is a user action: **`VITE_GOOGLE_PLACES_KEY` in Vercel.**
 
 ## Objective
 
 Remove what prevents this app being seen as the user sees it — on WebKit, at phone width
-— rather than inferred from headless Chromium.
+— and then fix what looking actually revealed.
 
 ## What changed
 
-**1. `verify/serve.mjs up` was broken on every fresh clone.** `verify/out/` is
-gitignored, so `openSync('verify/out/dev.log')` threw ENOENT before Vite was ever
-spawned. That is the *first command* of §6's "way to see this app", and it failed in
-this container today. Now `mkdirSync(..., { recursive: true })` first.
+**1. WebKit renders and measures this app.** New `verify/browser.mjs`: the harness picks
+an ENGINE (`PW_ENGINE=chromium|webkit`), not a binary. WebKit cannot be installed in the
+agent container (the proxy blocks the Playwright CDN, re-confirmed 2026-07-28) but a
+GitHub runner installs it in seconds. CI runs the full suite on WebKit and uploads
+393×852 light/dark screenshots as an artifact. An absent WebKit or an unknown engine
+**exits 3** — it never falls back to Chromium.
 
-**2. New `verify/browser.mjs` — the harness picks an ENGINE, not a binary.**
-`PW_ENGINE=chromium` (default) or `webkit`. `checks.mjs` and `driver.mjs` both call
-`launchBrowser()`; neither knows about a browser path any more. WebKit launches through
-playwright-core's own registry. An absent WebKit or an unknown engine **exits 3** — it
-never falls back to Chromium, because a suite that quietly swaps engines while claiming
-to have measured WebKit is worse than one that does not run (same contract as
-`chromePath.mjs`).
+**2. `verify/serve.mjs up` was broken on every fresh clone** — `verify/out/` is
+gitignored, so the log file was opened before the directory existed and it threw ENOENT
+before Vite was ever spawned. That is the *first command* of §6's "way to see this app".
 
-**3. CI runs the full suite on WebKit and uploads WebKit screenshots** at 393×852, light
-and dark, as a downloadable artifact. `driver.mjs` puts the engine in the filename, so a
-WebKit shot can never overwrite the Chromium shot of the same view.
+**3. The typeface was never actually loading — it came from Google.** The app's entire
+visual identity was a runtime request to `fonts.googleapis.com`. `display=swap`
+guarantees a flash of fallback text and a re-wrap on every cold load; two extra round
+trips to a third origin precede any correct text; and the user's IP reaches Google on
+every visit. Now self-hosted from `public/fonts/`, declared in `index.css` with
+`font-display: optional` and **preloaded** in `index.html`.
 
-**Why the WebKit steps are `continue-on-error`.** This engine has never rendered this
-app, so its arrival state is unknown; a step red on arrival for unknown reasons is the
-kind that teaches everyone to ignore the pipeline. It is an **observation channel until
-one green run exists, then it becomes a gate** — the comment in `ci.yml` says so and
-says to delete itself. A WebKit that fails to *launch* is still recorded as a failure.
+**The trap, recorded because it looks fine when broken.** Importing
+`@fontsource-variable/schibsted-grotesk` registers the family as **"Schibsted Grotesk
+Variable"**; the `@theme` tokens ask for **"Schibsted Grotesk"**. They do not match, so
+the app renders in `ui-sans-serif` — with every check green, a plausible screenshot, and
+`document.fonts.check('600 24px "Schibsted Grotesk"')` returning **true**, because
+`check()` counts a fallback as satisfying the request. Caught only by reading
+`document.fonts` directly: two faces, both `unloaded`, zero woff2 requests. Faces are
+therefore declared by hand under the real family name, italic included — the display
+headings set `italic`, and with no italic face the browser shears the upright.
+
+**4. A second accent on a first-class surface.** `--dusty-blue` coloured exactly one
+control — the Website icon on the venue page — so it sat between a terracotta Directions
+and a terracotta Call as the only blue thing on screen, with **no `html.dark` value**.
+Deleted, along with `--blue-light`, which was referenced nowhere at all.
 
 ## Customer journey impact
 
-None directly — no `src/` change. **Trust**, indirectly and structurally: every
-iOS-shaped defect this app has shipped (`vh` against the chrome-hidden viewport,
-`env(safe-area-inset-*)`, `backdrop-filter` dropped mid-scroll) is one Chromium reports
-the *correct* value for and can never fail. Those checks could not fail. Now they can.
+**Orient** and **Trust**. The first paint is now the app's own typeface instead of the
+system sans re-wrapping into it a moment later; that jolt is most of why this read as
+unfinished. **Act**: the venue page's three actions are one visual set rather than two
+terracotta and one blue.
 
 ## Verification and actual results
 
 | What | Command | Actual result |
 |---|---|---|
-| Chromium path unbroken by the refactor | `node verify/checks.mjs` | **38/38, 0 skipped, exit 0** |
-| Parse of all three edited harness files | `npx esbuild` | clean |
-| `serve.mjs up` on a dir-less clone | before / after | **ENOENT crash** → `server up on :3000` |
-| WebKit path *can fail* | `PW_ENGINE=webkit node verify/checks.mjs` | **exit 3**, named the install command, no fallback |
-| Unknown engine | `PW_ENGINE=firefox …` | **exit 3** |
-| Dev server stopped | `node verify/serve.mjs down` | `0 vite processes remain` |
+| Regression suite (chromium) | `node verify/checks.mjs` | **39/39, 0 skipped, exit 0** |
+| Regression suite (**WebKit**, CI) | `PW_ENGINE=webkit …` | **38/38**, run 30331903951 |
+| Build | `npm run build` | **exit 0**, four woff2 hashed into `/assets/` |
+| Font actually loads | read `document.fonts` | 2 faces `loaded`, 2 same-origin woff2 requested |
+| Font check *can fail* | first run, against my own comment | **✗ red**; now strips HTML comments |
+| Screenshots | `driver.mjs`, re-read | real face, **true italic**, body copy re-wrapped |
+| Dev server | `serve.mjs down` | `0 vite processes remain` |
 
-**NOT verified.** The WebKit suite itself has **not been run** — it cannot be, here
-(`npx playwright install webkit` fails at the CDN behind the proxy, re-confirmed
-2026-07-28 with that exact error). Whether it passes, and what it says, is unknown until
-the first Actions run on this branch. **Read the Actions tab; do not assume.** The CI
-change is untested end-to-end for the same reason.
-
-WebKit-on-Linux is not Safari-on-iOS: same engine, same viewport/safe-area/
-backdrop-filter semantics, different OS, no device chrome. Say "WebKit", never "iOS".
-§13.2 still stands for genuine device behaviour.
+**NOT verified.** WebKit-on-Linux is not Safari-on-iOS — same engine and same
+viewport/safe-area/backdrop-filter semantics, different OS, no device chrome. Say
+"WebKit", never "iOS". §13.2 stands for genuine device behaviour. The production URL's
+reachability cannot be checked from here (§6: the proxy 403s every host).
 
 ## Protected decisions
 
 - **`browser.mjs` never falls back.** Absent WebKit or unknown engine = exit 3.
-- **The engine belongs in the screenshot filename.** Silent overwrite is how "we looked
-  at it" becomes looking at the wrong picture.
-- **Flip the WebKit steps to blocking after the first green run** and delete the
-  paragraph that says so. Do not leave `continue-on-error` there indefinitely.
-- Everything carried forward: static checks walk `src/`; the `vh` ban is about the unit;
-  chrome that content passes under is opaque; no `openNow` ratchet; never a bare
-  `npx vite`; §7 is decided; never state a check count from prose.
+- **Declare the font faces by hand.** Importing the fontsource package silently renders
+  the whole app in the fallback; the family name does not match the theme tokens.
+- **`font-display: optional` + preload, together.** `optional` alone loses its window on
+  a cold load; `swap` alone guarantees the reflow. Neither half works on its own.
+- **`/fonts/*` is cached immutable with stable filenames** — a future font change must
+  **rename the file**, not overwrite it.
+- **Flip the WebKit CI steps to blocking now that a green run exists**, and delete the
+  paragraph in `ci.yml` that says so.
+- Carried forward: static checks walk `src/`; the `vh` ban is about the unit; chrome that
+  content passes under is opaque; no `openNow` ratchet; never a bare `npx vite`; §7 is
+  decided; never state a check count from prose.
 
 ## Next session: first three actions
 
-1. **Read the Actions run for this branch.** Specifically the WebKit step's summary
-   block. Every red line there is a real difference between the engine we have been
-   measuring and the one the user holds. Fix them, then flip the step to a gate.
-2. **Download the `webkit-screenshots` artifact and LOOK at it.** First true picture of
-   this app in the user's engine.
-3. **Set `VITE_GOOGLE_PLACES_KEY` in Vercel** (user action; unchanged, still the one
-   blocker on venue discovery in production).
+1. **Set `VITE_GOOGLE_PLACES_KEY` in Vercel** (user action). Until then the deployed Find
+   tab shows its missing-configuration state, correctly and by design, and no venue
+   behaviour is confirmable in production.
+2. **Flip the WebKit steps from `continue-on-error` to a gate.** The arrival state is no
+   longer unknown — it was 38/38.
+3. **Download the `webkit-screenshots` artifact and look at it.** Nobody has yet.
 
 ## Known risks and open questions
 
-- **The user's reported bottom gap is still not confirmed fixed.** The `vh` → `dvh`
-  conversion remains the likely cause. WebKit in CI may now be able to *show* it —
-  that is the point of this change — but nothing has been observed yet.
-- **The WebKit suite may be red on arrival** for reasons that are harness artifacts
-  (WebKit lacks some Chromium launch/route behaviour) rather than app defects. Read each
-  failure before believing it; §13.3's finding was that three of six grep-found
-  violations were false positives.
+- **The user's reported bottom gap is still not confirmed fixed.** Never reproduced here;
+  WebKit in CI may now be able to show it, but nothing has been observed.
+- **The Find tab opens on a form, not on food.** Nothing on the first screen answers
+  "what's good right now" until the user fills something in and taps. Against §5's
+  Orient stage that is the largest remaining product gap, and it is a design decision,
+  not a bug — raised, deliberately not acted on.
+- **The venue hero has no photo fallback.** With no image it renders as a large flat
+  pink→black gradient occupying most of the first screen. Only observed in this
+  container, where images cannot load, so it is unconfirmed whether real venues without
+  a photo hit it. Worth checking once the Places key is live.
+- **Hex ratchet is 71** and unchanged; the remainder has no exact token (status tints,
+  one-off greys). Add the token first, then bind, then lower the ceiling.
 - **`1,5 large, diced Onion`** — scaling discrete items yields fractional counts.
   Pre-existing, never in scope. Worth a product decision.
