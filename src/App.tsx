@@ -389,7 +389,25 @@ export default function App() {
 
  // Detect the user's real city automatically on first load — no manual picker.
  // If they deny or the browser has no geolocation, we quietly keep the cached/default city.
+ //
+ // EXCEPT when the link already named a city. `?city=` wins over everything (see the
+ // useState above), so asking the OS for a position we are then going to discard buys
+ // nothing and costs the user a permission dialog over the first screen they ever see.
+ // Someone opening "what's good in Lisbon" is asking about Lisbon, not about where they
+ // are standing. The explicit "Sort nearby" control still requests it (userInitiated),
+ // so nothing is taken away — it just stops being the app's opening move.
+ //
+ // This also unblocks the iOS capture: every screenshot the workflow has ever produced
+ // was Safari's location prompt sitting on top of the Find tab, because CI loads
+ // `?tab=…&city=London`. Denying the permission at the simulator level did NOT fix that
+ // — `simctl privacy` governs Safari's own access, while the per-site web prompt is
+ // separate. This does fix it, and is the right behaviour regardless of CI.
  useEffect(() => {
+ const cityFromUrl = (() => {
+ try { return new URLSearchParams(window.location.search).get('city')?.trim() || ''; }
+ catch { return ''; }
+ })();
+ if (cityFromUrl) return;
  requestUserLocation();
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, []);
