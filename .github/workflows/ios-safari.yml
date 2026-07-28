@@ -110,6 +110,15 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
+          # Deny location BEFORE any capture. Runs 2-5 all "succeeded" and all produced
+          # nine screenshots, but every one of them was the same screen: Safari's
+          # "Allow to use your location?" alert, raised on first load, sat on top of the
+          # app and swallowed the tab navigations underneath it. The files were named
+          # light-stay-in.png, dark-saved.png and so on, and none of them showed those
+          # tabs. A green run and a full artifact directory proved nothing.
+          # Denying is also the more honest default: it captures what a user who
+          # declines the prompt sees, which is the state the app must degrade into.
+          xcrun simctl privacy "$UDID" deny location com.apple.mobilesafari || true
           echo "Booted $DEVICE ($UDID)"
 
       - name: Capture — light
