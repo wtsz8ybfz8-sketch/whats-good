@@ -3,7 +3,7 @@
  * Falls back silently to hardcoded data on any failure.
  */
 
-import { Venue } from './venue';
+import { Venue, MealKey, VenueAttributeKey } from './venue';
 import { localiseHours, placesLanguageCode, stripDayPrefix, venueDayIndex } from './locale';
 
 const PLACES_BASE = 'https://places.googleapis.com/v1';
@@ -31,6 +31,7 @@ interface Place {
     longitude: number;
   };
   rating?: number;
+  userRatingCount?: number;
   priceLevel?: string;
   primaryType?: string;
   primaryTypeDisplayName?: { text?: string };
@@ -39,6 +40,23 @@ interface Place {
   websiteUri?: string;
   regularOpeningHours?: PlaceOpeningHours;
   utcOffsetMinutes?: number;
+  editorialSummary?: { text?: string; languageCode?: string };
+  /* All optional booleans below are ABSENT when Google has no answer — never false.
+     Keep them optional here so the tri-state survives into Venue; see venue.ts MealKey. */
+  servesBreakfast?: boolean;
+  servesBrunch?: boolean;
+  servesLunch?: boolean;
+  servesDinner?: boolean;
+  servesDessert?: boolean;
+  servesCoffee?: boolean;
+  dineIn?: boolean;
+  takeout?: boolean;
+  delivery?: boolean;
+  outdoorSeating?: boolean;
+  reservable?: boolean;
+  servesVegetarianFood?: boolean;
+  goodForChildren?: boolean;
+  goodForGroups?: boolean;
 }
 
 interface PlacesSearchResponse {
@@ -180,6 +198,30 @@ async function searchTextOnce(
         'places.regularOpeningHours',
         // Lets us resolve "today" where the venue is rather than where the phone is.
         'places.utcOffsetMinutes',
+        'places.userRatingCount',
+        /* BILLING NOTE — everything below this line is the Enterprise + Atmosphere SKU.
+           id/photos/location are Essentials; displayName/priceLevel/primaryType are Pro;
+           rating/websiteUri/phone/openingHours are Enterprise. The serving and atmosphere
+           booleans and editorialSummary sit in the highest tier, so adding them raises the
+           per-request cost of EVERY text search this app makes — and fetchVenues fires two
+           searches per query. Worth it for the detail card, but it is a real cost change,
+           not a free field. If the bill matters more than the depth, this block is the
+           thing to cut, and the render sites already degrade cleanly to nothing. */
+        'places.editorialSummary',
+        'places.servesBreakfast',
+        'places.servesBrunch',
+        'places.servesLunch',
+        'places.servesDinner',
+        'places.servesDessert',
+        'places.servesCoffee',
+        'places.dineIn',
+        'places.takeout',
+        'places.delivery',
+        'places.outdoorSeating',
+        'places.reservable',
+        'places.servesVegetarianFood',
+        'places.goodForChildren',
+        'places.goodForGroups',
       ].join(','),
     },
     body: JSON.stringify({
@@ -199,11 +241,116 @@ async function searchTextOnce(
 }
 
 /**
+ * Copies only the keys Google actually answered.
+ *
+ * `false` is kept — it is a real finding ("does not serve breakfast"). `undefined` is
+ * dropped, because Google omits these entirely when nobody has surveyed the venue.
+ * Returns `undefined` when NOTHING was answered, so the caller stores no object at all
+ * and the render site collapses the whole module rather than drawing an empty heading.
+ * That is the graceful fallback: most venues answer none of these.
+ */
+function definedBooleans<K extends string>(
+  entries: [K, boolean | undefined][],
+): Partial<Record<K, boolean>> | undefined {
+  const out: Partial<Record<K, boolean>> = {};
+  let answered = false;
+  for (const [key, value] of entries) {
+    // Explicitly typeof, NOT truthiness — `false` must survive. See venue.ts MealKey.
+    if (typeof value === 'boolean') {
+      out[key] = value;
+      answered = true;
+    }
+  }
+  return answered ? out : undefined;
+}
+
+/**
+ * The whole week, localised, rotated so the venue's today comes first.
+ *
+ * Rotating rather than shipping a day index means the list is self-describing: each line
+ * still carries its own day label, so nothing downstream has to be told which row is
+ * "now" or re-derive it from a timezone it does not have. Day resolved in the VENUE's
+ * timezone (venueDayIndex), not the phone's.
+ */
+function weeklyHours(hours?: PlaceOpeningHours, utcOffsetMinutes?: number): string[] | undefined {
+  const lines = hours?.weekdayDescriptions;
+  if (!lines || lines.length !== 7) return undefined;
+  const today = venueDayIndex(utcOffsetMinutes);
+  // localiseHours keeps the day label and rewrites only the clock, so a 24-hour reader
+  // sees "Monday: 09:00 – 22:00" rather than the AM/PM Google returns.
+  return Array.from({ length: 7 }, (_, i) => localiseHours(lines[(today + i) % 7]));
+}
+
+/**
+ * Query phrasings, as a pool rather than a fixed pair.
+ *
+ * Places caps a text search at 20 results and ranks them its own way, so one phrasing
+ * returns substantially the same venues every time — the "same ten restaurants dominate
+ * every cycle" problem. Two levers, and deliberately neither of them costs an extra
+ * billed request:
+ *
+ *   1. ROTATE which phrasings are used, from this pool, so different cycles reach
+ *      different corners of Google's ranking.
+ *   2. INTERLEAVE the result sets instead of concatenating them (see fetchVenues).
+ *
+ * Widening to more simultaneous queries would also work and is the obvious move — it is
+ * not taken because it multiplies the per-cycle cost of an already Enterprise-tier field
+ * mask. Two requests in, more variety out.
+ */
+const CUISINE_QUERY_TEMPLATES = [
+  (q: string, city: string) => `${q} restaurant in ${city}`,
+  (q: string, city: string) => `best ${q} places to eat in ${city}`,
+  (q: string, city: string) => `popular ${q} spots in ${city}`,
+  (q: string, city: string) => `highly rated ${q} dining in ${city}`,
+  (q: string, city: string) => `local favourite ${q} in ${city}`,
+  (q: string, city: string) => `where to eat ${q} in ${city}`,
+];
+
+const GENERIC_QUERY_TEMPLATES = [
+  (_q: string, city: string) => `best restaurants in ${city}`,
+  (_q: string, city: string) => `popular local eateries in ${city}`,
+  (_q: string, city: string) => `highly rated places to eat in ${city}`,
+  (_q: string, city: string) => `neighbourhood favourite restaurants in ${city}`,
+  (_q: string, city: string) => `well reviewed dining in ${city}`,
+  (_q: string, city: string) => `where locals eat in ${city}`,
+];
+
+/**
+ * Which slice of the phrasing pool this call gets.
+ *
+ * Module-level and monotonic, NOT random and NOT clock-derived. That matters twice: the
+ * first fetch of a fresh page load is always offset 0, so the verify harness sees a
+ * deterministic first screen; and every subsequent call — which in practice means the
+ * user pressing "Find other eateries" — advances to genuinely different phrasings rather
+ * than reshuffling the same response.
+ */
+let queryCycle = 0;
+
+/**
+ * Round-robin merge, preserving each set's internal ranking.
+ *
+ * `.flat()` put all 20 results of query one ahead of query two, so under any downstream
+ * cap the second query was decorative: billed for, fetched, never seen. Taking one from
+ * each in turn means both phrasings reach the user, and the top hit of each is on the
+ * first screen.
+ */
+function interleave<T>(sets: T[][]): T[] {
+  const merged: T[] = [];
+  const longest = Math.max(0, ...sets.map((s) => s.length));
+  for (let i = 0; i < longest; i++) {
+    for (const set of sets) {
+      if (i < set.length) merged.push(set[i]);
+    }
+  }
+  return merged;
+}
+
+/**
  * Fetches restaurants via the Google Places Text Search API.
- * Runs two differently-phrased queries in parallel and merges the deduped
- * results (each call caps at the API's 20-result ceiling, so phrasing
- * variety is how we widen the pool). Price is filtered server-side via
- * priceLevels so all 20 slots per call hold matching venues.
+ * Runs two differently-phrased queries in parallel — rotated per cycle from a pool — and
+ * merges the deduped results by round-robin rather than concatenation, so both phrasings
+ * reach the first screen. Price is filtered server-side via priceLevels so all 20 slots
+ * per call hold matching venues.
  * Returns an empty array on any failure so callers can silently fall back.
  */
 export async function fetchVenues(
@@ -217,22 +364,24 @@ export async function fetchVenues(
 
   try {
     const priceLevels = tierToPriceLevels(priceTier);
-    const queries = query
-      ? [
-          `${query} restaurant in ${city}`,
-          `best ${query} places to eat in ${city}`,
-        ]
-      : [
-          `best restaurants in ${city}`,
-          `popular local eateries in ${city}`,
-        ];
+    const templates = query ? CUISINE_QUERY_TEMPLATES : GENERIC_QUERY_TEMPLATES;
+    // Two adjacent phrasings from the pool, advancing one full pair per cycle.
+    const offset = (queryCycle * 2) % templates.length;
+    queryCycle++;
+    const queries = [
+      templates[offset](query, city),
+      templates[(offset + 1) % templates.length](query, city),
+    ];
 
     const resultSets = await Promise.all(
       queries.map((q) => searchTextOnce(key, q, priceLevels).catch(() => [] as Place[])),
     );
 
+    // Dedupe AFTER interleaving, so a venue both phrasings return keeps the better of its
+    // two positions instead of being pinned to whichever set happened to be concatenated
+    // first.
     const seen = new Set<string>();
-    const places = resultSets.flat().filter((p) => {
+    const places = interleave(resultSets).filter((p) => {
       const id = p.id ?? p.displayName?.text ?? '';
       if (!id || seen.has(id)) return false;
       seen.add(id);
@@ -244,7 +393,11 @@ export async function fetchVenues(
     return places.map((place, index): Venue => {
       const name = place.displayName?.text ?? 'Restaurant';
       const address = place.formattedAddress ?? city;
-      const rating = Math.round((place.rating ?? 4.0) * 10) / 10;
+      /* No `?? 4.0`. That default gave every unrated venue a 4.0 and rendered it beside a
+         star as though it had been earned — an invented fact, and one that also fed the
+         sort. Undefined stays undefined; the render sites omit the field. */
+      const rating =
+        typeof place.rating === 'number' ? Math.round(place.rating * 10) / 10 : undefined;
       const priceTier = priceLevelToTier(place.priceLevel);
       const phone = place.nationalPhoneNumber ?? '';
       const website =
@@ -297,6 +450,30 @@ export async function fetchVenues(
         photoUrl,
         openNow,
         hoursToday,
+        userRatingCount: place.userRatingCount,
+        /* Google's own words, not ours. Absent for most venues — the render site drops
+           the module rather than substituting a generated sentence, which is the whole
+           point of §8: no dish, no module. */
+        editorialSummary: place.editorialSummary?.text,
+        hoursWeekly: weeklyHours(place.regularOpeningHours, place.utcOffsetMinutes),
+        meals: definedBooleans<MealKey>([
+          ['breakfast', place.servesBreakfast],
+          ['brunch', place.servesBrunch],
+          ['lunch', place.servesLunch],
+          ['dinner', place.servesDinner],
+          ['dessert', place.servesDessert],
+          ['coffee', place.servesCoffee],
+        ]),
+        attributes: definedBooleans<VenueAttributeKey>([
+          ['dineIn', place.dineIn],
+          ['takeout', place.takeout],
+          ['delivery', place.delivery],
+          ['outdoorSeating', place.outdoorSeating],
+          ['reservable', place.reservable],
+          ['servesVegetarianFood', place.servesVegetarianFood],
+          ['goodForChildren', place.goodForChildren],
+          ['goodForGroups', place.goodForGroups],
+        ]),
       };
     });
   } catch {

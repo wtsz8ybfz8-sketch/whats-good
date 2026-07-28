@@ -295,6 +295,100 @@ async function main() {
     `left at ${restored.before}px, returned to ${restored.after}px`,
   );
 
+  /* --- venue detail: the Places profile fields -------------------------------
+   *
+   * These exist because the profile fields (servesLunch, editorialSummary, rating…)
+   * are tri-state at the source and the failure mode is silent: Google omits a key for
+   * any venue nobody surveyed, so a truthiness filter looks perfect on a fully-profiled
+   * fixture and quietly reports "does not serve breakfast" for half the world. The
+   * fixture is uneven on purpose (verify/fixtures/places.mjs) so each assertion below
+   * has a venue that makes it fail.
+   *
+   * What would be RED, per check:
+   *   meals render          — pl-1 profiled, block missing => the mapping dropped it
+   *   false is not a chip   — pl-2 has servesBreakfast:false; a Breakfast chip => truthiness
+   *   no orphan star        — pl-3 has NO rating; a star with no number => unguarded render
+   *   bare venue is clean   — pl-5 has no profile at all; any of the blocks => invented UI
+   */
+  const openVenue = async (name) => {
+    const c = page.locator(`[role="button"][aria-label^="View ${name}"]`).first();
+    if (!(await c.count())) return null;
+    await c.scrollIntoViewIfNeeded().catch(() => {});
+    await c.click({ force: true }).catch(() => {});
+    await page.waitForTimeout(900);
+    const facts = await page.evaluate(() => {
+      const txt = (document.body.innerText || '');
+      const chips = Array.from(document.querySelectorAll('li')).map((l) => l.textContent.trim());
+      // An "orphan star" is a star icon with no digit anywhere in its own row — the
+      // exact shape the removed `?? 4.0` default used to hide.
+      const orphanStar = Array.from(document.querySelectorAll('svg.lucide-star')).some((s) => {
+        const row = s.closest('span, div');
+        return row ? !/\d/.test(row.textContent || '') : false;
+      });
+      return {
+        hasGoodToKnow: /Good to know/i.test(txt),
+        hasConfirmedMeals: /Confirmed meals/i.test(txt),
+        hasGoogleSays: /What Google says/i.test(txt),
+        hasWeekly: !!document.querySelector('details'),
+        chips,
+        orphanStar,
+      };
+    });
+    await page.goBack().catch(() => {});
+    await page.waitForTimeout(900);
+    return facts;
+  };
+
+  const profiled = await openVenue('Trattoria Sorella');
+  if (!profiled) {
+    skip('venue detail: profile fields', 'Trattoria Sorella card not found');
+  } else {
+    check('venue detail: confirmed meals render for a profiled venue',
+      profiled.hasGoodToKnow && profiled.hasConfirmedMeals && profiled.chips.includes('Lunch'),
+      `good-to-know=${profiled.hasGoodToKnow} meals=${profiled.hasConfirmedMeals}`);
+    check("venue detail: Google's editorial summary renders when present",
+      profiled.hasGoogleSays, 'editorialSummary supplied by fixture pl-1');
+    check('venue detail: full-week hours disclosure present',
+      profiled.hasWeekly, 'expected a <details> holding the 7 weekday lines');
+  }
+
+  const triState = await openVenue('Kaya Ramen Bar');
+  if (!triState) {
+    skip('venue detail: tri-state meals', 'Kaya Ramen Bar card not found');
+  } else {
+    // The single most important assertion in this block.
+    check('venue detail: a confirmed-FALSE meal is not rendered as served',
+      !triState.chips.includes('Breakfast') && !triState.chips.includes('Brunch'),
+      `servesBreakfast:false and servesBrunch:false must not appear; chips=[${triState.chips.join(', ')}]`);
+    check('venue detail: confirmed-TRUE meals still render alongside the false ones',
+      triState.chips.includes('Lunch') && triState.chips.includes('Dinner'),
+      `chips=[${triState.chips.join(', ')}]`);
+    check('venue detail: an UNKNOWN meal is not rendered either',
+      !triState.chips.includes('Dessert') && !triState.chips.includes('Coffee'),
+      'servesDessert/servesCoffee absent from fixture => must not appear');
+  }
+
+  const unrated = await openVenue('Maison Verte');
+  if (!unrated) {
+    skip('venue detail: unrated venue', 'Maison Verte card not found');
+  } else {
+    check('venue detail: no star icon without a rating beside it',
+      !unrated.orphanStar,
+      'pl-3 publishes no rating; the invented 4.0 default was removed');
+    check('venue detail: no profile modules invented for an unprofiled venue',
+      !unrated.hasGoodToKnow && !unrated.hasGoogleSays,
+      'pl-3 has no meals, attributes or summary — the blocks must be absent, not empty');
+  }
+
+  const bare = await openVenue('Aoyama Soba House');
+  if (!bare) {
+    skip('venue detail: bare venue', 'Aoyama Soba House card not found');
+  } else {
+    check('venue detail: a venue with no profile fields renders none of the new modules',
+      !bare.hasGoodToKnow && !bare.hasGoogleSays,
+      'this is what most real venues return — it must degrade to nothing, not to filler');
+  }
+
   // --- layout + hit targets, every view ---------------------------------------
   const MEASURE = () => {
     const miss = [];

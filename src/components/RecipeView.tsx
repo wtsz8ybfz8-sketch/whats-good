@@ -550,10 +550,16 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Rating · price · distance · open now */}
  <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-mono text-[var(--text-muted)]">
+ {/* Guarded with its separator — `rating` is optional since the invented 4.0 default
+     was removed (venue.ts). Unguarded, an unrated venue drew a star beside nothing. */}
+ {typeof rawEatery.rating ==='number' && (
+ <>
  <span className="flex items-center gap-1 text-[var(--charcoal)] font-bold">
- <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {rawEatery.rating}
+ <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {formatQuantity(rawEatery.rating, 1)}
  </span>
  <span className="opacity-30">·</span>
+ </>
+ )}
  <span className="font-bold text-[var(--charcoal)]" aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
  {typeof r.tags[1] ==='string' && r.tags[1].includes('km') && (
  <>

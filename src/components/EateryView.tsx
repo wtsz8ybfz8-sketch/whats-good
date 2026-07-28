@@ -13,6 +13,8 @@ import { getHappyHourStatus, formatDays } from '../venueExtras';
 import { cuisineIcon } from '../cuisineIcon';
 import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier, priceTierLabel } from '../placesService';
+import { formatQuantity } from '../locale';
+import type { MealKey, VenueAttributeKey } from '../venue';
 
 interface EateryViewProps {
   recipes: ParsedRecipe[];
@@ -49,6 +51,52 @@ export const EateryView: React.FC<EateryViewProps> = ({
   // we genuinely have a confirmed window for this place, never fabricated per-venue.
   const realHH = findCuratedHappyHour(rawEatery.name);
   const hhStatus = realHH ? getHappyHourStatus(realHH) : null;
+
+  /* ── Places profile fields ────────────────────────────────────────────────────────
+     Everything below is tri-state at the source: Google omits these keys entirely for
+     venues nobody has surveyed, so `false` means "confirmed no" and absent means "nobody
+     said". We surface only the confirmed YES values and label the block as confirmed, so
+     an absent meal reads as unknown rather than as a denial. Filtering on `=== true`
+     rather than truthiness is what keeps that distinction intact. */
+  const MEAL_LABELS: Record<MealKey, string> = {
+    breakfast: 'Breakfast',
+    brunch: 'Brunch',
+    lunch: 'Lunch',
+    dinner: 'Dinner',
+    dessert: 'Dessert',
+    coffee: 'Coffee',
+  };
+  const MEAL_ORDER: MealKey[] = ['breakfast', 'brunch', 'lunch', 'dinner', 'dessert', 'coffee'];
+  const servedMeals = MEAL_ORDER.filter((m) => rawEatery.meals?.[m] === true);
+
+  const ATTRIBUTE_LABELS: Record<VenueAttributeKey, string> = {
+    dineIn: 'Dine-in',
+    takeout: 'Takeaway',
+    delivery: 'Delivery',
+    outdoorSeating: 'Outdoor seating',
+    reservable: 'Takes bookings',
+    servesVegetarianFood: 'Vegetarian options',
+    goodForChildren: 'Good for kids',
+    goodForGroups: 'Good for groups',
+  };
+  const ATTRIBUTE_ORDER: VenueAttributeKey[] = [
+    'outdoorSeating',
+    'reservable',
+    'servesVegetarianFood',
+    'goodForGroups',
+    'goodForChildren',
+    'dineIn',
+    'takeout',
+    'delivery',
+  ];
+  const confirmedAttributes = ATTRIBUTE_ORDER.filter((a) => rawEatery.attributes?.[a] === true);
+
+  /* hoursWeekly arrives rotated so the venue's today is index 0 (see placesService).
+     Rendered with a native <details>, deliberately not useState: this component early-
+     returns above when there is no venue, so any hook added here would sit after a
+     conditional return and change hook order between renders. <details> also survives
+     with no JS and gets the platform's own disclosure semantics for free. */
+  const weeklyHours: string[] = rawEatery.hoursWeekly ?? [];
 
   // Utility Block source of truth. Assembled then filtered, so a field we don't have
   // produces one fewer tile instead of a tile rendering an empty string. `openNow` is
@@ -167,11 +215,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
               /55 over a photograph is not a contrast ratio, it's a hope. Rating, spend and
               distance are the three facts someone standing on a street actually reads. */}
           <div className="flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-wider text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
-            <span className="flex items-center gap-1.5">
-              <Star className="w-3 h-3 fill-white text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]" />
-              {rawEatery.rating}
-            </span>
-            <span className="text-white/45">·</span>
+            {/* Guarded: `rating` is optional now that the invented 4.0 default is gone
+                (see venue.ts). An unguarded render put a star with nothing beside it on
+                every unrated venue — the separator has to go with it, or the row opens
+                with a stray interpunct. The count rides along because a 4.9 from three
+                people is not a 4.9, and Google publishes both. */}
+            {typeof rawEatery.rating === 'number' && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <Star className="w-3 h-3 fill-white text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]" />
+                  {formatQuantity(rawEatery.rating, 1)}
+                  {typeof rawEatery.userRatingCount === 'number' && (
+                    <span className="text-white/70 normal-case tracking-normal">
+                      ({formatQuantity(rawEatery.userRatingCount, 0)})
+                    </span>
+                  )}
+                </span>
+                <span className="text-white/45">·</span>
+              </>
+            )}
             <span aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
             {hasRealDistance && (
               <>
@@ -311,6 +373,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
        * in the sidebar; that comes from happyHourData.ts and is human-confirmed. */}
       <div className="px-5 sm:px-10 mb-8">
 
+        {/* ── WHAT GOOGLE SAYS ─────────────────────────────────────────────────────
+            Google's editorialSummary — its own one-line description of the place. This is
+            the closest thing Places publishes to a point of view, and it is the "one
+            useful distinctive detail" §8.5 asks for on venues that have one. Attributed
+            out loud, because the whole product rests on the reader knowing who is
+            speaking; unattributed it would read as our recommendation thesis, which we
+            have not earned. Absent for most venues, and then this module does not
+            render — no substitute sentence, no generated stand-in. */}
+        {rawEatery.editorialSummary && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              What Google says
+            </p>
+            <p className="font-sans text-[15px] leading-relaxed text-[var(--charcoal)] max-w-[62ch]">
+              {rawEatery.editorialSummary}
+            </p>
+          </div>
+        )}
+
         {/* ── VIBE & ATMOSPHERE MATCH ──────────────────────────────────────────────
             Answers "is this place right for how I feel", which is the question the whole
             app is built around. `vibeMatch` is an authored field on the venue record, not
@@ -360,10 +441,86 @@ export const EateryView: React.FC<EateryViewProps> = ({
                 </div>
               ))}
             </div>
-            {rawEatery.hoursToday && (
+            {/* Today stays on the surface — it is the only hours line that decides
+                whether you leave the house now. The rest of the week is one tap behind a
+                native disclosure so the page keeps its shape (§5, Explore: go deeper
+                without losing your place). weeklyHours[0] IS today, so the list opens on
+                the line the summary already showed and reads forward from there. */}
+            {rawEatery.hoursToday && weeklyHours.length === 0 && (
               <p className="mt-2.5 font-mono text-xs text-[var(--text-muted)]">
                 Today: {rawEatery.hoursToday}
               </p>
+            )}
+            {weeklyHours.length > 0 && (
+              <details className="mt-2.5 group">
+                <summary className="hit-44 list-none cursor-pointer font-mono text-xs text-[var(--text-muted)] hover:text-[var(--charcoal)] transition-colors flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 flex-shrink-0" />
+                  <span>
+                    {rawEatery.hoursToday ? `Today: ${rawEatery.hoursToday}` : 'Opening hours'}
+                  </span>
+                  <span className="text-[var(--accent-terracotta)] group-open:hidden">All week</span>
+                  <span className="text-[var(--accent-terracotta)] hidden group-open:inline">Hide</span>
+                </summary>
+                <ul className="mt-2.5 flex flex-col">
+                  {weeklyHours.map((line, i) => (
+                    <li
+                      key={line}
+                      className={`font-mono text-xs py-1.5 border-b border-[var(--row-border)] last:border-0 ${
+                        i === 0
+                          ? 'text-[var(--charcoal)] font-bold'
+                          : 'text-[var(--text-muted)]'
+                      }`}
+                    >
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+
+        {/* ── GOOD TO KNOW ─────────────────────────────────────────────────────────
+            Confirmed meals and service attributes from Places' profile fields.
+            Only `=== true` values render. That is the whole design: Google omits these
+            keys for venues nobody surveyed, so absence means unknown, not "no" — and the
+            caption says "Confirmed" out loud so a missing Breakfast chip cannot be read
+            as a venue that does not serve breakfast. A truthiness filter here would have
+            been indistinguishable in the happy case and wrong in every unsurveyed one.
+            Both lists empty -> no heading, no empty state, module gone. */}
+        {(servedMeals.length > 0 || confirmedAttributes.length > 0) && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              Good to know
+            </p>
+
+            {servedMeals.length > 0 && (
+              <div className="mb-4">
+                <p className="font-mono text-xs text-[var(--text-muted)] mb-2">Confirmed meals</p>
+                <ul className="flex flex-wrap gap-2">
+                  {servedMeals.map((m) => (
+                    <li
+                      key={m}
+                      className="rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] px-3 py-1.5 font-sans text-[13px] font-semibold text-[var(--accent-terracotta)]"
+                    >
+                      {MEAL_LABELS[m]}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {confirmedAttributes.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {confirmedAttributes.map((a) => (
+                  <li
+                    key={a}
+                    className="rounded-full border border-[var(--rule)] px-3 py-1.5 font-sans text-[13px] text-[var(--charcoal)]"
+                  >
+                    {ATTRIBUTE_LABELS[a]}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}
