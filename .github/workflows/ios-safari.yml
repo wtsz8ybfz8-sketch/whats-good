@@ -221,8 +221,17 @@ jobs:
       # run so 20MB of PNGs per push cannot accumulate in the repository forever. The
       # images are halved in scale first (3x framebuffer -> 1.5x), which keeps them
       # legible at a fraction of the size.
+      # Runs on ANY ref, not just main. Pinning this to main meant the one route by which
+      # a screenshot can actually be looked at from an agent container — artifact
+      # downloads 403 through the proxy — was closed on exactly the branches where a
+      # capture change is being developed and most needs checking. Run 12 fixed both
+      # capture bugs, reported "8 unique hashes across 8 captures" and "scheme":"dark",
+      # and published nothing, so the eight PNGs it took have still never been seen.
+      # ci/ios-shots is orphaned and force-pushed every run and holds nothing worth
+      # keeping (see below), so a branch run overwriting a main run costs nothing;
+      # README.txt records which commit the images came from.
       - name: Publish screenshots to the ci/ios-shots branch
-        if: always() && github.ref == 'refs/heads/main'
+        if: always()
         run: |
           for f in shots/*.png; do sips -Z 800 "$f" >/dev/null 2>&1 || true; done
           grep PROBE_RESULT server.log > shots/PROBE.txt 2>/dev/null || echo "none" > shots/PROBE.txt

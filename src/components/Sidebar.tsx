@@ -1,7 +1,7 @@
 import React from'react';
 import { createPortal } from'react-dom';
 import { Dimensions } from'../types';
-import { Search, SlidersHorizontal, X, type LucideIcon } from'lucide-react';
+import { Search, SlidersHorizontal, X, ChevronRight, type LucideIcon } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
 
 interface SidebarProps {
@@ -72,13 +72,26 @@ const FilterGroup: React.FC<{
   * list long enough to earn it. Everything else wraps, or lives in the sheet.
   */
  scroll?: boolean;
+ /**
+  * Right-aligned control on the title row. Exists because the comment above was
+  * wrong: "the clipped chip IS the affordance" is not true on a phone, where the
+  * scrollbar is hidden and a chip sliced flat against the bezel reads as broken
+  * layout rather than as an invitation. A user who does not know to swipe hits a
+  * dead end holding the app's primary filter axis. A fade was tried and is still
+  * there; it softens the edge but still only HINTS. This is a door: it names how
+  * many options exist and opens all of them.
+  */
+ action?: React.ReactNode;
  children: React.ReactNode;
-}> = ({ title, optional, scroll, children }) => (
+}> = ({ title, optional, scroll, action, children }) => (
  <div className="flex flex-col gap-3">
+ <div className="flex items-baseline justify-between gap-3">
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  {title}
  {optional && <span className="font-normal text-[var(--text-muted)]"> — optional</span>}
  </span>
+ {action}
+ </div>
  {scroll ? (
  // Scroll on phones only. At 1440 the rail still scrolled inside a fixed-width
  // card, so the last chip was sliced mid-word ("Burger…") against the card edge
@@ -412,7 +425,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  {/* THE one horizontal rail on this screen. Cuisine is the primary axis — it is
  the decision most people arrive already holding ("I want sushi"), and it is
  the only list long enough that a rail beats a wrap. */}
- <FilterGroup title="Cuisine" optional scroll>
+ <FilterGroup
+ title="Cuisine"
+ optional
+ scroll
+ action={
+ /* Below lg only: at 1440 the rail wraps and nothing is hidden, so a "see all"
+    there would promise content already on screen. The count is the honest part —
+    it tells the user there are 14 rather than the 4 they can see, which is the
+    fact the clipped edge was failing to convey. */
+ cuisines.length > 0 ? (
+ <button
+ type="button"
+ onClick={() => setSheetOpen(true)}
+ className="tap-44 lg:hidden inline-flex items-center justify-center gap-1 text-[12px] font-semibold text-[var(--accent-terracotta)] cursor-pointer hover:opacity-70 transition-opacity"
+ >
+ All {cuisines.length}
+ <ChevronRight className="w-3 h-3" />
+ </button>
+ ) : null
+ }
+ >
  {cuisines.map((c) => (
  <Chip key={c.value} label={c.label} selected={dimensions.regional === c.value} onClick={() => toggle('regional', c.value)} icon={cuisineIcon(c.label)} />
  ))}
@@ -462,6 +495,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  activeCount={activeCount}
  onClear={clearAll}
  >
+ {/* Cuisine leads the sheet, and WRAPS here — no rail, nothing clipped. The rail
+     on the canvas can only ever show four or five at a phone width; this is where
+     "All 14" has to land or the button is a promise the sheet does not keep.
+     Deliberately duplicated rather than moved: cuisine is the primary axis and
+     belongs on the canvas for the people who can see the one they want, while
+     everyone else now has a way to the rest. lg:hidden on the button means desktop
+     never sees a door to content its wrapped rail already shows. */}
+ <FilterGroup title="Cuisine" optional>
+ {cuisines.map((c) => (
+ <Chip key={c.value} label={c.label} selected={dimensions.regional === c.value} onClick={() => toggle('regional', c.value)} icon={cuisineIcon(c.label)} />
+ ))}
+ </FilterGroup>
+
  <FilterGroup title="Mood" optional>
  {moods.map((m) => (
  <Chip key={m.value} label={m.label} selected={dimensions.vibe === m.value} onClick={() => toggle('vibe', m.value)} />
