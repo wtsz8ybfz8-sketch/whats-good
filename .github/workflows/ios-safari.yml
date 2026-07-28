@@ -41,9 +41,17 @@ on:
   push:
     branches: [main]
 
+# NOT cancel-in-progress. Copied from ci.yml, where cancelling a superseded run is
+# right because that job answers "did this commit break a rule" and a newer commit
+# makes the old answer pointless. This job answers "what does the real thing look
+# like", takes ~10 minutes to boot a simulator and capture, and a second push landing
+# during it kills the capture and leaves the artifact empty — which is exactly what
+# happened on this workflow's first run: a follow-up doc commit cancelled it at the
+# boot step and the upload failed with no files. A queued run finishes and produces
+# pictures; a cancelled one produces nothing.
 concurrency:
   group: ios-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   simulator:
@@ -70,10 +78,14 @@ jobs:
           # the key set in Vercel.
           VITE_GOOGLE_PLACES_KEY: ci-fixture-key
 
+      # verify/ios-server.mjs rather than `npx serve`, because it also accepts the
+      # probe page's POST and prints the device's real inset values to stdout. simctl
+      # cannot read the DOM, so without that round trip those numbers would exist only
+      # as pixels inside a screenshot and stay exactly as unknown as before.
       - name: Serve the build
         run: |
           cp verify/safe-area-probe.html dist/safe-area-probe.html
-          npx --yes serve -s dist -l 3000 &
+          node verify/ios-server.mjs dist > server.log 2>&1 &
           npx --yes wait-on -t 60000 http://localhost:3000/
 
       - name: Boot the simulator
@@ -122,12 +134,52 @@ jobs:
             xcrun simctl io "$U" screenshot "shots/dark-$tab.png"
           done
 
+      # The measurement, as TEXT, in the job log — the half of this that is readable
+      # without downloading anything.
+      - name: Report the device's real safe-area insets
+        if: always()
+        run: |
+          echo "### iOS Simulator — measured on device" >> "$GITHUB_STEP_SUMMARY"
+          if grep -q PROBE_RESULT server.log; then
+            grep PROBE_RESULT server.log | tail -2 | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "no PROBE_RESULT — the probe page did not report back" | tee -a "$GITHUB_STEP_SUMMARY"
+            tail -20 server.log || true
+          fi
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ios-safari-screenshots
           path: shots/*.png
           if-no-files-found: error
+
+      # Publish the screenshots to a branch, because the artifact is NOT reachable from
+      # the agent container: artifact downloads redirect to an Azure blob host, and the
+      # agent proxy answers 403 to every host it does not allow. Verified — the download
+      # was attempted and refused. A branch is fetched over the same git transport that
+      # already works, so screenshots from the real device become readable files rather
+      # than a link nobody can open.
+      #
+      # ORPHAN, FORCE-PUSHED, one commit. The history is deliberately thrown away every
+      # run so 20MB of PNGs per push cannot accumulate in the repository forever. The
+      # images are halved in scale first (3x framebuffer -> 1.5x), which keeps them
+      # legible at a fraction of the size.
+      - name: Publish screenshots to the ci/ios-shots branch
+        if: always() && github.ref == 'refs/heads/main'
+        run: |
+          for f in shots/*.png; do sips -Z 800 "$f" >/dev/null 2>&1 || true; done
+          grep PROBE_RESULT server.log > shots/PROBE.txt 2>/dev/null || echo "none" > shots/PROBE.txt
+          echo "commit ${{ github.sha }} — $(date -u)" > shots/README.txt
+          cd shots
+          git init -q .
+          git config user.email noreply@anthropic.com
+          git config user.name  "iOS Safari CI"
+          git checkout -q --orphan ci/ios-shots
+          git add -A
+          git commit -q -m "iOS Simulator screenshots for ${{ github.sha }}"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci/ios-shots
+          echo "Pushed to ci/ios-shots"
 
       - name: Shut down
         if: always()

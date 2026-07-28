@@ -80,6 +80,20 @@
     (top || bottom || left || right)
       ? `INSETS LIVE  ${top}/${right}/${bottom}/${left}`
       : 'ALL ZERO — cover not applied, or not a notched device';
+
+  // Report back to the harness. simctl can screenshot the framebuffer but cannot read
+  // the DOM, so without this the numbers above exist only as pixels on a CI runner and
+  // remain exactly as unknown as they were before. ios-server.mjs prints the body to
+  // stdout, which lands in the job log. Fails silently when opened outside CI.
+  try {
+    navigator.sendBeacon('/__probe', JSON.stringify({
+      insetTop: top, insetRight: right, insetBottom: bottom, insetLeft: left,
+      innerWidth, innerHeight, vh: Math.round(vh), dvh: Math.round(dvh),
+      dpr: devicePixelRatio,
+      scheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      ua: navigator.userAgent,
+    }));
+  } catch {}
 </script>
 </body>
 </html>
