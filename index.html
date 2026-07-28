@@ -44,18 +44,46 @@
       the top: more edges that do not belong to the app.
     -->
     <meta name="color-scheme" content="light dark" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      The typeface is SELF-HOSTED. It used to come from fonts.googleapis.com, which
+      made this app's entire visual identity depend on a third party answering a
+      request from a phone on a street. Three consequences, all of them shipped:
+
+      1. `display=swap` guarantees a FLASH OF FALLBACK TEXT on every cold load — the
+         page paints in the system sans, then reflows into Schibsted Grotesk when the
+         font lands. Different metrics, so lines re-wrap and blocks jump. That visible
+         jolt on first paint is a large part of why this reads as unfinished.
+      2. Two extra DNS+TLS round trips to another origin before any text is right.
+      3. Google Fonts receives the user's IP on every load — held to breach GDPR in
+         Germany (LG München I, 3 O 17493/20). A food app has no reason to do that.
+
+      The faces are declared in src/index.css and the files live in public/fonts/.
+      Do not put the Google links back — checks.mjs fails the build if that host
+      reappears.
+
+      These two preloads are what make the real typeface present on FIRST PAINT.
+      The faces are declared `font-display: optional`, which never reflows the page
+      but also keeps the fallback for the whole page view if the font misses its
+      window — and without a preload it misses on every cold load, which was
+      measured here. A preload starts the fetch at highest priority alongside the
+      CSS, so the window is met and a first-time visitor sees the app's own face
+      rather than the system sans. Only the two LATIN faces are preloaded: they
+      cover this UI's text, and the latin-ext pair is fetched on demand only when
+      the page actually contains a character in that range.
+    -->
     <link
       rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..800&display=swap"
+      as="font"
+      type="font/woff2"
+      href="/fonts/schibsted-grotesk-latin-wght-normal.woff2"
+      crossorigin
     />
     <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400..800&display=swap"
-      media="print"
-      onload="this.media='all'"
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/schibsted-grotesk-latin-wght-italic.woff2"
+      crossorigin
     />
   </head>
   <body>

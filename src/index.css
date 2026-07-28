@@ -1,5 +1,65 @@
 @import "tailwindcss";
 
+/* ─── The typeface, self-hosted ──────────────────────────────────────────────
+   These faces are declared BY HAND rather than by importing
+   `@fontsource-variable/schibsted-grotesk` directly, for two reasons that each
+   cost this app its identity silently:
+
+   1. THE FAMILY NAME. That package registers its faces as "Schibsted Grotesk
+      VARIABLE". §7's @theme tokens below ask for "Schibsted Grotesk". Those do not
+      match, so importing the package renders the entire app in ui-sans-serif while
+      every check stays green and the screenshot looks plausible. It was measured:
+      `document.fonts` held two faces, both `unloaded`, and not one woff2 was ever
+      requested. Worth knowing: `document.fonts.check('600 24px "Schibsted Grotesk"')`
+      returns TRUE in that state, because check() counts a fallback as satisfying the
+      request. It is not a test of whether your font loaded.
+
+   2. `font-display`. The package ships `swap`, which is the setting that GUARANTEES
+      a flash of fallback text and a reflow on every cold load — the exact visible
+      jolt this change exists to remove. `optional` is the only value that can never
+      shift the layout: the browser gives the font a short window, and if it misses,
+      it keeps the fallback for that page view instead of swapping mid-read. The
+      file is same-origin, ~40KB, and immutably cached, so it misses that window
+      roughly once — on a first-ever visit — and never again.
+
+   Italic is a REAL face here. The app sets `italic` on its display headings, and
+   with no italic face the browser synthesises one by shearing the upright — the
+   fake slant that reads as "not a real typeface" without anyone being able to say
+   why. Both subsets are declared with the same unicode-ranges the package uses, so
+   accented and Central-European text keeps working. */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 400 900;
+  src: url('/fonts/schibsted-grotesk-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: italic;
+  font-display: optional;
+  font-weight: 400 900;
+  src: url('/fonts/schibsted-grotesk-latin-wght-italic.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-display: optional;
+  font-weight: 400 900;
+  src: url('/fonts/schibsted-grotesk-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: italic;
+  font-display: optional;
+  font-weight: 400 900;
+  src: url('/fonts/schibsted-grotesk-latin-ext-wght-italic.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
 /* ─── Font Theme ─────────────────────────────────────────────────────────────
    ONE family. The original stack ran Playfair + Inter + JetBrains Mono, with the
    mono doing the work of a UI label font in ~85 places — tiny, uppercase,
@@ -214,8 +274,12 @@
   --accent-terracotta:  #7C2D12;
   --accent-tint:        #FAF2F0;
   --accent-tint-border: #F5D1C9;
-  --dusty-blue:         #5b7993;
-  --blue-light:         #f0f4f8;
+  /* --dusty-blue and --blue-light lived here. §7 allows ONE warm accent, and these
+     were a second, cooler one. --blue-light was referenced nowhere at all;
+     --dusty-blue coloured exactly one control — the Website icon on the venue page —
+     so it sat between a terracotta Directions and a terracotta Call as the only blue
+     thing on the screen. It also had NO html.dark value, so dark mode rendered the
+     same mid-slate on near-black. Both deleted; the icon binds to the accent. */
   --text-muted:         #6E6A64;
   --text-subtle:        #716B63;   /* small labels — 4.74:1 on --bg-warm */
   --accent-contrast:    #FFFFFF;   /* text/icons ON --accent-terracotta — 9.4:1 */

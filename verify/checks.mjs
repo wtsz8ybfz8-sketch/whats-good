@@ -81,6 +81,20 @@ function staticChecks() {
     'without it every env(safe-area-inset-*) is 0 on iOS',
   );
 
+  // The typeface is this product's identity (§7) and must come from our own origin.
+  // A Google Fonts link means: a flash of fallback text and a reflow on every cold
+  // load, two extra round trips to a third origin before any text is right, and the
+  // user's IP handed to Google on every visit. Self-hosted via
+  // @fontsource-variable/schibsted-grotesk; this check is what keeps it that way.
+  // Comments are stripped first. The comment in index.html EXPLAINS the Google Fonts
+  // bug and therefore names the host; a check that reads its own documentation as a
+  // violation is the §13.3 trap, and it fired here on the first run.
+  check(
+    'no third-party font request',
+    !/fonts\.(googleapis|gstatic)\.com/.test(html.replace(/<!--[\s\S]*?-->/g, '')),
+    'a webfont from another origin means a FOUT reflow on every cold load',
+  );
+
   /**
    * EVERY source file, enumerated — never a hardcoded list.
    *
