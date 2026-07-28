@@ -2,27 +2,48 @@
 
 ## Status
 
-**`main` is at `b6027f9`, pushed.** Working tree clean, no dev server running.
+**`main` is at `1b0a618`, pushed.** Uncommitted work in the tree — see "What changed";
+nothing committed this session (§4). No dev server running.
 
-`verify/checks.mjs` **43/43, 0 skipped, exit 0** on chromium. `tsc --noEmit` exit 0.
-`npm run build` exit 0. `driver.mjs` 6/6 views, 0 unreachable, 0 console errors.
-WebKit ran the suite in CI and passed **38/38** (run 30331903951, before the four bezel
-checks existed).
+**Do not trust a local `origin/main` ref in this container.** It was stale at `5fa9c12`
+and `git fetch origin main` did NOT move it — the git proxy served a cached view. Both
+`git ls-remote` and the GitHub API said `1b0a618`. Establish `main`'s SHA from one of
+those two, never from `git log origin/main`. A whole set of premises this session started
+from — "the fix is on the feature branch but not main", "the emulation merge still needs
+doing" — came from that stale ref and were wrong.
 
-**The iOS screenshots are readable from this container, and reading them is how the
-capture bug was found.** `git fetch origin ci/ios-shots` then `git show FETCH_HEAD:<f>.png`
-into a scratch dir and Read the PNG. This works — it was done on 2026-07-28.
+`claude/ios-verify-branches-kqu3fy` **does not exist on the remote**; locally it points at
+exactly `1b0a618`, i.e. the same commit as `main`.
 
-**Every iOS screenshot from runs 2 through 7 shows the same blocked screen.** Safari's
-"Allow this website to use your location?" prompt fired on first load, sat on top of the
-Find tab and swallowed the tab navigations underneath. `light-stay-in.png` and
-`light-saved.png` were byte-identical. Four green runs and thirty-six PNGs were evidence
-of nothing. **A green workflow with a full artifact directory is not proof the artifact
-shows what its filename says.**
+`verify/checks.mjs` **52/52, 0 skipped, exit 0** on chromium (up from 43 — nine new venue
+detail checks). `tsc --noEmit` exit 0. `npm run build` exit 0. `driver.mjs` 6/6 views,
+0 unreachable, 0 console errors, light and dark.
 
-Fixed at the app, not the simulator, in `b6027f9` — see "What changed". **No iOS run has
-yet executed against that fix.** The next run is the first that should produce four
-genuinely different tabs; verify that by hashing the PNGs before trusting them.
+**The iOS screenshots are readable from this container, and reading them is how both
+capture bugs were found.** `git fetch origin ci/ios-shots` then `git show FETCH_HEAD:<f>.png`
+into a scratch dir and Read the PNG. This works — done again on 2026-07-28.
+
+**Runs 2–7: the location prompt.** Safari's "Allow this website to use your location?"
+fired on first load and swallowed the tab navigations underneath. Fixed at the app in
+`b6027f9`, and that fix is **confirmed working** — run 11 shows no prompt.
+
+**Run 11 (`1b0a618`) is green, has a full artifact set, and verifies almost nothing.**
+Two further harness bugs, both found by hashing then *reading* the PNGs:
+
+1. **The tab slugs do not exist.** The workflow looped `find stay-in happy-hour saved`;
+   `src/App.tsx` validates `?tab=` against
+   `['mood','happy-hour','random','saved-recipes','saved-eateries']` and deliberately
+   falls back to `mood` for anything else. Only `happy-hour` was real, so six of eight
+   captures were the Find tab under another filename and `light-stay-in.png` /
+   `light-saved.png` came out byte-identical *again* — same symptom, entirely different
+   cause from runs 2–7. The app was correct; the harness asked for tabs that do not exist.
+2. **The dark pass was never dark.** Appearance was switched under an already-running
+   Safari, so live web content never repainted. All four "dark" PNGs show the app in light
+   mode with only Safari's chrome dimmed, and `PROBE.txt` reports `"scheme":"light"` twice.
+
+**The md5 check passed the dark set while all four showed the same wrong screen** — eight
+unique hashes across nine files. Hashing catches byte-identical siblings and nothing more;
+the status-bar clock alone makes two frames of one wrong screen differ. **Hash, then look.**
 
 **`VITE_GOOGLE_PLACES_KEY` in Vercel — status CONTESTED, do not repeat either claim as
 fact.** This handover previously stated flatly that the key was unset and that setting it
@@ -87,6 +108,34 @@ loads `?tab=…&city=London`.
 separate permission. A note in `ios-safari.yml` says so — do not re-add it. This was
 committed with a confident message claiming it worked, before any run had been read.
 
+**9. UNCOMMITTED — the Places data model, the detail card, and the iOS harness.**
+All in the working tree, nothing committed (§4).
+
+- `ios-safari.yml`: real `?tab=` slugs via `FILE=SLUG` pairs; Safari terminated before the
+  appearance switch and relaunched, plus a dark probe capture; and a **new step that fails
+  the run if any two captures are byte-identical**. Not executed — only a macOS runner can.
+- `placesService.ts`: field mask gains `editorialSummary`, `userRatingCount`, the six
+  `serves*` meals and eight service attributes. **These are the Enterprise + Atmosphere
+  SKU — this raises the per-request cost of every text search**, and `fetchVenues` makes
+  two per cycle. It is the one thing here worth a second opinion on cost.
+- **Diversification, at no extra request cost.** Query phrasings are now a pool of six,
+  rotated two-at-a-time per cycle by a module-level counter (deterministic on first load,
+  so the harness is stable; advances on every "Find other eateries"). Result sets are
+  **interleaved rather than `.flat()`-ed** — concatenation put all 20 results of query one
+  ahead of query two, so under any downstream cap the second query was billed for and
+  never seen. That, not the phrasing, was the "same ten restaurants" bug.
+- **`rating` is now optional.** It was `place.rating ?? 4.0`, which gave every unrated
+  venue a 4.0 and rendered it beside a star as earned — an invented fact that also fed the
+  sort. Both render sites are guarded, with their separators.
+- `EateryView`: "What Google says" (attributed, absent when Google has none), "Good to
+  know" (confirmed meals + attributes, `=== true` only), and a full-week hours `<details>`
+  rotated so today is first. Native `<details>`, not `useState` — the component early-
+  returns above, so a hook there would sit after a conditional return.
+- `verify/fixtures/places.mjs`: **the five venues are deliberately uneven** — one fully
+  profiled, one with explicit `false` values, one with no rating at all, one attributes-
+  only, one bare. A fixture where every venue has every field can only exercise the happy
+  path and could never fail a fallback bug.
+
 ## Customer journey impact
 
 **Orient** and **Trust**. First paint is now the app's own typeface rather than the
@@ -94,13 +143,24 @@ system sans re-wrapping into it, and the two chrome surfaces no longer hug the b
 between them, most of what read as unfinished on the first screen. **Act**: the venue
 page's three actions are one visual set.
 
+**Trust**, again, and this is the one that matters in item 9. The detail page now carries
+Google's own summary, confirmed meals, service attributes and the whole week's hours —
+every one of them a real field, attributed, absent when unknown. And it stops asserting a
+4.0 rating for venues nobody has rated. **Explore**: the week's hours open in place
+without leaving the page.
+
 ## Verification and actual results
 
 | What | Command | Actual result |
 |---|---|---|
-| Regression suite (chromium) | `node verify/checks.mjs` | **43/43, 0 skipped, exit 0** |
-| Regression suite (WebKit, CI) | `PW_ENGINE=webkit` | **38/38** (run 30331903951) |
+| Regression suite (chromium) | `node verify/checks.mjs` | **52/52, 0 skipped, exit 0** |
+| Regression suite (WebKit, CI) | `PW_ENGINE=webkit` | **38/38** (run 30331903951, pre-dates the 9 new checks) |
 | Build | `npm run build` | **exit 0** |
+| **New checks CAN fail** | reintroduced the bugs, re-ran | **3 went red, exit 1** — unguarded star + invented summary |
+| **Tri-state check CAN fail** | `=== true` → `!== undefined` | **red** — Breakfast/Brunch chips appeared for a confirmed-`false` venue |
+| Detail card, looked at | 390x844 and 1440x900 PNGs | **read both.** Chips reflow, disclosure opens, `4.4 (1,284)` locale-formatted |
+| iOS run 11 (`1b0a618`) | hashed then read 9 PNGs | **8 unique hashes / 9 files; 6 of 8 tab shots were the Find tab; all 4 "dark" shots were light** |
+| Geolocation fix on iOS | run 11 PNGs | **CONFIRMED FIXED — no permission prompt** |
 | Bezel, before | measured at 393x852 | **header pad 0px, logo left edge 0** |
 | Bezel, after | new check, 4 viewports | header L24/R24, tab bar L20/R20 |
 | Font actually loads | read `document.fonts` | 2 faces `loaded`, 2 same-origin woff2 |
@@ -112,8 +172,7 @@ page's three actions are one visual set.
 | Device probe | `PROBE.txt` | 402x678, dpr 3, insets **all 0**, vh 760 / dvh 678 |
 | Typecheck | `npx tsc --noEmit` | **exit 0** — after installing `@types/react` |
 | Build | `npx vite build` | **exit 0** |
-| Views rendered + read | `driver.mjs` | **6/6, 0 unreachable, 0 console errors** |
-| Geolocation fix on iOS | — | **NOT RUN. `b6027f9` postdates every iOS run.** |
+| Views rendered + read | `driver.mjs` | **6/6, 0 unreachable, 0 console errors**, light + dark |
 
 **The device numbers are real and are not a bug.** Insets all 0 is *correct* for Safari
 portrait — Safari's own toolbar occupies the bottom, and left/right are 0 on any phone in
@@ -153,28 +212,51 @@ typecheck — green or red.
 
 ## Next session: first three actions
 
-1. **Trigger `ios-safari.yml` on `main` and read the PNGs.** `b6027f9` postdates every
-   iOS run, so the location-prompt fix has never executed. Dispatch it
-   (`actions_run_trigger`, `workflow_id: ios-safari.yml`, `ref: main`), wait, then
-   `git fetch origin ci/ios-shots`, extract the PNGs and **Read them**.
-   **`md5sum` the four light tabs first.** If any two match, the tabs are still not
-   navigating and the prompt is not the only blocker — do not report success on a green
-   tick and a full directory, which is exactly what runs 4-7 produced while showing
-   nothing. If they differ, this is the first real look at the app in Mobile Safari:
-   check the bottom chrome for the user's reported gap.
-2. **Establish whether `VITE_GOOGLE_PLACES_KEY` is actually set** before acting on it
+1. **Validate the expanded Places field mask against the real API.** This is the highest
+   risk in the tree and nothing local can touch it. An invalid name in `X-Goog-FieldMask`
+   makes Places return **400**, and `searchTextOnce` returns `[]` on any non-OK response —
+   so a single typo among the sixteen added fields silently empties **every** venue list,
+   looking exactly like "no results". The fixture cannot catch this: it never validates
+   the mask, it just answers. Confirm from somewhere with real network — one `curl` to
+   `places.googleapis.com/v1/places:searchText` with the mask from `placesService.ts`, or
+   open the deployed Find tab and see venues. **Do not report the data-model work as
+   working until this is done.**
+2. **Get the uncommitted work committed** (§4 — it needs the user to ask). Then trigger
+   `ios-safari.yml` and read the PNGs: hash them, then **look at them**, then read
+   `PROBE.txt` for `"scheme"` on the dark pass. Run 11's slug and appearance bugs are
+   fixed in the tree but **have never executed** — only a macOS runner can run them. If
+   the four tabs finally differ AND the dark pass reports `dark`, this is the first real
+   look at the app in Mobile Safari: check the bottom chrome for the user's reported gap.
+3. **Establish whether `VITE_GOOGLE_PLACES_KEY` is actually set** before acting on it
    either way — see Status. Ask the user what the deployed Find tab shows; do not repeat
    this handover's earlier assertion that the key is missing, and do not assume it is
    present. Write down the answer and how it was obtained.
-3. **Flip the WebKit steps in `ci.yml` from `continue-on-error` to a gate** — the arrival
-   state is no longer unknown, it was 38/38 — and delete the paragraph that says to.
 
 ## Known risks and open questions
 
+- **THE FIELD MASK IS UNVALIDATED AGAINST THE REAL API.** See "Next session" action 1.
+  Sixteen field names were added from the Places documentation and **not one request has
+  ever been made with them** — the proxy 403s every outbound URL from here. The failure
+  mode is total and silent: a 400 becomes `[]` becomes an empty venue list. Highest-risk
+  item in this handover by some distance.
+- **The added fields are the Enterprise + Atmosphere SKU.** `editorialSummary`, the six
+  `serves*` and the eight attribute booleans are Google's most expensive tier, and
+  `fetchVenues` makes two requests per cycle. The per-request cost of venue discovery went
+  up; nobody has priced it. If the bill matters more than the depth, that block in the
+  field mask is the thing to cut and the UI already degrades to nothing without it.
+- **Tri-state meals are only half-observable.** The data model preserves `false` vs
+  absent, and the check proves the UI will not render a confirmed-`false` as served. But
+  the UI renders **only** confirmed-`true`, so a user cannot tell "confirmed no breakfast"
+  from "nobody has said" — both are simply absent. That is deliberate (an absent chip
+  under a heading reading "Confirmed meals" is honest) but it means the distinction the
+  data model protects is currently invisible to the person using the app.
 - **The Find tab opens on a form, not on food.** Nothing on the first screen answers
   "what's good right now" until the user fills something in and taps. Against §5's Orient
-  stage this is the largest remaining product gap. A design decision, raised deliberately
-  and not acted on.
+  stage this is the largest remaining product gap. **A product decision, not a bug** —
+  recorded as a UX gap to be addressed on its own, not folded into unrelated work.
+- **Diversification is unproven against the real API.** Both fixture queries return the
+  same five venues, so the interleave and the phrasing rotation are exercised for
+  correctness but cannot demonstrate that results actually vary. That needs real network.
 - **The user's reported bottom gap is still unconfirmed.** Never reproduced here. The
   iOS Simulator may now be able to show it.
 - **The venue hero has no photo fallback** — with no image it is a large flat pink→black
