@@ -108,14 +108,16 @@ comments and `checks.mjs` (nothing was pushed, so no run exists); anything about
 
 ## Next session: first three actions
 
-1. **Ask whether to commit and push this branch** (§4 — nothing was committed). If pushed,
-   read the Actions run: it is the first CI run against the edited `ci.yml`, and the only
-   thing that can confirm the typecheck and ratchets still pass.
-2. **Set `VITE_GOOGLE_PLACES_KEY` in Vercel** (user action). Until then the deployed Find
-   tab shows its missing-configuration state, correctly and by design.
-3. **Flip the WebKit steps in `ci.yml` from `continue-on-error` to a gate** — a green
-   WebKit run already exists (38/38, before four checks were added) — and delete the
-   paragraph in `ci.yml` that says to.
+1. **Read the CI runs for this branch.** Four commits were pushed and no Actions result has
+   been read. That is the only thing that can confirm the typecheck, the build and the
+   ratchets still pass — none of the three was run locally.
+2. **Look at the cuisine rail fade on a real phone.** `mask-image` on a scrolling flex row
+   is well supported in iOS Safari, but whether the fade reads as elegant or as a smudge
+   over warm paper is a taste call nothing here can make. Revert the `@media` block in
+   `src/index.css` if it reads badly.
+3. **Fix the silent Places catch** (risks section) — a rejected key and an empty area are
+   the same screen today. Then consider flipping the WebKit steps in `ci.yml` from
+   `continue-on-error` to a gate, and deleting the paragraph that says to.
 
 ## Known risks and open questions
 
@@ -130,6 +132,14 @@ comments and `checks.mjs` (nothing was pushed, so no run exists); anything about
 - **The Find tab opens on a form, not on food.** Nothing on the first screen answers
   "what's good right now" until the user fills something in and taps. Against §5's Orient
   stage, the largest remaining product gap. A design decision, raised and not acted on.
+- **Closed, do not re-chase: `VI is not defined` / `jw is not defined` in the live
+  console.** ~99 of them were observed on production, then traced to the observer's own
+  browser-automation helper injecting a script into the page; plain coordinate clicks
+  produced zero. A production build loaded in a clean browser here threw **0**
+  ReferenceErrors. Not our bundle, not an extension in a normal browser.
+- **Not a bug: `?city=Cape+Town` with geolocation timing out.** `App.tsx:155` seeds city as
+  `''` — there is deliberately no default (line 149). The value came from `localStorage` on
+  that browser profile. The Cape Town default really was removed.
 - **The user's reported bottom gap is still unconfirmed.** Never reproduced here.
 - **The venue hero has no photo fallback** — with no image it is a large flat pink→black
   gradient over most of the first screen. Only seen where images cannot load; unknown
