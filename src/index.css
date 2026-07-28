@@ -530,6 +530,29 @@ html.dark .glass-subtle {
 .chip-rail::-webkit-scrollbar {
   display: none;
 }
+
+/* The rail claimed "the clipped chip IS the affordance". On a real phone it isn't: a
+   chip sliced flat against the screen edge, with no scrollbar (hidden above) and no
+   fade, reads as broken layout rather than as an invitation to swipe. The user reported
+   the Cuisine section as "cut off", which is exactly that reading.
+
+   A mask is the right instrument here because it changes NO geometry. Wrapping the rail
+   instead was tried and reverted: it makes the Find page taller, and the saved scroll
+   offset no longer resolves, so browser-back stopped restoring the list position
+   (verify/checks.mjs went 42/43). A fade costs zero layout and cannot do that.
+
+   Mobile only. At lg the rail wraps and nothing is hidden, so a fade there would be
+   lying about content that is already fully visible. */
+@media (max-width: 1023px) {
+  .chip-rail {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.25rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.25rem), transparent);
+    /* Land a chip clear of the notch in landscape, and clear of the fade in portrait,
+       instead of parking it half-faded. */
+    scroll-padding-right: max(2.25rem, env(safe-area-inset-right));
+    scroll-padding-left: max(1.25rem, env(safe-area-inset-left));
+  }
+}
 .chip-rail > * {
   scroll-snap-align: start;
   flex: 0 0 auto;
