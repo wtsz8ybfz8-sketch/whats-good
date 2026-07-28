@@ -2,18 +2,27 @@
 
 ## Status
 
-**`main` is at `243c7f5`, pushed, and deployed to production.** Working tree clean, no
-dev server running.
+**`main` is at `b6027f9`, pushed.** Working tree clean, no dev server running.
 
-`verify/checks.mjs` **43/43, 0 skipped, exit 0** on chromium. `npm run build` exit 0.
+`verify/checks.mjs` **43/43, 0 skipped, exit 0** on chromium. `tsc --noEmit` exit 0.
+`npm run build` exit 0. `driver.mjs` 6/6 views, 0 unreachable, 0 console errors.
 WebKit ran the suite in CI and passed **38/38** (run 30331903951, before the four bezel
 checks existed).
 
-**The iOS Simulator workflow is real and captures correctly, but its output is not yet
-readable from the agent container.** Run 2 succeeded end to end (9 screenshots). Run 3
-captured perfectly and then failed on both delivery routes. Run 4, carrying the fixes
-for both, was **still in progress when this session ended — its result is unknown and
-must be read, not assumed.**
+**The iOS screenshots are readable from this container, and reading them is how the
+capture bug was found.** `git fetch origin ci/ios-shots` then `git show FETCH_HEAD:<f>.png`
+into a scratch dir and Read the PNG. This works — it was done on 2026-07-28.
+
+**Every iOS screenshot from runs 2 through 7 shows the same blocked screen.** Safari's
+"Allow this website to use your location?" prompt fired on first load, sat on top of the
+Find tab and swallowed the tab navigations underneath. `light-stay-in.png` and
+`light-saved.png` were byte-identical. Four green runs and thirty-six PNGs were evidence
+of nothing. **A green workflow with a full artifact directory is not proof the artifact
+shows what its filename says.**
+
+Fixed at the app, not the simulator, in `b6027f9` — see "What changed". **No iOS run has
+yet executed against that fix.** The next run is the first that should produce four
+genuinely different tabs; verify that by hashing the PNGs before trusting them.
 
 **`VITE_GOOGLE_PLACES_KEY` in Vercel — status CONTESTED, do not repeat either claim as
 fact.** This handover previously stated flatly that the key was unset and that setting it
@@ -65,6 +74,19 @@ nowhere at all.
 **6. `verify/serve.mjs up` was broken on every fresh clone** (ENOENT — `verify/out/` is
 gitignored and the log file was opened before the directory existed).
 
+**7. The app no longer asks for location when the link already named a city** (`b6027f9`,
+`src/App.tsx`). `requestUserLocation()` ran unconditionally on first load, including when
+`?city=` was present — and `?city=` already wins over every other city source, so the
+position was requested and then discarded, at the cost of a permission dialog over the
+first screen a user ever sees. The explicit "Sort nearby" control is untouched
+(`userInitiated`). Correct on its own merits; it also unblocks the iOS capture, which
+loads `?tab=…&city=London`.
+
+**8. `simctl privacy deny location` was tried and does NOT work** (`7d667ea`, reverted in
+`b6027f9`). It governs Safari's *own* location access; the per-site web prompt is a
+separate permission. A note in `ios-safari.yml` says so — do not re-add it. This was
+committed with a confident message claiming it worked, before any run had been read.
+
 ## Customer journey impact
 
 **Orient** and **Trust**. First paint is now the app's own typeface rather than the
@@ -83,15 +105,30 @@ page's three actions are one visual set.
 | Bezel, after | new check, 4 viewports | header L24/R24, tab bar L20/R20 |
 | Font actually loads | read `document.fonts` | 2 faces `loaded`, 2 same-origin woff2 |
 | Font check *can* fail | first run, on my own comment | **red**, then fixed to strip comments |
-| iOS Simulator boot + capture | run 2, run 3 | **success — 9 screenshots both times** |
 | iOS artifact download | `curl` the artifact URL | **403 from the agent proxy** |
-| Probe reported its numbers | run 3 | **NO — "no PROBE_RESULT"** |
-| Probe channels, locally | GET + POST beacons | 200 / 204, both logged `PROBE_RESULT` |
-| iOS run 4 (both fixes) | — | **IN PROGRESS, result unknown** |
+| iOS shots via git branch | `git fetch origin ci/ios-shots` | **WORKS — PNGs read 2026-07-28** |
+| iOS runs 4-7 | read the PNGs | **all showed the location prompt, not the tabs** |
+| `light-stay-in` vs `light-saved` | `md5sum` | **identical — two "tabs", one screen** |
+| Device probe | `PROBE.txt` | 402x678, dpr 3, insets **all 0**, vh 760 / dvh 678 |
+| Typecheck | `npx tsc --noEmit` | **exit 0** — after installing `@types/react` |
+| Build | `npx vite build` | **exit 0** |
+| Views rendered + read | `driver.mjs` | **6/6, 0 unreachable, 0 console errors** |
+| Geolocation fix on iOS | — | **NOT RUN. `b6027f9` postdates every iOS run.** |
 
-**Never observed, by anyone:** the device's actual safe-area insets, and any iOS Safari
-screenshot of this app. The capture works; delivery is what is unproven. Do not describe
-any iOS behaviour as verified until run 4's log and screenshots have been read.
+**The device numbers are real and are not a bug.** Insets all 0 is *correct* for Safari
+portrait — Safari's own toolbar occupies the bottom, and left/right are 0 on any phone in
+portrait. `viewport-fit=cover` is present in both `index.html` and
+`verify/safe-area-probe.html`; both were checked before concluding anything. `vh 760` vs
+`dvh 678` is the 82px gap the existing `vh` ban already guards.
+
+**Still never observed:** this app's four tabs in real Mobile Safari. The capture channel
+works and delivery works; what was broken was the app raising a permission dialog over
+everything. That is fixed but unrun.
+
+**`@types/react` was in `package.json` but absent from `node_modules`**, so `tsc` was
+silently checking nothing and reported errors in `ErrorBoundary.tsx` that vanished after
+`npm install`. On any fresh clone or after a big sync, install before believing a
+typecheck — green or red.
 
 ## Protected decisions
 
@@ -116,11 +153,15 @@ any iOS behaviour as verified until run 4's log and screenshots have been read.
 
 ## Next session: first three actions
 
-1. **Read iOS run 4** (`.github/workflows/ios-safari.yml`, branch `main`). If green:
-   `git fetch origin ci/ios-shots` and **Read the PNGs** — that is the first look at this
-   app in real Mobile Safari. Grep the job log for `PROBE_RESULT` for the device's real
-   insets and `100vh` vs `100dvh`. If red, the two failures already fixed were
-   `permissions: contents: write` and the probe beacon; anything else is new.
+1. **Trigger `ios-safari.yml` on `main` and read the PNGs.** `b6027f9` postdates every
+   iOS run, so the location-prompt fix has never executed. Dispatch it
+   (`actions_run_trigger`, `workflow_id: ios-safari.yml`, `ref: main`), wait, then
+   `git fetch origin ci/ios-shots`, extract the PNGs and **Read them**.
+   **`md5sum` the four light tabs first.** If any two match, the tabs are still not
+   navigating and the prompt is not the only blocker — do not report success on a green
+   tick and a full directory, which is exactly what runs 4-7 produced while showing
+   nothing. If they differ, this is the first real look at the app in Mobile Safari:
+   check the bottom chrome for the user's reported gap.
 2. **Establish whether `VITE_GOOGLE_PLACES_KEY` is actually set** before acting on it
    either way — see Status. Ask the user what the deployed Find tab shows; do not repeat
    this handover's earlier assertion that the key is missing, and do not assume it is
@@ -137,8 +178,13 @@ any iOS behaviour as verified until run 4's log and screenshots have been read.
 - **The user's reported bottom gap is still unconfirmed.** Never reproduced here. The
   iOS Simulator may now be able to show it.
 - **The venue hero has no photo fallback** — with no image it is a large flat pink→black
-  gradient over most of the first screen. Only seen where images cannot load; unknown
-  whether real photo-less venues hit it. Check once the Places key is live.
+  gradient over most of the first screen. **Seen again on 2026-07-28** in
+  `verify/out/venue-detail.png`: name, address and all three actions are present and
+  correct on first paint, sitting on that slab. Unknown whether real photo-less venues
+  hit it. Check once the Places key question is settled.
+- **`simctl privacy` is not a route to suppressing web permission prompts.** Recorded
+  here because it looks like the obvious fix and is not; the note in `ios-safari.yml`
+  will stop a re-add, but only if it is read.
 - **`ci/ios-shots` is force-pushed and orphaned every run.** History is discarded on
   purpose so PNGs cannot accumulate. Never put anything there you want to keep.
 - **Commit `243c7f5`'s message is slightly mangled** — unescaped backticks in the shell
