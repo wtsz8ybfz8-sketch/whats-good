@@ -18,9 +18,22 @@ prints **N**, and a stop hook reports "missing signature". Both are reading loca
 *verification*, which cannot work because `gpg.ssh.allowedSignersFile` is unset — an
 absent verifier, not an absent signature. Author and committer are already
 `Claude <noreply@anthropic.com>`, so `--reset-author` is a no-op that only rewrites
-hashes. **Never amend or rebase pushed commits over this.** Whether GitHub renders
-"Verified" additionally requires the signer's public key to be registered on the account;
-that is not checkable from this container and has not been checked.
+hashes. **Never amend or rebase pushed commits over this.**
+
+**GitHub itself reports these commits as verified**, and it IS checkable from here — via
+Vercel, not via git. `list_deployments` returns `meta.githubCommitVerification` per
+deployment, and it reads `"verified"` for every Claude commit on this branch and on
+`main`. (Commits on `ci/ios-shots`, authored by the workflow, read `"unverified"` — a
+different signing path, and expected.) So the local `%G?` of `N` is purely the missing
+`allowedSignersFile`.
+
+**Deployment URLs, from the Vercel API — none of them opened from here (§6):**
+Branch preview, always newest build of this branch:
+`whats-good-git-claude-codebase-analysi-3e376b-nizzle-s-projects.vercel.app`
+Production, `main`, WITHOUT this session's work:
+`whats-good-git-main-nizzle-s-projects.vercel.app`
+Vercel builds every branch push, so a preview exists for each; production stays at
+`1b0a618` until something merges to `main`.
 
 `verify/checks.mjs` **46/46, 0 skipped, exit 0** on chromium (43 before this session; the
 three new ones are the venue-action checks below). `npx tsc --noEmit` **exit 0 — it
