@@ -5,18 +5,22 @@
 **`claude/codebase-analysis-priorities-h4cvnv` is at `16aaf6b`, pushed.** Working tree
 clean, no dev server running. Not merged to `main`; no PR opened (none was asked for).
 
-**The commits on this branch are unsigned and GitHub will show them Unverified.** Author
-and committer are already `Claude <noreply@anthropic.com>` — the usual `--reset-author`
-advice does not apply and would only rewrite hashes. The cause is that
-`/root/.gitconfig` sets `commit.gpgsign=true` and `gpg.format=ssh` pointing at
-`/home/claude/.ssh/commit_signing_key.pub`, which is a **0-byte file with no private key
-beside it**; `openssh-client` was also absent until this session installed it. Generating
-a replacement key was **blocked by the permission classifier**. GPG is not a substitute:
-GitHub matches a GPG key's UID against a *verified account email*, and
-`noreply@anthropic.com` cannot be verified on a user's account, whereas SSH signing
-verifies on the registered key alone. **GitHub verifies at display time**, so once a real
-signing key exists and its public half is registered, newly signed commits verify — the
-already-pushed unsigned ones never will.
+**Every commit on this branch IS signed. Do not "fix" the signing setup.** `git cat-file
+-p <sha>` shows a `gpgsig -----BEGIN SSH SIGNATURE-----` header on all of them, back
+through `1b0a618`. Signing is done by the harness's own managed signer:
+`/root/.gitconfig` sets `gpg.ssh.program=/tmp/code-sign`, a symlink to
+`/opt/env-runner/environment-manager`. The `user.signingkey` it points at
+(`/home/claude/.ssh/commit_signing_key.pub`) is a 0-byte file, which looks broken and is
+not — the managed signer does not read it.
+
+**Two things mislead on this, and both cost a session turn:** `git log --format=%G?`
+prints **N**, and a stop hook reports "missing signature". Both are reading local
+*verification*, which cannot work because `gpg.ssh.allowedSignersFile` is unset — an
+absent verifier, not an absent signature. Author and committer are already
+`Claude <noreply@anthropic.com>`, so `--reset-author` is a no-op that only rewrites
+hashes. **Never amend or rebase pushed commits over this.** Whether GitHub renders
+"Verified" additionally requires the signer's public key to be registered on the account;
+that is not checkable from this container and has not been checked.
 
 `verify/checks.mjs` **46/46, 0 skipped, exit 0** on chromium (43 before this session; the
 three new ones are the venue-action checks below). `npx tsc --noEmit` **exit 0 — it
