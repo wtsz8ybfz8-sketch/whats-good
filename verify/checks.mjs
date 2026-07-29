@@ -339,6 +339,46 @@ async function main() {
   await page.goBack().catch(() => {});
   await page.waitForTimeout(900);
 
+  /**
+   * The venue action pillars divide the row evenly.
+   *
+   * They are `flex-1`, so they can only be unequal if their container has no width to
+   * divide — which is exactly what happened: the sidebar carries `self-start` for the
+   * desktop sticky column, and once the mobile container became a flex column, that
+   * shrank the whole column to content width. The pillars came out 78/44/57px, bunched
+   * left with their labels running together, while all 46 checks stayed green and the
+   * page looked fine at the top where the reorder had been eyeballed. A user found it.
+   *
+   * What would be red: restore `self-start` without the `lg:` prefix.
+   */
+  const anyCard = page.locator('[role="button"][aria-label^="View "]:visible').first();
+  await anyCard.click();
+  await page.waitForTimeout(1000);
+  const pillars = await page.evaluate(() => {
+    const first = document.querySelector('a[aria-label="Get directions"]');
+    if (!first || !first.parentElement) return null;
+    const row = first.parentElement;
+    const widths = [...row.children].map((c) => Math.round(c.getBoundingClientRect().width));
+    return { widths, rowWidth: Math.round(row.getBoundingClientRect().width) };
+  });
+  if (!pillars || pillars.widths.length < 2) {
+    check('venue action pillars share the row evenly', false, 'action row not found');
+  } else {
+    const spread = Math.max(...pillars.widths) - Math.min(...pillars.widths);
+    // The row width includes its own horizontal padding (px-5 = 40px at this viewport),
+    // so an evenly divided row lands near 0.9 of rowWidth/n, not 1.0. The failure this
+    // guards is shrink-to-content — 78/44/57 in a 219px row, i.e. ~0.6 — so the
+    // threshold sits between the two, not flush against the healthy value.
+    const share = Math.min(...pillars.widths) / (pillars.rowWidth / pillars.widths.length);
+    check(
+      'venue action pillars share the row evenly',
+      spread <= 2 && share >= 0.8,
+      `${pillars.widths.join('/')}px in a ${pillars.rowWidth}px row`,
+    );
+  }
+  await page.goBack().catch(() => {});
+  await page.waitForTimeout(900);
+
   // --- layout + hit targets, every view ---------------------------------------
   const MEASURE = () => {
     const miss = [];

@@ -309,7 +309,14 @@ export const EateryView: React.FC<EateryViewProps> = ({
       <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-8 lg:items-start">
 
       {/* SIDEBAR (right on desktop, BELOW the reasons on mobile) */}
-      <aside className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 self-start lg:pt-4">
+      {/* `self-start` is LG-ONLY. It exists for the sticky desktop column, and while the
+          container below lg was a plain block it did nothing. Turning that container into
+          a flex column (for the mobile reorder) made it bite: align-self:flex-start
+          shrank this whole column to content width, so the action pillars' `flex-1` had
+          no width to divide and the three labels bunched into a left-hand clump —
+          78/44/57px instead of equal thirds. Reported from a real phone, not caught here,
+          because the reorder was checked at the top of the page and not at the actions. */}
+      <aside className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 lg:self-start lg:pt-4">
 
       {/* On mobile this column now follows the content, so it opens with its own rule
           rather than the page's top padding. */}
