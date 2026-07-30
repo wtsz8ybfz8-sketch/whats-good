@@ -64,19 +64,6 @@ const Chip: React.FC<{
  />
  )}
  {label}
- {available && (
- <>
- {/* Announced, not just drawn — a colour-only signal is invisible to a screen
-     reader and to anyone who cannot separate the two tones (WCAG 1.4.1). */}
- <span className="sr-only"> — in these results</span>
- <span
- aria-hidden="true"
- className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
- selected ?'bg-[var(--accent-contrast)]' :'bg-[var(--accent-terracotta)]'
- }`}
- />
- </>
- )}
  </button>
 );
 
