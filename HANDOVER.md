@@ -1,136 +1,173 @@
 # HANDOVER
 
+> Written to be picked up by someone who has never seen this project. Read `CLAUDE.md`
+> §1 for what the product is; this file is only live state.
+
 ## Status
 
-**`main` is at `14730c6`, pushed, and GREEN.** `verify/checks.mjs` **53/53, 0 skipped,
-exit 0**; `npm run build` exit 0. This is the consistent slate — production is safe.
+**`main` is at `c4da169`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
+`npm run build` exit 0. Working tree clean. No dev server running.
 
-**THE LESSON OF THIS SESSION, and it outranks everything below.** The user photographed
-their own phone and found a defect on three separate screens that 52 green checks could
-not see: page content drawn over the status-bar clock, above the app's own fixed header.
-**Every capture this project takes photographs the page AT REST.** The strip that opens
-above a `position: fixed` header only exists after Safari collapses its URL bar, which
-only happens after a scroll. A suite that never scrolls can be entirely green while the
-app is visibly broken in the hand. `verify/ios-server.mjs` now honours `?__scrollY=` and
-`ios-safari.yml` captures scrolled states — **use them before believing any at-rest
-result about chrome.**
+**Live, public, no login: https://whats-good-git-main-nizzle-s-projects.vercel.app**
+Vercel deploys `main` on push. Custom domains bypass auth entirely, so a purchased `.com`
+pointed at this project is public from the first minute.
 
-**The result-backed cuisine count SHIPPED** and is on `main`: the rail title reads
-"Cuisine — optional · 6 in these results", derived from venues already fetched, omitted
-at zero. The per-chip availability dot is deliberately NOT shipped — see "What changed".
+**Vercel Authentication (SSO) is OFF** (`ssoProtection.enabled: false`), set deliberately
+so the app could be shared. **Turn it back on before this holds anything private.**
 
-**Vercel Authentication is now OFF** (`ssoProtection.enabled: false`). Every
-`.vercel.app` URL is publicly readable. Done deliberately at the user's request so the
-app could be shared. Revisit before the app holds anything private.
-
-Public URL: `https://whats-good-git-main-nizzle-s-projects.vercel.app`
+**THE FINDING THAT OUTRANKS EVERYTHING ELSE HERE.** Every capture this project takes —
+`checks.mjs` and the iOS workflow both — photographs the page **at rest**. The user found
+a defect on three separate screens that 52 green checks could not see: page content drawn
+over the status-bar clock, above the app's own fixed header. That strip only opens after
+Safari collapses its URL bar, which only happens after a **scroll**. A suite that never
+scrolls can be entirely green while the app is visibly broken in the hand. It was.
+`verify/ios-server.mjs` now honours `?__scrollY=`; `ios-safari.yml` captures scrolled
+states. **Do not trust an at-rest result about chrome.**
 
 ## Objective
 
-Get a shareable, functional build live before a domain purchase, and find the cause of
-the "gap at the Dynamic Island" that no local render had ever reproduced.
+Ship a shareable, honest, functional build before a domain purchase, and find the cause of
+the header defect the user had been reporting for several sessions.
 
-## What changed
+## What changed (newest first)
 
-**1. Eleven unmerged commits reached `main` (`9aab341`).** All of
-`claude/branch-comparison-merge-plan-xtv9e1`: chrome retraction on scroll, list-state
-restore on back/forward, truthful rating counts and weekly hours, the "why this place"
-decision layer, un-squished venue actions, no phantom phone numbers. **Production had
-never served any of it.** The user reported these as regressions; they were unmerged
-work sitting on a branch. Merged clean; checks went 43 → 51.
+1. **`c4da169` — the scrolled capture now reaches the condition it tests.** The first
+   scrolled run worked mechanically and proved nothing: CI has no Places key, so the pages
+   were barely taller than the viewport, Safari's URL bar stayed expanded (visible in the
+   screenshots) and the strip never opened. `ios-server.mjs` pads the document so the
+   requested scroll is reachable; the workflow asks for 1400px. Measured: scrollY 1400 in
+   a 3592px document; control untouched at 0 / 1292px. Inert without the param.
+2. **`856dc6d` — a fixture that can say "Google published no price", plus a check.**
+   `priceLevel` defaulted a band onto every fixture venue, so the no-price path was
+   unreachable. `null` now means absent, `pl-6` carries none, and a check fails when any
+   "at a glance" tile is a label over nothing.
+3. **`14730c6` — the header bleed, and three false claims.** See below.
+4. **`6c08cc0` — theme-color precedence check + five process rules in `CLAUDE.md` §6/§12.**
+5. **`590055a` — the result-backed cuisine count shipped.** Rail title reads "Cuisine —
+   optional · N in these results", derived from venues already fetched, omitted at zero.
+   **The per-chip availability dot is NOT shipped** — see Risks.
+6. **`9aab341` — eleven unmerged commits reached `main`.** All of
+   `claude/branch-comparison-merge-plan-xtv9e1`: chrome retraction on scroll, list-state
+   restore on back/forward, rating counts and weekly hours, the "why this place" decision
+   layer, un-squished venue actions, no phantom phone numbers. **Production had never
+   served any of it** — the user reported these as regressions; they were unmerged work.
+7. **`f376a2d` — the black band at the Dynamic Island.** A browser uses the FIRST
+   `theme-color` whose media matches. `App.tsx` maintained a live one driven from the
+   manual dark class and `appendChild`d it to the END of `<head>`, where the media-keyed
+   tags always beat it — a no-op for the only case it existed for. Now `prepend`ed.
+8. **`ee70b25` — PWA installability.** Manifest + 192/512/maskable/apple-touch icons from
+   the existing header mark. Icons live under `/assets/` because `vercel.json` rewrites
+   every other path to `/`; `-vN` filenames because that directory is immutable for a year.
 
-**2. The black band at the Dynamic Island — found and fixed (`f376a2d`).** Not a gap,
-and the header's safe-area model was never wrong. A browser uses the FIRST `theme-color`
-whose media matches. `index.html` declares two at the top of `<head>` keyed to
-`prefers-color-scheme`; `App.tsx` maintained a third live one driven from the manual dark
-class and **`appendChild`d it to the END of `<head>`, where it was never reached** — a
-no-op for exactly the case it existed to handle. On a phone set to dark with the app
-toggled light, Safari painted near-black chrome around a white page. Now `prepend`ed.
-Verified by a probe (`colorScheme: dark` + stored light preference) reporting order
-`[0] (no media) #F4F2EF`, `[1] light`, `[2] dark`, winner `#F4F2EF`. That probe fails
-against the previous code.
+### The header bleed (`14730c6`) — the main event
 
-**3. `.action-bar::before` deleted (`f376a2d`).** Its 24px gradient faded to
-`--bg-warm`, the page canvas — invisible against the canvas, a washed band with a hard
-edge elsewhere. In `ci/ios-shots/light-find.png` it renders over the "Mood, diet &
-budget" row, greying out a live control so it reads as disabled.
+Page content rendered **above the fixed header, into the status bar**: the cuisine rail
+over the clock, and on venue pages the address and the venue name. Cause is Safari's, not
+this layout's — `position: fixed; top: 0` anchors to the LAYOUT viewport; when Safari
+collapses its URL bar the VISUAL viewport grows upward and the page paints the strip that
+opens between them. Apple developer forum threads **800798** and **773770**;
+**mastodon#36144** is the identical report.
 
-**4. PWA installability (`ee70b25`).** Manifest plus 192/512/maskable/apple-touch icons
-built from the existing header mark. Icons live under `/assets/` because `vercel.json`
-rewrites every other path to `/`; `-vN` filenames because that directory is cached
-immutable for a year.
+Fix: `.chrome-bar::before` carries an opaque 240px fill upward. It travels with the bar, so
+a retracted header still uncovers correctly. **This is a MITIGATION** — it paints over the
+strip, it does not stop the strip opening.
+
+Three claims in the same commit that were not true:
+- **"updates every minute"** sat above `CAPE_TOWN_HAPPY_HOURS`, a static hand-curated
+  array. Nothing about the listings updates. Now "hand-confirmed venues · live status".
+- **The Spend tile** was the only one of three built ungated; `priceTierLabel` returns `''`
+  with no band, so it rendered as a heading over empty space.
+- **`city = 'your area'`** was a default placeholder, so a phone whose header read
+  "Cape Town" was told "25 eateries near your area".
 
 ## Customer journey impact
 
-**Trust** and **Orient**: the browser chrome no longer disagrees with the app's own
-theme, and venue pages finally carry the decision layer written for them.
+**Trust** above all: the headline count matches the grid, no tile is a label over nothing,
+no caption claims live data over a static file. **Orient**: the chrome no longer disagrees
+with the app's theme and content no longer bleeds into the status bar.
 
 ## Verification and actual results
 
 | What | Command | Actual result |
 |---|---|---|
-| Regression suite on `main` | `node verify/checks.mjs` | **53/53, 0 skipped, exit 0** |
-| Build on `main` | `npm run build` | **exit 0** |
-| theme-color precedence | probe: dark system + light app | **`#F4F2EF` wins** |
-| iOS Simulator capture | `ci/ios-shots`, 8 PNGs | **all hashes distinct — genuine** |
+| Regression suite | `node verify/checks.mjs` | **54/54, 0 skipped, exit 0** |
+| Build | `npm run build` | **exit 0** |
+| Header-fill check CAN fail | remove the fill | **✗ `bg rgba(0,0,0,0)`**, ✓ on restore |
+| Empty-tile check CAN fail | ungate Spend | **✗ `empty: Spend, Spend, Spend`**, ✓ restore |
+| theme-color check CAN fail | `prepend`→`appendChild` | **✗ exit 1**, ✓ on restore |
+| Scroll injection | `?__scrollY=1400` vs control | **1400 / 3592px vs 0 / 1292px** |
+| iOS Simulator capture | `ci/ios-shots`, 11 PNGs | all hashes distinct — genuine |
 | Device probe | `PROBE.txt` | 402×678, dpr 3, vh 760 / dvh 678, insets all 0 |
-| Header fill check CAN fail | sabotage the fill | **red (bg rgba(0,0,0,0))**, green on restore |
-| Scroll injection | `?__scrollY=700` vs control | **614px vs 0** |
-| `tsc --noEmit` | — | **NOT RUN.** CI runs it on push. |
+| `tsc --noEmit` | — | **NOT RUN locally.** CI runs it on every push. |
 
-**Insets read 0 in Safari portrait and that is CORRECT** — Safari's own toolbar occupies
-that space. They are non-zero only in the installed home-screen app (top 59px Dynamic
-Island, bottom 34px home indicator).
+**Insets read 0 in Safari portrait and that is CORRECT** — Safari's toolbar owns that
+space. They are non-zero only in the installed home-screen app (top 59px, bottom 34px).
 
 ## Protected decisions
 
 - **The live `theme-color` must stay FIRST in `<head>`.** Appending it is a silent no-op.
+- **The header's upward fill must stay.** Nothing local can fail the bug it mitigates.
 - **No new Places requests.** The cuisine count derives from venues already fetched.
+- **A fixture must be able to express ABSENCE.** Two defects reached a real device this
+  session because a fixture default made the missing-data branch invisible to every check.
 - **Icons stay under `/assets/` with `-vN` filenames.**
-- **`ci/ios-shots` is the way to see this app on iOS.** `git fetch origin ci/ios-shots`,
-  extract the PNGs, **read them** — and md5 them first: runs 4–7 were all the same screen.
+- **`ci/ios-shots` is how to see this app on iOS.** `git fetch origin ci/ios-shots`,
+  extract the PNGs, **look at them**; `md5sum` first — runs 4–7 were all the same screen.
 
 ## Next session: first three actions
 
-1. **Read the scrolled iOS screenshots.** `git fetch origin ci/ios-shots`, then extract
-   `light-find-scrolled.png` and `light-happy-hour-scrolled.png` and **look at them**.
-   These are the first captures this project has ever taken mid-scroll, and they are the
-   only way to confirm the header fill actually closed the strip on a real device. `md5sum`
-   the set first — runs 4-7 were all the same screen.
-2. **If the strip is still open**, the fill is not the answer and the next lever is
-   pinning the header to the VISUAL viewport (`visualViewport` API) rather than the
-   layout viewport. Do not guess a third time without a scrolled screenshot in hand.
-3. **Give `happyHourData.ts` a `lastVerified` date per entry** and render it. The listings
+1. **Read `ci/ios-shots/light-find-scrolled.png` from the run on `c4da169`.** It is the
+   first capture that should actually collapse Safari's URL bar. **If the strip is still
+   open**, the fill is not the answer and the next lever is pinning the header to the
+   `visualViewport` API rather than the layout viewport. Do not guess without a scrolled
+   screenshot in hand.
+2. **Give `happyHourData.ts` a `lastVerified` date per entry and render it.** The listings
    are hand-curated with no freshness signal at all, so a venue that closed last month
    still shows with full confidence. Highest-cost remaining truthfulness gap.
+3. **Restore the per-chip cuisine availability dot.** It needs `relative` on the chip
+   button — Tailwind `sr-only` is `position: absolute` and escapes an unpositioned parent,
+   which made a chip's hidden label intercept clicks on a venue card elsewhere in the
+   layout — or move the text off the accessible name with `aria-describedby`. Add a check.
 
 **How to debug this suite, learned the hard way:** run it to a file and read the tail
-UNFILTERED. Grepping for `✗|Error` hides every `✓`, so the last passing check is
-invisible and the failure looks like it happened somewhere it did not. Three hypotheses
-were "disproved" against that hidden log and all three conclusions were worthless.
-`grep -c "✓\|✗"` gives the check number it died on; `main` alone is the control.
+UNFILTERED. Grepping for `✗|Error` hides every `✓`, so the last passing check is invisible
+and the failure looks like it happened somewhere it did not. Three hypotheses were
+"disproved" that way and all three conclusions were worthless. `grep -c "✓\|✗"` gives the
+check number it died on; `main` alone is the control, and it is one command.
 
 **Exact starting point:**
 ```bash
 cd /home/user/whats-good && git checkout main && git pull origin main
+npm install && npm --prefix verify install
 node verify/serve.mjs up && sleep 5
-cd verify && NO_PROXY='*' node checks.mjs; cd .. && node verify/serve.mjs down
+cd verify && NO_PROXY='*' node checks.mjs > /tmp/full.log 2>&1; echo "EXIT: $?"
+grep -c "✓\|✗" /tmp/full.log; tail -20 /tmp/full.log
+cd .. && node verify/serve.mjs down          # ALWAYS
 ```
 
 ## Known risks and open questions
 
-- **Neither the theme-color fix nor the header fill has rendered on a device.** A run is
-  queued on `14730c6`; it is the first that captures scrolled states. Until those PNGs
-  are read, the header fix is correct-by-specification and nothing more.
-- **The header fill is a MITIGATION, not a root fix.** It paints over the strip Safari
-  opens; it does not stop the strip opening. If a scrolled screenshot still shows bleed,
-  pin the header to `visualViewport` instead.
+- **The header fill has not been confirmed on a device.** A run is queued on `c4da169`;
+  until those PNGs are read it is correct-by-specification and nothing more.
+- **Google cost is UNCHANGED by this session.** Still two Text Search calls per search;
+  photos are still ~57% of the bill per the user's own billing export (15,426 photo
+  requests, $100.98, July). `userRatingCount` added by the merge is Enterprise-tier, which
+  was already being paid — no SKU escalation. **Nothing here reduced spend.**
+- **API keys are still unrestricted.** Two identical keys, no application restrictions, no
+  daily quota. A budget alert warns; only a **quota** caps volume. Console-side, user only.
+- **You cannot share a link to a specific restaurant or recipe.** `App.tsx` uses
+  `pushState(state, '')` — the venue id lives in history state, the URL never changes.
+  Buildable: Place IDs are stable and are the one thing Google's ToS permits storing.
+- **The cuisine count may UNDER-report on live data.** Matching is exact-string, so
+  Google's "Hamburger restaurant" does not match the baseline chip value "Burger". It can
+  never over-claim, so it stays truthful, but the real number may be higher.
+- **The PWA icons have never been observed served.** Verified present in `dist/` and that
+  `vercel.json` exempts `assets/`; never seen served. Open `/manifest.webmanifest` on the
+  live site — JSON means correct, the app's HTML means the icons are dead.
 - **`kqu3fy` (4 commits) and `rz1d3f` (5) remain unmerged.** `kqu3fy` has **7 conflicts**,
   5 in real source, because it re-solves rating data a second way against `xtv9e1`'s
   version. `rz1d3f` conflicts only in docs but deletes `verify/devices.mjs`.
-- **`happyHourData.ts` has no `lastVerified` field.** Hand-curated with no freshness
-  signal, so a venue that closed still shows confidently. Highest-cost truthfulness gap.
-- **The empty-Spend gating was not observed on a venue that lacks a price band** — the
-  logic is a one-line gate matching its two neighbours, but the case was not rendered.
-- **Vercel Authentication is OFF.** Deliberate, but a live security posture change.
+- **CI has no Places key**, so every venue surface in CI renders "Google turned the search
+  down". A harness fact, not an app defect — but CI cannot exercise a venue-data path
+  without fixtures.
 - **`tsc` has not run locally this session.** CI runs it on every push.
