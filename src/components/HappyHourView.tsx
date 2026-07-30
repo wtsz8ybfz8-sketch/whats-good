@@ -152,9 +152,20 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
             Nothing pouring yet
           </h2>
         )}
+        {/* "updates every minute" was not true and was the most dangerous kind of untrue.
+
+            `CAPE_TOWN_HAPPY_HOURS` is a static, hand-curated array. Nothing about the
+            listings updates, ever — no feed, no fetch, no revalidation. What recomputes
+            each minute is the live/soon/later STATUS, derived from the reader's clock
+            against times a human wrote down.
+
+            Saying "updates every minute" over that invites someone to cross town on the
+            strength of a price that was confirmed at an unknown date, which is exactly
+            the harm §8 describes. The caption now names both halves for what they are:
+            the times are human-confirmed, the status is computed live. */}
         <p className="font-mono text-xs text-[var(--text-muted)] mt-3">
-          Showing {entries.length} of {allEntries.length} confirmed venue
-          {allEntries.length === 1 ? '' : 's'} · updates every minute
+          Showing {entries.length} of {allEntries.length} hand-confirmed venue
+          {allEntries.length === 1 ? '' : 's'} · live status
         </p>
 
         {/* One row, three states — not the carousel CLAUDE.md 11.4 forbids. */}

@@ -57,15 +57,39 @@ createServer(async (req, res) => {
   if (p.includes('..')) return res.writeHead(400).end();
   if (p === '/' || p === '\\') p = '/index.html';
 
+  /**
+   * `?__scrollY=<px>` — scroll the page before the screenshot is taken.
+   *
+   * THE REASON THIS EXISTS. Every capture this project has ever taken, here and in
+   * checks.mjs, photographs the page AT REST. The user reported the app looking broken
+   * and sent five photographs from a real iPhone: the cuisine rail drawn over the status
+   * bar clock, a venue address over it, a venue NAME over it. Every one of those is a
+   * SCROLLED state, and not one of them can occur at rest — Safari only collapses its
+   * URL bar, which is what opens the strip above a `position: fixed` header, once you
+   * have scrolled. Fifty-two checks passed while the app was visibly wrong in the hand.
+   *
+   * `xcrun simctl` can boot a device, open a URL and grab the framebuffer. It has no
+   * gesture command, so the simulator cannot be told to swipe. Injecting the scroll at
+   * the server is the one lever available that does not put test-only code into the app:
+   * the bytes of the bundle are untouched, and only this harness's own responses carry
+   * the snippet.
+   *
+   * It waits for `load` and then a frame, because scrolling before layout settles is a
+   * no-op that photographs as a pass.
+   */
+  const scrollY = url.searchParams.get('__scrollY');
+
   try {
     const file = join(ROOT, p);
     const buf = await readFile(file);
+    if (scrollY && extname(file) === '.html') return sendHtmlScrolled(res, buf, scrollY);
     res.writeHead(200, { 'Content-Type': TYPES[extname(file)] || 'application/octet-stream' });
     res.end(buf);
   } catch {
     // SPA fallback — the app owns its routes, same as vercel.json's rewrite.
     try {
       const buf = await readFile(join(ROOT, 'index.html'));
+      if (scrollY) return sendHtmlScrolled(res, buf, scrollY);
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(buf);
     } catch {
@@ -73,3 +97,18 @@ createServer(async (req, res) => {
     }
   }
 }).listen(PORT, () => console.log(`serving ${ROOT} on :${PORT}`));
+
+/**
+ * Injects the scroll immediately before </body>, so it runs after the app's own scripts
+ * are parsed. A numeric guard keeps anything but digits out of the emitted script.
+ */
+function sendHtmlScrolled(res, buf, rawY) {
+  const y = Math.max(0, Math.min(20000, Number(rawY) || 0));
+  const snippet =
+    `<script>addEventListener('load',function(){` +
+    `requestAnimationFrame(function(){setTimeout(function(){window.scrollTo(0,${y});},400);});` +
+    `});</script>`;
+  const html = buf.toString('utf8').replace('</body>', snippet + '</body>');
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.end(html);
+}

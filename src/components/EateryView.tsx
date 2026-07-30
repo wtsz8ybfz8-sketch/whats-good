@@ -169,7 +169,15 @@ export const EateryView: React.FC<EateryViewProps> = ({
     hasRealDistance
       ? { label: 'Distance', value: distanceLabel as string, icon: MapPin, tone: 'text-[var(--accent-terracotta)]' }
       : null,
-    { label: 'Spend', value: priceTierLabel(rawEatery.priceTier), icon: Wallet },
+    /* Gated like its two neighbours, which it was not.
+       `priceTierLabel` returns '' when Places published no band, and this entry was the
+       only one of the three built unconditionally — so the tile rendered as a labelled
+       card with nothing under it. Photographed on a real device: a "SPEND" heading over
+       empty space. §8 is explicit that a field is a real value or it is absent; an empty
+       labelled card is the placeholder, not the exception to it. */
+    priceTierLabel(rawEatery.priceTier)
+      ? { label: 'Spend', value: priceTierLabel(rawEatery.priceTier), icon: Wallet }
+      : null,
     rawEatery.openNow !== undefined
       ? {
           label: 'Status',

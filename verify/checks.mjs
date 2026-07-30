@@ -210,6 +210,44 @@ async function main() {
   check('action bar sits flush on the tab bar', gap === 0, `gap ${gap}px`);
 
   /**
+   * The header must carry an opaque fill ABOVE itself.
+   *
+   * This is a structural check, and it is honest about being one: it asserts the
+   * MITIGATION is installed, not that the bug is gone. The bug cannot be reproduced
+   * here at all. `position: fixed; top: 0` anchors to the layout viewport; when iOS
+   * Safari collapses its URL bar mid-scroll the visual viewport grows upward and page
+   * content paints in the strip that opens above the header. Chromium never opens that
+   * strip, and every check in this file measures the page at rest, where it does not
+   * exist even on a real device.
+   *
+   * It was found by a user photographing their own phone — three separate screens with
+   * the cuisine rail, a venue address and a venue name drawn over the status-bar clock.
+   * So the one thing a machine CAN hold is that the fill is still there.
+   */
+  const topFill = await page.evaluate(() => {
+    const bar = document.querySelector('.chrome-bar');
+    if (!bar) return null;
+    const cs = getComputedStyle(bar, '::before');
+    return {
+      content: cs.content,
+      height: parseFloat(cs.height) || 0,
+      bg: cs.backgroundColor,
+      bottom: cs.bottom,
+    };
+  });
+  check(
+    'header fills the strip above itself (iOS URL-bar collapse)',
+    !!topFill
+      && topFill.content !== 'none'
+      && topFill.height >= 100
+      && topFill.bg !== 'rgba(0, 0, 0, 0)'
+      && topFill.bg !== 'transparent',
+    topFill
+      ? `h=${topFill.height}px bg=${topFill.bg} bottom=${topFill.bottom}`
+      : 'no .chrome-bar found',
+  );
+
+  /**
    * Simulated safe-area inset.
    *
    * Chromium always reports env(safe-area-inset-bottom) as 0, so "gap is 0 here" says

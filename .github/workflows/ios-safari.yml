@@ -135,6 +135,25 @@ jobs:
             xcrun simctl io "$U" screenshot "shots/light-$tab.png"
           done
 
+      # SCROLLED. This is the half that was missing, and it is where the bugs live.
+      #
+      # Every capture above photographs the page at rest. The user's five real-device
+      # photographs were all mid-scroll: page content drawn over the status bar, above
+      # the app's own fixed header. That strip only opens once Safari collapses its URL
+      # bar, which only happens after a scroll — so a suite that measures at rest can be
+      # entirely green while the app is visibly broken in the hand. It was.
+      #
+      # `?__scrollY=` is honoured by verify/ios-server.mjs, not by the app; the bundle is
+      # unchanged. See the note there for why the scroll cannot come from simctl.
+      - name: Capture — light, scrolled
+        run: |
+          U="${{ steps.boot.outputs.udid }}"
+          for tab in find happy-hour; do
+            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$tab&city=London&__scrollY=700"
+            sleep 8
+            xcrun simctl io "$U" screenshot "shots/light-$tab-scrolled.png"
+          done
+
       - name: Capture — dark
         run: |
           U="${{ steps.boot.outputs.udid }}"

@@ -33,7 +33,12 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  savedIds,
  onToggleSave,
  isSavedTab,
- city = 'your area',
+ /* No placeholder default. This was `'your area'`, which rendered "We found 25 eateries
+    near your area" on a phone whose own header read "Cape Town" — the app describing
+    itself as lost while displaying the answer two centimetres above. A vague stand-in
+    for a real field is the filler §8 forbids; when the city is genuinely unknown the
+    render site already drops the whole "near …" clause rather than guessing. */
+ city = '',
  onFindCorrespondingRestaurants,
 }) => {
  // Local state to keep track of checked ingredients for checklist interaction

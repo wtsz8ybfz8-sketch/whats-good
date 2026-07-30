@@ -241,6 +241,42 @@
   transition: transform 0.28s var(--ease-out-expo);
   will-change: transform;
 }
+/* The header's fill extends UPWARD, past the top of the layout viewport.
+
+   Reported from a real iPhone and visible in three separate screenshots: the cuisine
+   rail rendered over the status-bar clock, and on venue pages the address and the venue
+   NAME did the same. Page content, drawn above the app's own header, in the strip iOS
+   owns.
+
+   Cause is Safari, not this layout. `position: fixed; top: 0` anchors to the LAYOUT
+   viewport. When Safari collapses its URL bar on a downward scroll the VISUAL viewport
+   grows upward, and the strip that opens up between the two is painted by the page —
+   so whatever is scrolling underneath shows through above the header. Apple's own
+   developer forums carry it (threads 800798 and 773770), and Mastodon has the identical
+   report (mastodon#36144); LinkedIn shows it too.
+
+   No local render can reproduce it: `env(safe-area-inset-top)` is 0 in Safari portrait
+   because Safari's toolbar owns that space, and every check in this suite measures the
+   page AT REST, where the strip does not exist. It only appears mid-scroll.
+
+   So the header carries its own fill upward. Anything that reaches that strip is painted
+   over in the canvas colour instead of showing through as loose text. It travels with the
+   bar, so a retracted header still uncovers the content beneath it correctly.
+
+   A FIXED pixel height, deliberately. §6 bans full-viewport-height units outright and
+   checks.mjs greps the source for them, so one here would fail the build — correctly.
+   240px comfortably exceeds any status bar plus collapsed URL bar. */
+.chrome-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 240px;
+  background: var(--bg-warm);
+  pointer-events: none;
+}
+
 .chrome-bar.is-hidden {
   transform: translateY(-100%);
   pointer-events: none;
