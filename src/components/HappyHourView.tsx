@@ -61,8 +61,26 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
     return () => clearInterval(t);
   }, []);
 
-  const coverage = happyHourCoverage(city);
+  /**
+   * A way OUT of the uncovered state.
+   *
+   * The tab was a dead end for everyone outside one city: an honest sentence, and then
+   * nothing to do. §5's Recover stage is explicit that "closed, empty, wrong or offline"
+   * must still offer a way forward, and a New Yorker opening this got a wall.
+   *
+   * The escape is deliberately not a search and not a guess — it shows the one city whose
+   * windows are actually confirmed, on request, labelled as that city throughout. Google
+   * publishes no happy-hour data at any pricing tier, so there is nothing to fetch and
+   * this costs no request. Opt-in, never automatic: browsing another city's list because
+   * you asked is useful, being silently shown it is the "asserted-as-local" failure the
+   * coverage model above exists to prevent.
+   */
+  const [showCoveredCity, setShowCoveredCity] = useState(false);
+
+  const rawCoverage = happyHourCoverage(city);
+  const coverage = rawCoverage === 'not-covered' && showCoveredCity ? 'unknown-city' : rawCoverage;
   const covered = coverage !== 'not-covered';
+  const browsingOtherCity = rawCoverage === 'not-covered' && showCoveredCity;
 
   /**
    * The one filter this screen actually needs. Standing on a street at 18:40, "what
@@ -115,6 +133,15 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
             human first. {HAPPY_HOUR_CITY} is covered today. We would rather show you
             nothing than send you across town for a deal that does not exist.
           </p>
+          {/* The way forward. Named city, named count — so the tap is a decision, not a
+              mystery — and it reveals data already in the bundle, so it costs nothing. */}
+          <button
+            type="button"
+            onClick={() => setShowCoveredCity(true)}
+            className="tap-44 mt-6 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] cursor-pointer transition-colors hover:border-[var(--accent-terracotta)]"
+          >
+            See {HAPPY_HOUR_CITY}&rsquo;s {CAPE_TOWN_HAPPY_HOURS.length} confirmed windows
+          </button>
         </div>
       </div>
     );
@@ -137,12 +164,28 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
         </div>
         {/* Shown only when we are guessing. The user gets the content AND the reason
             they are seeing this city rather than theirs — one tap from correcting it. */}
-        {coverage === 'unknown-city' && (
+        {/* Two different reasons to be looking at another city's list, and they must not
+            share a sentence. "We do not know where you are" is false once the user has
+            explicitly asked for this city — they told us where they are, we simply have
+            no data for it. Saying otherwise would be the app misreporting its own state. */}
+        {browsingOtherCity ? (
+          <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-4 max-w-[520px]">
+            Showing {HAPPY_HOUR_CITY} — nothing is confirmed in {city} yet. These windows
+            are real, they are just not near you.{' '}
+            <button
+              type="button"
+              onClick={() => setShowCoveredCity(false)}
+              className="underline underline-offset-2 text-[var(--accent-terracotta)] cursor-pointer bg-transparent border-0 p-0 font-inherit"
+            >
+              Back to {city}
+            </button>
+          </p>
+        ) : coverage === 'unknown-city' ? (
           <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-4 max-w-[520px]">
             You are seeing {HAPPY_HOUR_CITY} because we do not know where you are yet.
             Set your location in the header to check your own city.
           </p>
-        )}
+        ) : null}
         {liveCount > 0 ? (
           <h2 className="font-serif text-4xl sm:text-5xl leading-[1.05] tracking-tight">
             <span className="text-[var(--accent-terracotta)]">{liveCount} live</span> right now
