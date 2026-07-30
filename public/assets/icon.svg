@@ -1,0 +1,19 @@
+<!--
+  What's Good — app mark, master source.
+
+  This is not a new logo. It is the EXISTING header mark from src/App.tsx (the charcoal
+  disc holding the white bulb glyph) set on the app's own canvas colour. Every value here
+  is a token from CLAUDE.md §7: --bg-warm #F4F2EF, --charcoal #1A1A1A.
+
+  The PNGs in this directory are rasterised from this file. To change the icon later:
+  edit this, re-run the generator, and bump the -vN suffix on the PNG filenames AND in
+  manifest.webmanifest — /assets/* is cached immutable for a year, so a new icon must
+  arrive under a new name or devices will keep the old one.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="What's Good">
+  <rect width="512" height="512" fill="#F4F2EF"/>
+  <circle cx="256" cy="256" r="150" fill="#1A1A1A"/>
+  <g transform="translate(256,256) scale(6.7) translate(-12,-12)">
+    <path d="M12 3C8 3 5 7 5 11c0 3 1.5 5.5 4 7v2h6v-2c2.5-1.5 4-4 4-7 0-4-3-8-7-8z" fill="#FFFFFF"/>
+  </g>
+</svg>

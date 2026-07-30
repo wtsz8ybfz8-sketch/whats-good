@@ -25,6 +25,30 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="What's Good" />
     <!--
+      Installability and the home-screen mark.
+
+      Two separate systems, and iOS uses neither the way you would expect:
+
+      - Android/Chrome reads manifest.webmanifest. Without it there is no install
+        prompt at all and the site is only ever a bookmark.
+      - iOS Safari IGNORES the manifest's icons for "Add to Home Screen" and reads
+        apple-touch-icon. With no such tag it screenshots the page and uses THAT as the
+        icon, which is why an un-tagged PWA lands on the home screen looking unfinished.
+
+      Every icon lives under /assets/ ON PURPOSE. vercel.json rewrites all paths to "/"
+      except sw.js, registerSW.js, manifest.webmanifest and assets/ — so an icon at the
+      root would be served index.html and silently fail to render on every device. That
+      directory is also cached immutable for a year, hence the -vN filenames: a new icon
+      must arrive under a NEW name or installed devices keep the old one forever.
+
+      No service worker is involved. Installability does not require one (CLAUDE.md §12 —
+      the precaching worker made three deploys invisible and must never come back).
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon-v1.png" />
+    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192-v1.png" />
+    <!--
       theme-color tints the browser's own chrome — the bar iOS Safari draws above and
       below the page. It was a single hardcoded terracotta, so in dark mode the app was
       near-black (#0F0C0A) while Safari's chrome stayed a saturated brown: a band of a
