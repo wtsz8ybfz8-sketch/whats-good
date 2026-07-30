@@ -2,193 +2,134 @@
 
 ## Status
 
-**`main` is at `b6027f9`, pushed.** Working tree clean, no dev server running.
+**Branch `claude/three-layer-restaurant-model-jncy93`, last commit `ee70b25` (== `origin/main`).**
+**Working tree is DIRTY and UNCOMMITTED — 4 modified files, deliberately not committed.**
+The user authorises commits explicitly; none was given for this patch.
 
-`verify/checks.mjs` **43/43, 0 skipped, exit 0** on chromium. `tsc --noEmit` exit 0.
-`npm run build` exit 0. `driver.mjs` 6/6 views, 0 unreachable, 0 console errors.
-WebKit ran the suite in CI and passed **38/38** (run 30331903951, before the four bezel
-checks existed).
+`verify/checks.mjs` **43/43, 0 skipped, exit 0**. `npm run build` **exit 0**.
+`tsc --noEmit` **NOT RUN** (see Verification). No dev server left running.
 
-**The iOS screenshots are readable from this container, and reading them is how the
-capture bug was found.** `git fetch origin ci/ios-shots` then `git show FETCH_HEAD:<f>.png`
-into a scratch dir and Read the PNG. This works — it was done on 2026-07-28.
-
-**Every iOS screenshot from runs 2 through 7 shows the same blocked screen.** Safari's
-"Allow this website to use your location?" prompt fired on first load, sat on top of the
-Find tab and swallowed the tab navigations underneath. `light-stay-in.png` and
-`light-saved.png` were byte-identical. Four green runs and thirty-six PNGs were evidence
-of nothing. **A green workflow with a full artifact directory is not proof the artifact
-shows what its filename says.**
-
-Fixed at the app, not the simulator, in `b6027f9` — see "What changed". **No iOS run has
-yet executed against that fix.** The next run is the first that should produce four
-genuinely different tabs; verify that by hashing the PNGs before trusting them.
-
-**`VITE_GOOGLE_PLACES_KEY` in Vercel — status CONTESTED, do not repeat either claim as
-fact.** This handover previously stated flatly that the key was unset and that setting it
-was the one remaining user action. A later session reported the opposite: that it had
-loaded the production URL, applied a cuisine filter (30 → 25 results) and opened a venue
-detail page with a real address, hours and working Directions/Call/Website buttons. Real
-venues cannot render without the key, so that report, if grounded, means the key is live
-and this line was stale.
-
-Neither claim is checkable from the agent container: **every outbound URL 403s here**
-(§6), so no session running without a browser connector can confirm or refute it. Resolve
-it by opening the deployed Find tab on a real device — venues means live, the
-missing-configuration state means unset — and only then write the answer down here.
+**Defect 2 of the three requested (mobile header safe-area gap + mobile logo lock-up)
+was NOT implemented.** Defects 1 and 3 are complete and verified. See "Next session".
 
 ## Objective
 
-Stop inferring what this app looks like on the user's phone. Build a channel that shows
-it, and fix what looking actually revealed.
+Three user-reported defects: (1) the Cuisine rail does not say which categories the
+current area actually has; (2) a gap behind the mobile header at the Dynamic Island;
+(3) a glossy line from the fixed chrome, plus a venue count that disagreed with the grid.
 
 ## What changed
 
-**1. WebKit renders and measures this app.** `verify/browser.mjs` — the harness selects
-an ENGINE (`PW_ENGINE=chromium|webkit`), not a binary. WebKit cannot be installed in this
-container (the proxy blocks the Playwright CDN, re-confirmed 2026-07-28); a GitHub runner
-installs it in seconds. An absent WebKit or an unknown engine **exits 3**; it never falls
-back to Chromium.
+**1. Result-backed cuisine availability (`src/components/Sidebar.tsx`).**
+`nearbyCuisines` — already derived in `App.tsx:869` from venues in hand — was used only
+to append extra chips. It now also marks which chips the CURRENT results contain:
+a terracotta dot per chip (with an `sr-only` "— in these results", because colour alone
+fails WCAG 1.4.1), result-backed chips ordered first, and a truthful count beside the
+title ("· 5 in these results"), omitted entirely when the count is 0. **Zero new Places
+requests** — no new field, fetch or photo.
 
-**2. Real Mobile Safari, on a real simulated iPhone.** `.github/workflows/ios-safari.yml`
-runs the production build in the **iOS Simulator** on a `macos-15` runner and captures
-Safari's own framebuffer — 4 tabs x light/dark, plus `verify/safe-area-probe.html`.
-Actions minutes are unmetered for public repos on all runner types. **If this repo goes
-private, macOS bills at 10x** — drop the push trigger and keep `workflow_dispatch`.
+**2. The rail scrolled past its own new chips (`src/index.css`, `Sidebar.tsx`).**
+Promoting chips to the front made the row re-target to its previously snapped chip:
+measured `scrollLeft` **613px**, so all five available cuisines started off-screen while
+the count above them said "5 in these results". `overflow-anchor: none` alone did **not**
+fix it (still 613) — the re-target is scroll-SNAP, not scroll anchoring. Fixed with an
+explicit `scrollLeft = 0` keyed to the chip set (`resetKey`). Now **4px**.
 
-**3. The logo was touching the screen edge.** `.safe-x` *replaced* the horizontal padding
-of the header and tab bar instead of adding to it. It is **unlayered CSS, and unlayered
-always beats `@layer utilities`** whatever the specificity or source order — so the
-header's `px-6` was discarded and the winner was `max(0px, env(safe-area-inset-left))`,
-which is **0 on any phone in portrait**. Measured before the fix at 393x852: header
-`padding-left: 0px`, logo left edge `x=0`. Now a floor, not a competitor:
-`max(var(--safe-gutter), env(...))`.
+**3. Rail clipping and affordance (`Sidebar.tsx`, `index.css`).**
+`pb-1` → `py-1.5`: `overflow-x:auto` computes `overflow-y` to auto, so 4px clipped every
+chip's focus ring. The scroll affordance is a **mask** on `.chip-rail`, not an overlay.
+The first attempt was an overlay fading to `--bg-warm`, which was the wrong tone against
+the `.surface` card it sits on — and no single colour is right in both schemes, since
+`--surface-bg` is `#FDFCFA` light but *translucent* in dark. A mask is background-agnostic
+and cannot intercept a tap. Tradeoff accepted: the fade persists at the scroll end.
 
-**4. The typeface was never loading.** It came from `fonts.googleapis.com` at runtime.
-Now self-hosted from `public/fonts/`, `font-display: optional`, **preloaded**.
+**4. The glossy line (`src/index.css`, `src/App.tsx`).**
+`.action-bar` drew **three** treatments at one seam: `border-top`, `box-shadow:
+0 -8px 24px`, and a `::before` 24px gradient. Invisible against the canvas (the gradient's
+end colour IS the canvas), banded and shiny over a `.surface` card. The `::before` is
+deleted and the shadow tightened to `0 -1px 10px`. `App.tsx` loses `md:before:hidden`,
+which was a cover-up for that pseudo escaping when the bar goes `static` at md.
 
-**5. `--dusty-blue` deleted** — a second, cooler accent on exactly one control (the
-venue page's Website icon), with no `html.dark` value. `--blue-light` was referenced
-nowhere at all.
-
-**6. `verify/serve.mjs up` was broken on every fresh clone** (ENOENT — `verify/out/` is
-gitignored and the log file was opened before the directory existed).
-
-**7. The app no longer asks for location when the link already named a city** (`b6027f9`,
-`src/App.tsx`). `requestUserLocation()` ran unconditionally on first load, including when
-`?city=` was present — and `?city=` already wins over every other city source, so the
-position was requested and then discarded, at the cost of a permission dialog over the
-first screen a user ever sees. The explicit "Sort nearby" control is untouched
-(`userInitiated`). Correct on its own merits; it also unblocks the iOS capture, which
-loads `?tab=…&city=London`.
-
-**8. `simctl privacy deny location` was tried and does NOT work** (`7d667ea`, reverted in
-`b6027f9`). It governs Safari's *own* location access; the per-site web prompt is a
-separate permission. A note in `ios-safari.yml` says so — do not re-add it. This was
-committed with a confident message claiming it worked, before any run had been read.
+**5. Truthful venue count (`src/components/RecipeView.tsx`).**
+The headline gated on `recipes.some(isEatery)` but printed `recipes.length`, so one venue
+in a list of recipes announced them all as eateries. Now counts venues only; `city` is
+guarded so an unresolved city no longer renders "near " with a dangling preposition.
 
 ## Customer journey impact
 
-**Orient** and **Trust**. First paint is now the app's own typeface rather than the
-system sans re-wrapping into it, and the two chrome surfaces no longer hug the bezel —
-between them, most of what read as unfinished on the first screen. **Act**: the venue
-page's three actions are one visual set.
+**Discovery** — the rail answers "what can I find here?" before the user experiments.
+**Trust** — the headline number now describes the grid beneath it, and the availability
+dot is never asserted from anything but returned venues.
 
 ## Verification and actual results
 
 | What | Command | Actual result |
 |---|---|---|
-| Regression suite (chromium) | `node verify/checks.mjs` | **43/43, 0 skipped, exit 0** |
-| Regression suite (WebKit, CI) | `PW_ENGINE=webkit` | **38/38** (run 30331903951) |
+| Regression suite | `node verify/checks.mjs` | **43/43, 0 skipped, exit 0** |
 | Build | `npm run build` | **exit 0** |
-| Bezel, before | measured at 393x852 | **header pad 0px, logo left edge 0** |
-| Bezel, after | new check, 4 viewports | header L24/R24, tab bar L20/R20 |
-| Font actually loads | read `document.fonts` | 2 faces `loaded`, 2 same-origin woff2 |
-| Font check *can* fail | first run, on my own comment | **red**, then fixed to strip comments |
-| iOS artifact download | `curl` the artifact URL | **403 from the agent proxy** |
-| iOS shots via git branch | `git fetch origin ci/ios-shots` | **WORKS — PNGs read 2026-07-28** |
-| iOS runs 4-7 | read the PNGs | **all showed the location prompt, not the tabs** |
-| `light-stay-in` vs `light-saved` | `md5sum` | **identical — two "tabs", one screen** |
-| Device probe | `PROBE.txt` | 402x678, dpr 3, insets **all 0**, vh 760 / dvh 678 |
-| Typecheck | `npx tsc --noEmit` | **exit 0** — after installing `@types/react` |
-| Build | `npx vite build` | **exit 0** |
-| Views rendered + read | `driver.mjs` | **6/6, 0 unreachable, 0 console errors** |
-| Geolocation fix on iOS | — | **NOT RUN. `b6027f9` postdates every iOS run.** |
+| Whitespace | `git diff --check` | **clean** |
+| Rail scroll on load | probe | **613px → 4px** |
+| Chip order | probe | Italian, Tapas, French, Japanese, Ramen **first**, all 5 dotted |
+| Count line | probe | "Cuisine — optional · 5 in these results" |
+| Headline vs grid | probe | **claims 5, 5 cards rendered** |
+| Chips clipped vertically | probe, 390/393/1440 | **0 clipped** (rail 56px / chip 44px) |
+| `.action-bar::before` | probe on `tab=mood` | `content: none` — seam gone |
+| Desktop fade removed | probe | `::after display: none` at 1440 |
+| Chips keyboard-focusable | probe, light + dark | **13/13, tabIndex ≥ 0** |
+| Deep link | `?city=Cape+Town&tab=mood` and `&tab=random` | loads, **0 console errors** |
+| Screenshots read | 390 light + dark, 1440 | **yes — both defects below were found this way** |
+| `tsc --noEmit` | — | **NOT RUN.** Pathologically slow here; CI runs it on push. |
 
-**The device numbers are real and are not a bug.** Insets all 0 is *correct* for Safari
-portrait — Safari's own toolbar occupies the bottom, and left/right are 0 on any phone in
-portrait. `viewport-fit=cover` is present in both `index.html` and
-`verify/safe-area-probe.html`; both were checked before concluding anything. `vh 760` vs
-`dvh 678` is the 82px gap the existing `vh` ban already guards.
+**Two defects were found ONLY by looking at a screenshot**, after every assertion was
+green: the wrong-coloured fade, and the 613px scroll. Both would have shipped.
 
-**Still never observed:** this app's four tabs in real Mobile Safari. The capture channel
-works and delivery works; what was broken was the app raising a permission dialog over
-everything. That is fixed but unrun.
-
-**`@types/react` was in `package.json` but absent from `node_modules`**, so `tsc` was
-silently checking nothing and reported errors in `ErrorBoundary.tsx` that vanished after
-`npm install`. On any fresh clone or after a big sync, install before believing a
-typecheck — green or red.
+**`?tab=random` is the "Stay In" COOKING tab, not restaurant discovery.** The Cuisine
+rail lives on `tab=mood` ("Find a Place"). The reference URL supplied points at cooking.
 
 ## Protected decisions
 
-- **`browser.mjs` never falls back.** Absent WebKit or unknown engine = exit 3.
-- **Declare the font faces by hand.** Importing `@fontsource-variable/...` registers the
-  family as "Schibsted Grotesk **Variable**", which does not match the `@theme` tokens, so
-  the app silently renders in the fallback — with every check green and
-  `document.fonts.check()` returning **true**, because it counts fallbacks. Read
-  `document.fonts` directly; `check()` is not a test of whether your font loaded.
-- **`font-display: optional` + preload, together.** `optional` alone loses its window on
-  a cold load; `swap` alone guarantees the reflow. Neither half works alone.
-- **`/fonts/*` is immutable with stable filenames** — a font change must **rename** the
-  file, never overwrite it.
-- **`.safe-x` composes, never replaces.** Unlayered CSS beats Tailwind utilities; any
-  bare `padding-*` there silently deletes the element's gutter.
-- **iOS CI does not `cancel-in-progress`.** It killed run 1 mid-capture.
-- **Say "WebKit" / "iOS Simulator", never "iPhone".** A simulator uses the Mac's GPU and
-  has no radio: nothing it says about thermals or performance is real.
-- Carried forward: static checks walk `src/`; the `vh` ban is about the unit; chrome that
-  content passes under is opaque; no `openNow` ratchet; never a bare `npx vite`; §7 is
-  decided; never state a check count from prose.
+- **No new Places requests.** Every value derives from venues already fetched.
+- **The rail affordance is a mask, never an overlay** — an overlay must know the colour
+  behind it, and no colour is right in both schemes on a `.surface`.
+- **Curated baseline chips are never hidden** when absent from results. Asking for sushi
+  where none returned is legitimate; the dot marks availability without shrinking the
+  vocabulary.
+- **The count is omitted at 0**, never rendered as "0 available".
 
 ## Next session: first three actions
 
-1. **Trigger `ios-safari.yml` on `main` and read the PNGs.** `b6027f9` postdates every
-   iOS run, so the location-prompt fix has never executed. Dispatch it
-   (`actions_run_trigger`, `workflow_id: ios-safari.yml`, `ref: main`), wait, then
-   `git fetch origin ci/ios-shots`, extract the PNGs and **Read them**.
-   **`md5sum` the four light tabs first.** If any two match, the tabs are still not
-   navigating and the prompt is not the only blocker — do not report success on a green
-   tick and a full directory, which is exactly what runs 4-7 produced while showing
-   nothing. If they differ, this is the first real look at the app in Mobile Safari:
-   check the bottom chrome for the user's reported gap.
-2. **Establish whether `VITE_GOOGLE_PLACES_KEY` is actually set** before acting on it
-   either way — see Status. Ask the user what the deployed Find tab shows; do not repeat
-   this handover's earlier assertion that the key is missing, and do not assume it is
-   present. Write down the answer and how it was obtained.
-3. **Flip the WebKit steps in `ci.yml` from `continue-on-error` to a gate** — the arrival
-   state is no longer unknown, it was 38/38 — and delete the paragraph that says to.
+1. **Implement defect 2 — the mobile header safe-area gap and the mobile logo lock-up.**
+   NOT started. The header model at `App.tsx:907-909` (`height: calc(60px +
+   env(safe-area-inset-top))`, `paddingTop: env(...)`) with `.chrome-bar`'s
+   `background: var(--bg-warm)` appears correct by specification, and **this container
+   cannot reproduce the gap** — headless Chromium reports every inset as 0, which is also
+   the correct value here. Start by asking the user whether the gap appears in Safari, in
+   the installed Home-Screen app, or both: `apple-mobile-web-app-status-bar-style:
+   black-translucent` (`index.html:25`) behaves differently in standalone mode and is the
+   strongest untested hypothesis. Do not guess at a fix that cannot be seen.
+2. **Get the user's authorisation to commit this patch**, then commit and push.
+3. **Investigate "near your area" vs the header's "Cape Town".** With `?city=Cape+Town`
+   the header chip reads "Cape Town" while the headline reads "near your area" — the
+   `city` reaching `RecipeView` differs from the header's. Not in this pass's scope;
+   observed, not diagnosed.
+
+**Exact starting point:**
+```bash
+cd /home/user/whats-good && git status --short     # 4 modified files, uncommitted
+node verify/serve.mjs up && sleep 5
+cd verify && NO_PROXY='*' node checks.mjs && cd .. && node verify/serve.mjs down
+```
 
 ## Known risks and open questions
 
-- **The Find tab opens on a form, not on food.** Nothing on the first screen answers
-  "what's good right now" until the user fills something in and taps. Against §5's Orient
-  stage this is the largest remaining product gap. A design decision, raised deliberately
-  and not acted on.
-- **The user's reported bottom gap is still unconfirmed.** Never reproduced here. The
-  iOS Simulator may now be able to show it.
-- **The venue hero has no photo fallback** — with no image it is a large flat pink→black
-  gradient over most of the first screen. **Seen again on 2026-07-28** in
-  `verify/out/venue-detail.png`: name, address and all three actions are present and
-  correct on first paint, sitting on that slab. Unknown whether real photo-less venues
-  hit it. Check once the Places key question is settled.
-- **`simctl privacy` is not a route to suppressing web permission prompts.** Recorded
-  here because it looks like the obvious fix and is not; the note in `ios-safari.yml`
-  will stop a re-add, but only if it is read.
-- **`ci/ios-shots` is force-pushed and orphaned every run.** History is discarded on
-  purpose so PNGs cannot accumulate. Never put anything there you want to keep.
-- **Commit `243c7f5`'s message is slightly mangled** — unescaped backticks in the shell
-  quoting ran a substitution. Cosmetic; not worth force-pushing `main` to fix.
-- **Hex ratchet is 71**, unchanged. The remainder has no exact token.
-- **`1,5 large, diced Onion`** — scaling discrete items yields fractional counts.
-  Pre-existing, never in scope. Worth a product decision.
+- **Nothing in this patch is verified on a real iOS device.** Chromium at 390px cannot
+  fail a safe-area bug. Do not claim otherwise.
+- **The mask fade persists when the rail is scrolled fully right**, so the last chip
+  stays soft, mildly implying more content. Removing it needs scroll-driven animation.
+- **`overflow-anchor: none` was kept although it did not fix the scroll jump**, because
+  both anchoring and snapping can move a scroller on insertion and only snapping is now
+  handled explicitly.
+- **`tsc` did not run.** Two `.tsx` files changed, so unlike the PWA pass this is a real
+  gap, not a check that cannot fail. CI will run it on push.
+- Carried forward: the Find tab still opens on a form, not on food; the hex ratchet is
+  unchanged; `?tab=random` naming does not match the surface it opens.

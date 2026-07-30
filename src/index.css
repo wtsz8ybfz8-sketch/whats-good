@@ -219,7 +219,11 @@
 .action-bar {
   background: var(--bg-warm);
   border-top: 1px solid var(--rule);
-  box-shadow: 0 -8px 24px rgba(26, 15, 10, 0.06);
+  /* Tight, not diffuse. The old `0 -8px 24px` smeared 24px of shadow UP over the
+     cards behind it, which was the second half of the glossy seam (the first was the
+     ::before gradient, now gone — see the note further down). A material sits on the
+     content; it does not glow through it. */
+  box-shadow: 0 -1px 10px rgba(26, 15, 10, 0.05);
   padding-left: max(1.25rem, env(safe-area-inset-left));
   padding-right: max(1.25rem, env(safe-area-inset-right));
 }
@@ -262,15 +266,47 @@
   .safe-x-wide { --safe-gutter: 48px; }
 }
 
-.action-bar::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 24px;
-  pointer-events: none;
-  background: linear-gradient(to top, var(--bg-warm), transparent);
+/* The gradient that used to live here was the "glossy line".
+
+   Three treatments were drawn at ONE seam: this 24px linear-gradient, .action-bar's
+   own `border-top` hairline, and its `box-shadow: 0 -8px 24px`. Against the page
+   canvas all three are invisible, because the gradient's own end colour IS the canvas
+   — which is exactly why it survived review for so long. Against a `.surface` card
+   scrolling underneath, the three stack into a banded, faintly shiny strip with a
+   hard top edge, and it reads as a rendering defect rather than as chrome.
+
+   It also could not survive the desktop layout. `.action-bar` goes `position: static`
+   at md, so an absolutely-positioned ::before escaped to whatever ancestor happened
+   to be positioned; App.tsx carried a `md:before:hidden` to paper over that, which
+   hid the symptom and left the cause.
+
+   An opaque bar with one hairline is a material, and content passing under a material
+   needs no help disappearing. One edge, drawn once. */
+
+/* Right-edge fade for the one horizontal rail this design permits.
+   A chip clipped mid-word was the ONLY hint that the row scrolled, which asks the
+   user to guess — and guessing is not an affordance.
+
+   This is a MASK on the scroller, not an overlay gradient, and the first attempt
+   getting that wrong is worth recording. An overlay has to know what colour is
+   behind it. This rail sits inside a `.surface` card, whose token is #FDFCFA in
+   light and a TRANSLUCENT white in dark — so an overlay fading to --bg-warm was
+   visibly the wrong tone against the card, and NO single colour would have been
+   right in both schemes. It rendered "correctly" in every assertion and was only
+   caught by looking at the screenshot.
+
+   A mask fades the chips themselves to transparent, so it is correct over any
+   background in either scheme, and it cannot intercept a tap the way an overlay
+   can. Applied below lg only: at lg the row wraps and nothing is hidden.
+
+   Tradeoff, accepted: the fade persists when the rail is scrolled fully right, so
+   the last chip stays soft. Removing that needs scroll-driven animation, which is
+   not worth the support surface here. */
+@media (max-width: 1023px) {
+  .chip-rail {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
 }
 
 /* ─── Label style ────────────────────────────────────────────────────────────
@@ -526,6 +562,22 @@ html.dark .glass-subtle {
   scroll-snap-type: x proximity;
   scroll-padding-left: 1rem;
   overscroll-behavior-x: contain;
+  /* Scroll anchoring OFF. Not sufficient on its own — see the reset in Sidebar.tsx.
+
+     The rail first paints with the curated baseline, then the Places results land and
+     the result-backed cuisines are PREPENDED. The row then ends up scrolled right by
+     exactly the width of what was inserted: measured scrollLeft 613px, so all five
+     available cuisines — the entire point of the feature — started off-screen behind
+     the left edge while the count above them said "5 in these results".
+
+     Anchoring was the first hypothesis and this line alone did NOT fix it (still 613).
+     The re-target is scroll-SNAP restoring its previously snapped chip, which
+     overflow-anchor does not govern. The line stays because both mechanisms can move
+     a scroller on content insertion and only one of them is now handled here.
+
+     Nothing asserted any of this. Every chip was present, unclipped and reachable;
+     the row was simply scrolled past them. It was visible only in a screenshot. */
+  overflow-anchor: none;
 }
 .chip-rail::-webkit-scrollbar {
   display: none;

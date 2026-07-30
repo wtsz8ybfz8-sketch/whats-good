@@ -459,19 +459,33 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  }
 
  // Showcase grid if multiple matches are returned and none are explicitly active
+ // How many of these cards are actually venues. Every claim below is derived from
+ // this one number so the headline, the sub-copy and the grid cannot disagree.
+ const eateryCount = recipes.reduce((n, r) => (r.id.startsWith('eat') ? n + 1 : n), 0);
  return (
  <div className="max-w-[1000px] mx-auto w-full sm:px-8 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col gap-2 mb-8 sm:mb-12">
  <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
  Here's what we found
  </span>
+ {/* Count what is actually being claimed.
+
+     This read `recipes.length` while GATING on `.some(isEatery)`, so a single
+     eatery in a list of recipes made the headline announce every recipe as an
+     eatery — "We found 26 eateries near Cape Town" above a grid that contained
+     nothing of the sort. The headline is the first sentence of the Trust stage;
+     if the number above the grid does not describe the grid, nothing below it is
+     worth believing either.
+
+     `city` is guarded too: with no resolved city this rendered "near " with a
+     dangling preposition. */}
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[var(--charcoal)]">
- {recipes.some((r) => r.id.startsWith('eat'))
- ? `We found ${recipes.length} ${recipes.length === 1 ?'eatery' :'eateries'} near ${city}`
+ {eateryCount > 0
+ ? `We found ${eateryCount} ${eateryCount === 1 ?'eatery' :'eateries'}${city ? ` near ${city}` : ''}`
  : `We found ${recipes.length} ${recipes.length === 1 ?'recipe' :'recipes'} for you`}
  </h2>
  <p className="text-[var(--text-muted)] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
- {recipes.some((r) => r.id.startsWith('eat'))
+ {eateryCount > 0
  ?'Tap any eatery for directions, contact details, and wait times.'
  :'Tap any recipe to see the full ingredients and step-by-step home cooking checklist.'}
  </p>
