@@ -5,7 +5,7 @@
 
 ## Status
 
-**`main` is at `55a702b`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
+**`main` is at `7ce920f`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
 `npm run build` exit 0. Working tree clean. No dev server running.
 
 **Live, public, no login: https://whats-good-git-main-nizzle-s-projects.vercel.app**
@@ -196,7 +196,10 @@ console-side and only the account owner can do it.
 - **CI has no Places key**, so every venue surface in CI renders "Google turned the search
   down". A harness fact, not an app defect — but CI cannot exercise a venue-data path
   without fixtures.
-- **Happy Hour is Cape Town only, by construction.** `HAPPY_HOUR_CITY = 'Cape Town'` and
+- **Happy Hour is Cape Town only, but is no longer a dead end.** The uncovered state now
+  offers "See Cape Town's N confirmed windows" (opt-in, no request, data already bundled),
+  with its own banner and a Back control — the previous "we do not know where you are"
+  copy would have been false once the user asked. Original constraint stands: `HAPPY_HOUR_CITY = 'Cape Town'` and
   `CAPE_TOWN_HAPPY_HOURS` is the only dataset; any other city resolves to `not-covered`
   and renders an honest empty state. A New Yorker gets a permanently empty tab — truthful,
   but dead weight. `HappyHourView.tsx:142` also shows Cape Town data when the city is
