@@ -25,7 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Full history: the handover check asks whether the commit HANDOVER.md names is an
+      # ancestor of HEAD, which a depth-1 checkout cannot answer.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # HANDOVER.md is read by the next session as authoritative state. It once named a
+      # commit two behind HEAD, which is a silent way to send a session to redo finished
+      # work. Fails only when the named commit is missing or is not an ancestor of HEAD;
+      # code landing after it is reported, since the handover is necessarily written
+      # before the commit that carries it.
+      - name: Handover names a real, current commit
+        run: node verify/handover-commit.mjs --check
 
       - uses: actions/setup-node@v4
         with:

@@ -13,6 +13,16 @@ import { getHappyHourStatus, formatDays } from '../venueExtras';
 import { cuisineIcon } from '../cuisineIcon';
 import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier, priceTierLabel } from '../placesService';
+import { formatQuantity } from '../locale';
+
+/** What the user asked for. Absent on the saved tabs — see App.tsx. */
+export interface SearchIntent {
+  vibe: string | null;
+  cuisine: string | null;
+  diet: string | null;
+  priceTier: number | null;
+  query: string;
+}
 
 interface EateryViewProps {
   recipes: ParsedRecipe[];
@@ -22,6 +32,90 @@ interface EateryViewProps {
   savedIds: string[];
   onToggleSave: (recipe: ParsedRecipe) => void;
   isSavedTab?: boolean;
+  intent?: SearchIntent;
+}
+
+/**
+ * Why this venue, for this person, right now — assembled ONLY from what we were told.
+ *
+ * This is the decision layer CLAUDE.md §1 asks for, and the reason it took so long to
+ * exist is that the obvious version of it is a lie. Places publishes no atmosphere, no
+ * signature dish and no editorial summary, so "intimate lighting and a lively bar" would
+ * have to be written by us about a venue we have never been to — the same failure as the
+ * synthesised menus, wearing better prose.
+ *
+ * What IS true and was simply never said out loud: this venue is on screen because it
+ * satisfied specific constraints the user set, and Google published specific facts about
+ * it. Each line below is one of those, and each names its source. A reason we cannot
+ * substantiate is not softened — it is absent, and when none survive the section does
+ * not render.
+ */
+function buildFitReasons(
+  rawEatery: any,
+  intent: SearchIntent | undefined,
+  distanceLabel: string | null,
+): { text: string; source: string }[] {
+  const reasons: { text: string; source: string }[] = [];
+  const cuisine: string = rawEatery.cuisine ?? '';
+
+  // Cuisine: claimed only when Places' own type data actually corroborates the filter.
+  // A venue can arrive in the result set from the free-text query alone, and saying
+  // "matches your Italian filter" about a venue Google typed as a bar would be the
+  // search engine's guess restated as a fact about the venue.
+  if (intent?.cuisine && cuisine && cuisine.toLowerCase().includes(intent.cuisine.toLowerCase())) {
+    // Places' display name is already "Italian restaurant", so "Italian restaurant
+    // kitchen" is what the naive join produces. Trim the noun this sentence supplies.
+    const kitchen = cuisine.replace(/\s*restaurants?$/i, '').trim() || cuisine;
+    reasons.push({ text: `${kitchen} kitchen, which is what you filtered for`, source: 'Google Places' });
+  }
+
+  // Price band: a confirmed equality, not "affordable".
+  if (intent?.priceTier && rawEatery.priceTier === intent.priceTier) {
+    reasons.push({
+      text: `Sits in the ${priceTierLabel(rawEatery.priceTier)} band you set`,
+      source: 'Google Places',
+    });
+  }
+
+  // Open/closed is the fact most likely to change the decision, and `false` is a real
+  // answer — compared against undefined, never truthiness.
+  if (rawEatery.openNow === true) {
+    reasons.push({
+      text: rawEatery.hoursToday ? `Open now — today ${rawEatery.hoursToday}` : 'Open right now',
+      source: 'Google Places',
+    });
+  } else if (rawEatery.openNow === false) {
+    reasons.push({
+      text: rawEatery.hoursToday ? `Closed right now — today ${rawEatery.hoursToday}` : 'Closed right now',
+      source: 'Google Places',
+    });
+  }
+
+  if (distanceLabel) {
+    reasons.push({ text: `${distanceLabel} from where you are`, source: 'your location' });
+  }
+
+  if (typeof rawEatery.rating === 'number' && rawEatery.rating > 0) {
+    reasons.push({ text: `Rated ${rawEatery.rating} by Google reviewers`, source: 'Google Places' });
+  }
+
+  return reasons;
+}
+
+/**
+ * The terms that actually went to Google, shown back to the user.
+ *
+ * The mood filter is the one input with no verifiable counterpart in the response: we
+ * translate "tired & cosy" into a search term and Google matches on it, but nothing
+ * comes back saying this venue IS cosy. Printing the terms is the honest form of that —
+ * it says how the venue was found, which is true, instead of what it feels like inside,
+ * which we do not know.
+ */
+function matchedTerms(intent: SearchIntent | undefined): string[] {
+  if (!intent) return [];
+  return [intent.query, intent.cuisine, intent.vibe, intent.diet].filter(
+    (t): t is string => typeof t === 'string' && t.trim().length > 0,
+  );
 }
 
 export const EateryView: React.FC<EateryViewProps> = ({
@@ -32,6 +126,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
   savedIds,
   onToggleSave,
   isSavedTab,
+  intent,
 }) => {
   const r = selectedRecipe;
   const rawEatery = (r as any).rawEatery;
@@ -39,6 +134,14 @@ export const EateryView: React.FC<EateryViewProps> = ({
   if (!rawEatery) return null;
 
   const directionsUrl = `https://maps.google.com/?q=${encodeURIComponent(rawEatery.address)}`;
+  // Venues saved to localStorage before this field existed carry no flag, and defaulting
+  // those to "no site" would mislabel a real website as Maps. The fallback URL has a
+  // known shape, so read the destination itself when the flag is absent; the flag stays
+  // authoritative when present, since a venue could legitimately publish a Maps link.
+  const hasOwnWebsite: boolean =
+    typeof rawEatery.hasOwnWebsite === 'boolean'
+      ? rawEatery.hasOwnWebsite
+      : !/^https?:\/\/(www\.)?google\.[^/]+\/maps\//.test(rawEatery.externalLink ?? '');
   const isSaved = savedIds.includes(r.id);
   // Only show distance when it's a real measured value, not a city-name fallback
   const distanceLabel = r.tags[1];
@@ -49,6 +152,9 @@ export const EateryView: React.FC<EateryViewProps> = ({
   // we genuinely have a confirmed window for this place, never fabricated per-venue.
   const realHH = findCuratedHappyHour(rawEatery.name);
   const hhStatus = realHH ? getHappyHourStatus(realHH) : null;
+
+  const fitReasons = buildFitReasons(rawEatery, intent, hasRealDistance ? (distanceLabel as string) : null);
+  const terms = matchedTerms(intent);
 
   // Utility Block source of truth. Assembled then filtered, so a field we don't have
   // produces one fewer tile instead of a tile rendering an empty string. `openNow` is
@@ -125,16 +231,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
         </button>
 
         {/* Save — top right */}
+        {/* Saved state says so in words as well as colour. A filled heart is the only
+            feedback a tap used to produce, which is both a weak confirmation and
+            invisible to anyone who cannot separate the two fills at a glance;
+            `aria-pressed` gives assistive tech the toggle state the shape implies. The
+            label is the ink that grows, not the target — the tap area stays `tap-44`. */}
         <button
           onClick={() => onToggleSave(r)}
-          aria-label={isSaved ? 'Remove from saved' : 'Save eatery'}
-          className={`tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center backdrop-blur-md transition-all cursor-pointer ${
+          aria-label={isSaved ? `Remove ${rawEatery.name} from saved` : `Save ${rawEatery.name}`}
+          aria-pressed={isSaved}
+          className={`tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md transition-all cursor-pointer ${
             isSaved
-              ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
+              ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] px-3.5'
               : 'bg-black/20 text-white hover:bg-black/35'
           }`}
         >
           <Heart className={`w-4 h-4 transition-transform ${isSaved ? 'fill-current scale-110' : ''}`} />
+          {isSaved && (
+            <span className="font-mono text-xs uppercase tracking-wider">Saved</span>
+          )}
         </button>
 
         {/* Name overlay — bottom of hero.
@@ -167,11 +282,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
               /55 over a photograph is not a contrast ratio, it's a hope. Rating, spend and
               distance are the three facts someone standing on a street actually reads. */}
           <div className="flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-wider text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
-            <span className="flex items-center gap-1.5">
-              <Star className="w-3 h-3 fill-white text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]" />
-              {rawEatery.rating}
-            </span>
-            <span className="text-white/45">·</span>
+            {/* Guarded: `rating` is optional now that the invented 4.0 default is gone
+                (venue.ts). An unguarded render put a star with nothing beside it on every
+                unrated venue — the trailing separator goes with it, or the row opens on a
+                stray interpunct. The count rides along because a 4.9 from three people is
+                not a 4.9, and Google publishes both under the same SKU. */}
+            {typeof rawEatery.rating === 'number' && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <Star className="w-3 h-3 fill-white text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]" />
+                  {formatQuantity(rawEatery.rating, 1)}
+                  {typeof rawEatery.userRatingCount === 'number' && (
+                    <span className="text-white/70 normal-case tracking-normal">
+                      ({formatQuantity(rawEatery.userRatingCount, 0)})
+                    </span>
+                  )}
+                </span>
+                <span className="text-white/45">·</span>
+              </>
+            )}
             <span aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
             {hasRealDistance && (
               <>
@@ -186,21 +315,27 @@ export const EateryView: React.FC<EateryViewProps> = ({
       {/* Two-column on desktop: the menu is the main column; everything actionable
           (address, contact, happy hour) lives in a sticky sidebar so wide screens are
           used, not left mostly empty. Collapses to a single column below lg. */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-8 lg:items-start">
+      {/* Below lg this is a flex column purely so the two children can be REORDERED:
+          the sidebar is first in the DOM (desktop needs it in the right-hand track) but
+          on a phone that put the address and three action pillars above every reason to
+          act — the page asked you to call before it told you why. Desktop is unaffected
+          because both children are placed explicitly by column and row, which ignores
+          source order; `order-*` is what the flex column below lg honours. */}
+      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-8 lg:items-start">
 
-      {/* SIDEBAR (right on desktop, top on mobile) */}
-      <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 self-start lg:pt-4">
+      {/* SIDEBAR (right on desktop, BELOW the reasons on mobile) */}
+      {/* `self-start` is LG-ONLY. It exists for the sticky desktop column, and while the
+          container below lg was a plain block it did nothing. Turning that container into
+          a flex column (for the mobile reorder) made it bite: align-self:flex-start
+          shrank this whole column to content width, so the action pillars' `flex-1` had
+          no width to divide and the three labels bunched into a left-hand clump —
+          78/44/57px instead of equal thirds. Reported from a real phone, not caught here,
+          because the reorder was checked at the top of the page and not at the actions. */}
+      <aside className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 lg:self-start lg:pt-4">
 
-      {/* Address */}
-      <div className="px-5 sm:px-10 pt-5">
-        <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs font-mono">
-          <MapPin className="w-3 h-3 flex-shrink-0" />
-          <span>{rawEatery.address}</span>
-        </div>
-      </div>
-
-      {/* Rule */}
-      <div className="mx-5 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
+      {/* On mobile this column now follows the content, so it opens with its own rule
+          rather than the page's top padding. */}
+      <div className="mx-5 sm:mx-10 mt-2 mb-7 h-px bg-[var(--rule)] lg:hidden" />
 
       {/* Contact — minimalist icon pillars */}
       <div className="px-5 sm:px-10 flex items-start">
@@ -216,27 +351,38 @@ export const EateryView: React.FC<EateryViewProps> = ({
           </div>
           <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Directions</span>
         </a>
-        <a
-          href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
-          aria-label={`Call ${rawEatery.phone}`}
-          className="flex-1 flex flex-col items-center gap-2.5 cursor-pointer group press"
-        >
-          <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
-            <Phone className="w-4 h-4 text-[var(--accent-terracotta)]" />
-          </div>
-          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Call</span>
-        </a>
+        {/* Gated on a real number. Unguarded, a venue with no published phone still got
+            a Call pillar wired to `tel:` with an empty accessible name — an action that
+            cannot act, which is the same broken promise as a fabricated fact. */}
+        {rawEatery.phone && (
+          <a
+            href={`tel:${rawEatery.phone.replace(/\s+/g, '')}`}
+            aria-label={`Call ${rawEatery.phone}`}
+            className="flex-1 flex flex-col items-center gap-2.5 cursor-pointer group press"
+          >
+            <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
+              <Phone className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            </div>
+            <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Call</span>
+          </a>
+        )}
         <a
           href={rawEatery.externalLink}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Official website"
+          aria-label={hasOwnWebsite ? `Official website for ${rawEatery.name}` : `Look up ${rawEatery.name} on Google Maps`}
           className="flex-1 flex flex-col items-center gap-2.5 cursor-pointer group press"
         >
           <div className="w-11 h-11 rounded-full border border-[var(--rule)] flex items-center justify-center group-hover:border-[var(--accent-terracotta)] transition-colors">
-            <ExternalLink className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            {hasOwnWebsite ? (
+              <ExternalLink className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            ) : (
+              <MapPin className="w-4 h-4 text-[var(--accent-terracotta)]" />
+            )}
           </div>
-          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">Website</span>
+          <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
+            {hasOwnWebsite ? 'Website' : 'Maps'}
+          </span>
         </a>
       </div>
 
@@ -287,8 +433,18 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
       </aside>
 
-      {/* MAIN column (left on desktop) — the menu is the reason to look at this page */}
-      <div className="lg:col-start-1 lg:row-start-1 lg:pt-4">
+      {/* MAIN column (left on desktop, FIRST on mobile) — the reasons to consider this
+          place, which is what the page is for. */}
+      <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 lg:pt-4">
+
+      {/* Address — moved out of the action column. It is identity, not an action: where
+          the place is belongs beside the reasons to go, not stacked on the buttons. */}
+      <div className="px-5 sm:px-10 pt-5 pb-6">
+        <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs font-mono">
+          <MapPin className="w-3 h-3 flex-shrink-0" />
+          <span>{rawEatery.address}</span>
+        </div>
+      </div>
 
       {/* WHAT TO EXPECT — replaces the invented menu and the invented "specials".
        *
@@ -310,6 +466,45 @@ export const EateryView: React.FC<EateryViewProps> = ({
        * content on screen, all of it load-bearing. Real happy-hour data still renders
        * in the sidebar; that comes from happyHourData.ts and is human-confirmed. */}
       <div className="px-5 sm:px-10 mb-8">
+
+        {/* ── WHY THIS ONE ─────────────────────────────────────────────────────────
+            The decision layer, and the first thing under the hero because it is the
+            question the user is actually holding: not "what are the facts" but "why am I
+            looking at this place". Every line is a real field or a constraint the user
+            themselves set, and each carries its source — see buildFitReasons.
+
+            When nothing survives (a saved venue opened with no active filters, a listing
+            Places knows almost nothing about) the section does not render at all. An
+            honest gap beats a confident sentence about a restaurant nobody here has
+            visited. */}
+        {fitReasons.length > 0 && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              Why this one
+            </p>
+            <ul className="flex flex-col gap-2.5">
+              {fitReasons.map((reason) => (
+                <li key={reason.text} className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[7px] w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0"
+                  />
+                  <span className="font-sans text-[15px] leading-snug text-[var(--charcoal)] max-w-[52ch]">
+                    {reason.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {terms.length > 0 && (
+              /* How it was found, stated as such. The mood term reached Google; whether
+                 the room is cosy is not something we were told, and this line is careful
+                 to claim only the former. */
+              <p className="mt-3.5 font-mono text-xs text-[var(--text-muted)] leading-relaxed">
+                Found by searching {terms.map((t) => `“${t}”`).join(' · ')}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* ── VIBE & ATMOSPHERE MATCH ──────────────────────────────────────────────
             Answers "is this place right for how I feel", which is the question the whole
@@ -360,10 +555,40 @@ export const EateryView: React.FC<EateryViewProps> = ({
                 </div>
               ))}
             </div>
-            {rawEatery.hoursToday && (
+            {/* Today stays on the surface — it is the only hours line that decides whether
+                you leave the house now. When the full week is available the rest of it sits
+                one tap behind a native <details> so the page keeps its shape (§5 Explore:
+                go deeper without losing your place). weeklyHours[0] IS today, so the list
+                opens on the line the summary already showed and reads forward from there.
+                <details>, not useState: this component early-returns above when there is no
+                venue, so a hook added here would sit after a conditional return and change
+                hook order between renders. */}
+            {rawEatery.hoursToday && (!rawEatery.hoursWeekly || rawEatery.hoursWeekly.length === 0) && (
               <p className="mt-2.5 font-mono text-xs text-[var(--text-muted)]">
                 Today: {rawEatery.hoursToday}
               </p>
+            )}
+            {rawEatery.hoursWeekly && rawEatery.hoursWeekly.length > 0 && (
+              <details className="mt-2.5 group">
+                <summary className="hit-44 list-none cursor-pointer font-mono text-xs text-[var(--text-muted)] hover:text-[var(--charcoal)] transition-colors flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 flex-shrink-0" />
+                  <span>{rawEatery.hoursToday ? `Today: ${rawEatery.hoursToday}` : 'Opening hours'}</span>
+                  <span className="text-[var(--accent-terracotta)] group-open:hidden">All week</span>
+                  <span className="text-[var(--accent-terracotta)] hidden group-open:inline">Hide</span>
+                </summary>
+                <ul className="mt-2.5 flex flex-col">
+                  {rawEatery.hoursWeekly.map((line, i) => (
+                    <li
+                      key={line}
+                      className={`font-mono text-xs py-1.5 border-b border-[var(--row-border)] last:border-0 ${
+                        i === 0 ? 'text-[var(--charcoal)] font-bold' : 'text-[var(--text-muted)]'
+                      }`}
+                    >
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </div>
         )}
@@ -435,15 +660,17 @@ export const EateryView: React.FC<EateryViewProps> = ({
         )}
 
         {/* The menu itself lives with the venue. Send people there properly, as a real
-            action, instead of burying it in a footnote under fake prices. */}
+            action, instead of burying it in a footnote under fake prices. The copy
+            promises only what the destination is: the venue's own site may carry a
+            menu, a Maps listing carries photos and reviews and makes no menu promise. */}
         <a
           href={rawEatery.externalLink}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-full border border-[var(--rule)] text-[14px] font-medium text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)] transition-colors"
         >
-          <ExternalLink className="w-4 h-4" />
-          See the full menu and photos
+          {hasOwnWebsite ? <ExternalLink className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+          {hasOwnWebsite ? 'See the full menu and photos' : 'Open in Google Maps'}
         </a>
 
         <div className="mt-5 flex items-start gap-2.5">

@@ -295,6 +295,170 @@ async function main() {
     `left at ${restored.before}px, returned to ${restored.after}px`,
   );
 
+  /**
+   * A venue Places knows nothing about beyond its address (fixture `pl-6`).
+   *
+   * Two shipped defects, both invisible until the fixture could express absence:
+   * the Call pillar rendered unconditionally, so a venue with no published number got
+   * an action wired to `tel:` with an accessible name of "Call " — an action that
+   * cannot act; and `externalLink` falls back to a Google Maps *search* URL, which was
+   * labelled "Official website" and "See the full menu and photos". Neither is a thing
+   * we were told. §5 Trust: a label that overclaims its destination is the same
+   * category of failure as an invented fact, just cheaper to miss.
+   *
+   * What would be red: restore the ungated pillar and `tel:` reappears; restore either
+   * hardcoded label and the wording assertions fail.
+   */
+  const thin = page.locator('[role="button"][aria-label^="View Hoxton Steam Buns"]').first();
+  await thin.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await thin.count())) {
+    console.error(
+      '\nFixture venue "Hoxton Steam Buns" (pl-6) did not render a card. It is the only\n' +
+      'fixture with no phone and no website, so the venue-action checks below cannot\n' +
+      'run. This is a harness gap, not a pass.',
+    );
+    process.exit(3);
+  }
+  await thin.click();
+  await page.waitForTimeout(900);
+  const thinActions = await page.evaluate(() => {
+    const txt = document.body.innerText;
+    const labels = [...document.querySelectorAll('a[href],button')]
+      .map((el) => el.getAttribute('aria-label') || '');
+    return {
+      telLinks: document.querySelectorAll('a[href^="tel:"]').length,
+      claimsWebsite: labels.some((l) => /official website/i.test(l)) || /full menu and photos/i.test(txt),
+      offersMaps: /open in google maps/i.test(txt),
+      onVenuePage: /Hoxton Steam Buns/.test(txt),
+    };
+  });
+  check('venue with no phone renders no Call action', thinActions.onVenuePage && thinActions.telLinks === 0,
+    thinActions.onVenuePage ? `${thinActions.telLinks} tel: link(s)` : 'not on the venue page');
+  check('a Maps fallback is not labelled "Official website"', !thinActions.claimsWebsite);
+  check('a Maps fallback says so', thinActions.offersMaps);
+  await page.goBack().catch(() => {});
+  await page.waitForTimeout(900);
+
+  /**
+   * The venue action pillars divide the row evenly.
+   *
+   * They are `flex-1`, so they can only be unequal if their container has no width to
+   * divide — which is exactly what happened: the sidebar carries `self-start` for the
+   * desktop sticky column, and once the mobile container became a flex column, that
+   * shrank the whole column to content width. The pillars came out 78/44/57px, bunched
+   * left with their labels running together, while all 46 checks stayed green and the
+   * page looked fine at the top where the reorder had been eyeballed. A user found it.
+   *
+   * What would be red: restore `self-start` without the `lg:` prefix.
+   */
+  const anyCard = page.locator('[role="button"][aria-label^="View "]:visible').first();
+  await anyCard.click();
+  await page.waitForTimeout(1000);
+  const pillars = await page.evaluate(() => {
+    const first = document.querySelector('a[aria-label="Get directions"]');
+    if (!first || !first.parentElement) return null;
+    const row = first.parentElement;
+    const widths = [...row.children].map((c) => Math.round(c.getBoundingClientRect().width));
+    return { widths, rowWidth: Math.round(row.getBoundingClientRect().width) };
+  });
+  if (!pillars || pillars.widths.length < 2) {
+    check('venue action pillars share the row evenly', false, 'action row not found');
+  } else {
+    const spread = Math.max(...pillars.widths) - Math.min(...pillars.widths);
+    // The row width includes its own horizontal padding (px-5 = 40px at this viewport),
+    // so an evenly divided row lands near 0.9 of rowWidth/n, not 1.0. The failure this
+    // guards is shrink-to-content — 78/44/57 in a 219px row, i.e. ~0.6 — so the
+    // threshold sits between the two, not flush against the healthy value.
+    const share = Math.min(...pillars.widths) / (pillars.rowWidth / pillars.widths.length);
+    check(
+      'venue action pillars share the row evenly',
+      spread <= 2 && share >= 0.8,
+      `${pillars.widths.join('/')}px in a ${pillars.rowWidth}px row`,
+    );
+  }
+  await page.goBack().catch(() => {});
+  await page.waitForTimeout(900);
+
+  /**
+   * Rating enrichment — optional rating, its count, and the weekly-hours disclosure.
+   *
+   * The fixture is uneven on purpose (verify/fixtures/places.mjs): pl-3 Maison Verte has
+   * NO rating, pl-1 Trattoria is rated AND counted with a full week of hours, pl-6 Hoxton
+   * has no hours at all. Each assertion below names the venue whose absence or presence
+   * makes it fall.
+   *
+   * What would be red, per check:
+   *   no orphan star        — pl-3 has no rating; a star with nothing beside it =>
+   *                           the invented 4.0 default came back, or the guard was dropped
+   *   rating count renders   — pl-1 publishes 1284 ratings; missing "(1,284)" =>
+   *                           userRatingCount was not requested or not mapped
+   *   weekly hours present   — pl-1 has 7 lines; no <details> => the disclosure regressed
+   *   no hours, no module    — pl-6 has none; a Today line or an All-week door => a hours
+   *                           block rendered on a venue that published no hours
+   */
+  const starsOn = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('svg')].filter((s) =>
+        /star/i.test(s.getAttribute('class') || ''),
+      ).length,
+    );
+
+  const unrated = page.locator('[role="button"][aria-label^="View Maison Verte"]').first();
+  await unrated.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await unrated.count())) {
+    skip('venue detail: no star icon without a rating beside it', 'Maison Verte card not found');
+  } else {
+    await unrated.click();
+    await page.waitForTimeout(900);
+    const stars = await starsOn();
+    check('venue detail: no star icon without a rating beside it', stars === 0,
+      `pl-3 publishes no rating; found ${stars} star icon(s) — the invented 4.0 default was removed`);
+    await page.goBack().catch(() => {});
+    await page.waitForTimeout(900);
+  }
+
+  const rated = page.locator('[role="button"][aria-label^="View Trattoria Sorella"]').first();
+  await rated.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await rated.count())) {
+    skip('venue detail: rating count renders beside the rating', 'Trattoria Sorella card not found');
+  } else {
+    await rated.click();
+    await page.waitForTimeout(900);
+    const info = await page.evaluate(() => {
+      const txt = document.body.innerText;
+      return {
+        hasCount: /\(1,284\)/.test(txt),
+        hasWeekly: !!document.querySelector('details'),
+        allWeek: /All week/i.test(txt),
+      };
+    });
+    check('venue detail: rating count renders beside the rating', info.hasCount,
+      'pl-1 publishes userRatingCount 1284; expected "(1,284)" in en-GB');
+    check('venue detail: full-week hours disclosure present',
+      info.hasWeekly && info.allWeek, 'expected a <details> "All week" holding the 7 weekday lines');
+    await page.goBack().catch(() => {});
+    await page.waitForTimeout(900);
+  }
+
+  const noHours = page.locator('[role="button"][aria-label^="View Hoxton Steam Buns"]').first();
+  await noHours.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await noHours.count())) {
+    skip('venue detail: no hours module for a venue with no hours', 'Hoxton Steam Buns card not found');
+  } else {
+    await noHours.click();
+    await page.waitForTimeout(900);
+    const hours = await page.evaluate(() => {
+      const onPage = /Hoxton Steam Buns/.test(document.body.innerText);
+      // Scope to the venue detail: a <details> here would be the hours disclosure.
+      return { onPage, hasWeekly: !!document.querySelector('details'), allWeek: /All week/i.test(document.body.innerText) };
+    });
+    check('venue detail: no hours module for a venue with no hours',
+      hours.onPage && !hours.hasWeekly && !hours.allWeek,
+      hours.onPage ? `weekly=${hours.hasWeekly} allWeek=${hours.allWeek}` : 'not on the venue page');
+    await page.goBack().catch(() => {});
+    await page.waitForTimeout(900);
+  }
+
   // --- layout + hit targets, every view ---------------------------------------
   const MEASURE = () => {
     const miss = [];
