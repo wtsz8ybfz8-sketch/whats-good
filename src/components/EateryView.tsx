@@ -13,6 +13,7 @@ import { getHappyHourStatus, formatDays } from '../venueExtras';
 import { cuisineIcon } from '../cuisineIcon';
 import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier, priceTierLabel } from '../placesService';
+import { formatQuantity } from '../locale';
 
 /** What the user asked for. Absent on the saved tabs — see App.tsx. */
 export interface SearchIntent {
@@ -281,11 +282,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
               /55 over a photograph is not a contrast ratio, it's a hope. Rating, spend and
               distance are the three facts someone standing on a street actually reads. */}
           <div className="flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-wider text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
-            <span className="flex items-center gap-1.5">
-              <Star className="w-3 h-3 fill-white text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]" />
-              {rawEatery.rating}
-            </span>
-            <span className="text-white/45">·</span>
+            {/* Guarded: `rating` is optional now that the invented 4.0 default is gone
+                (venue.ts). An unguarded render put a star with nothing beside it on every
+                unrated venue — the trailing separator goes with it, or the row opens on a
+                stray interpunct. The count rides along because a 4.9 from three people is
+                not a 4.9, and Google publishes both under the same SKU. */}
+            {typeof rawEatery.rating === 'number' && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <Star className="w-3 h-3 fill-white text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]" />
+                  {formatQuantity(rawEatery.rating, 1)}
+                  {typeof rawEatery.userRatingCount === 'number' && (
+                    <span className="text-white/70 normal-case tracking-normal">
+                      ({formatQuantity(rawEatery.userRatingCount, 0)})
+                    </span>
+                  )}
+                </span>
+                <span className="text-white/45">·</span>
+              </>
+            )}
             <span aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
             {hasRealDistance && (
               <>
@@ -540,10 +555,40 @@ export const EateryView: React.FC<EateryViewProps> = ({
                 </div>
               ))}
             </div>
-            {rawEatery.hoursToday && (
+            {/* Today stays on the surface — it is the only hours line that decides whether
+                you leave the house now. When the full week is available the rest of it sits
+                one tap behind a native <details> so the page keeps its shape (§5 Explore:
+                go deeper without losing your place). weeklyHours[0] IS today, so the list
+                opens on the line the summary already showed and reads forward from there.
+                <details>, not useState: this component early-returns above when there is no
+                venue, so a hook added here would sit after a conditional return and change
+                hook order between renders. */}
+            {rawEatery.hoursToday && (!rawEatery.hoursWeekly || rawEatery.hoursWeekly.length === 0) && (
               <p className="mt-2.5 font-mono text-xs text-[var(--text-muted)]">
                 Today: {rawEatery.hoursToday}
               </p>
+            )}
+            {rawEatery.hoursWeekly && rawEatery.hoursWeekly.length > 0 && (
+              <details className="mt-2.5 group">
+                <summary className="hit-44 list-none cursor-pointer font-mono text-xs text-[var(--text-muted)] hover:text-[var(--charcoal)] transition-colors flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 flex-shrink-0" />
+                  <span>{rawEatery.hoursToday ? `Today: ${rawEatery.hoursToday}` : 'Opening hours'}</span>
+                  <span className="text-[var(--accent-terracotta)] group-open:hidden">All week</span>
+                  <span className="text-[var(--accent-terracotta)] hidden group-open:inline">Hide</span>
+                </summary>
+                <ul className="mt-2.5 flex flex-col">
+                  {rawEatery.hoursWeekly.map((line, i) => (
+                    <li
+                      key={line}
+                      className={`font-mono text-xs py-1.5 border-b border-[var(--row-border)] last:border-0 ${
+                        i === 0 ? 'text-[var(--charcoal)] font-bold' : 'text-[var(--text-muted)]'
+                      }`}
+                    >
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </div>
         )}

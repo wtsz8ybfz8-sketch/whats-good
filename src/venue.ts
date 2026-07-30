@@ -18,7 +18,26 @@ export interface Venue {
   cuisine: string;
   vibeMatch: string;
   fallbackDistance: string; // shown when geolocation is denied
-  rating: number;
+  /**
+   * Optional on purpose. This was `rating: number` fed by `place.rating ?? 4.0`, so a
+   * venue Google holds no rating for was handed a 4.0 and rendered it beside a star as
+   * though it had been earned — an invented fact, and one the sort read back. Unknown is
+   * now absent, and every render site guards on `typeof rating === 'number'`.
+   */
+  rating?: number;
+  /**
+   * How many ratings the average is built from. A 4.9 from 3 people is not a 4.9, and
+   * Google publishes both. Same Enterprise SKU as `rating`, which the search already
+   * requests, so this adds no billing tier. Absent when `rating` is.
+   */
+  userRatingCount?: number;
+  /**
+   * The whole week, localised, rotated so the venue's today is index 0. Built from
+   * `regularOpeningHours.weekdayDescriptions`, which the search already fetches — no new
+   * field, no billing change. Absent when Google returns no weekly hours; the render
+   * site falls back to the single `hoursToday` line.
+   */
+  hoursWeekly?: string[];
   /**
    * Price band as a tier count, 1–4, mirroring the Google Places priceLevel enum.
    * Was `'R' | 'RR' | 'RRR' | 'RRRR'` — the Rand glyph repeated, with the tier read

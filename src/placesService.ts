@@ -31,6 +31,7 @@ interface Place {
     longitude: number;
   };
   rating?: number;
+  userRatingCount?: number;
   priceLevel?: string;
   primaryType?: string;
   primaryTypeDisplayName?: { text?: string };
@@ -116,6 +117,24 @@ function todaysHours(hours?: PlaceOpeningHours, utcOffsetMinutes?: number): stri
   if (!line) return undefined;
   // Day label stripped script-agnostically, clock rewritten to the reader's convention.
   return localiseHours(stripDayPrefix(line));
+}
+
+/**
+ * The whole week, localised, rotated so the venue's today comes first.
+ *
+ * Built from the SAME `weekdayDescriptions` array `todaysHours` reads — no new field is
+ * requested, so this costs nothing extra. Each line keeps its own day label (localiseHours
+ * rewrites only the clock, not the prefix), so the list is self-describing: index 0 is
+ * today and the reader never has to be told which row is "now". Today resolved in the
+ * VENUE's timezone (venueDayIndex), not the phone's — the same rule as todaysHours.
+ * Returns undefined unless Google gave a full seven lines, so the render site falls back
+ * to the single today line rather than drawing a partial week.
+ */
+function weeklyHours(hours?: PlaceOpeningHours, utcOffsetMinutes?: number): string[] | undefined {
+  const lines = hours?.weekdayDescriptions;
+  if (!lines || lines.length !== 7) return undefined;
+  const today = venueDayIndex(utcOffsetMinutes);
+  return Array.from({ length: 7 }, (_, i) => localiseHours(lines[(today + i) % 7]));
 }
 
 /** Returns a direct photo URL for a Google Places photo reference. */
@@ -216,6 +235,10 @@ async function searchTextOnce(
         'places.formattedAddress',
         'places.location',
         'places.rating',
+        // Same Enterprise SKU as places.rating above, which is already requested — so
+        // this adds a data point, not a billing tier. Verified against the Places
+        // (New) SKU tables before adding. Absent for venues with no ratings.
+        'places.userRatingCount',
         'places.priceLevel',
         'places.photos',
         'places.primaryType',
@@ -408,7 +431,11 @@ export async function fetchVenues(
     const venues = places.map((place, index): Venue => {
       const name = place.displayName?.text ?? 'Restaurant';
       const address = place.formattedAddress ?? city;
-      const rating = Math.round((place.rating ?? 4.0) * 10) / 10;
+      /* No `?? 4.0`. That default gave every unrated venue a 4.0 and rendered it beside a
+         star as though it had been earned — an invented fact, and one the sort read back.
+         Undefined stays undefined; the render sites guard on `typeof rating === 'number'`. */
+      const rating =
+        typeof place.rating === 'number' ? Math.round(place.rating * 10) / 10 : undefined;
       const priceTier = priceLevelToTier(place.priceLevel);
       const phone = place.nationalPhoneNumber ?? '';
       // A Maps search is a fair fallback destination, but it is not the venue's site,
@@ -465,6 +492,10 @@ export async function fetchVenues(
         photoUrl,
         openNow,
         hoursToday,
+        // Undefined when Google published no rating; the star render is guarded on it.
+        userRatingCount: place.userRatingCount,
+        // Built from the weekdayDescriptions already fetched for hoursToday — no new field.
+        hoursWeekly: weeklyHours(place.regularOpeningHours, place.utcOffsetMinutes),
       };
     });
 

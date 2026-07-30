@@ -17,7 +17,11 @@ function place(id, name, address, lat, lng, opts = {}) {
     displayName: { text: name, languageCode: 'en' },
     formattedAddress: address,
     location: { latitude: lat, longitude: lng },
-    rating: opts.rating ?? 4.4,
+    // No `?? 4.4` default: `rating: undefined` must be reachable, because the app used to
+    // invent 4.0 and nothing could catch it. `rating` and `userRatingCount` are spread
+    // only when present, so a venue Google holds no rating for renders no star at all.
+    ...(opts.rating !== undefined ? { rating: opts.rating } : {}),
+    ...(opts.userRatingCount !== undefined ? { userRatingCount: opts.userRatingCount } : {}),
     priceLevel: opts.priceLevel ?? 'PRICE_LEVEL_MODERATE',
     primaryType: opts.primaryType ?? 'italian_restaurant',
     primaryTypeDisplayName: { text: opts.cuisine ?? 'Italian restaurant' },
@@ -29,24 +33,36 @@ function place(id, name, address, lat, lng, opts = {}) {
     // the phoneless/siteless branches were unreachable from the suite.
     ...(opts.phone === null ? {} : { nationalPhoneNumber: opts.phone ?? '020 7946 0018' }),
     ...(opts.website === null ? {} : { websiteUri: opts.website ?? 'https://example.invalid/venue' }),
-    regularOpeningHours: {
-      openNow: opts.openNow,
-      weekdayDescriptions: [
-        'Monday: 12:00 – 22:00',
-        'Tuesday: 12:00 – 22:00',
-        'Wednesday: 12:00 – 22:00',
-        'Thursday: 12:00 – 23:00',
-        'Friday: 12:00 – 23:30',
-        'Saturday: 11:00 – 23:30',
-        'Sunday: 11:00 – 21:00',
-      ],
-    },
+    // `hours: null` drops the whole block — a venue Places has an address for but no
+    // published hours. Then neither the today line nor the all-week disclosure renders,
+    // and openNow falls to undefined (its own real third state). Otherwise a full seven
+    // lines, which is what powers the weekly-hours disclosure.
+    ...(opts.hours === null
+      ? {}
+      : {
+          regularOpeningHours: {
+            openNow: opts.openNow,
+            weekdayDescriptions: [
+              'Monday: 12:00 – 22:00',
+              'Tuesday: 12:00 – 22:00',
+              'Wednesday: 12:00 – 22:00',
+              'Thursday: 12:00 – 23:00',
+              'Friday: 12:00 – 23:30',
+              'Saturday: 11:00 – 23:30',
+              'Sunday: 11:00 – 21:00',
+            ],
+          },
+        }),
   };
 }
 
 export const PLACES = [
+  // Rated AND counted: exercises the star + parenthesised rating-count render, and the
+  // full-week hours disclosure.
   place('pl-1', 'Trattoria Sorella', '18 Rupert Street, London W1D 6DE, UK', 51.5119, -0.1341, {
     openNow: true,
+    rating: 4.4,
+    userRatingCount: 1284,
   }),
   place('pl-2', 'Kaya Ramen Bar', '4 Newburgh Street, London W1F 7RF, UK', 51.5136, -0.1385, {
     cuisine: 'Ramen restaurant',
@@ -54,14 +70,20 @@ export const PLACES = [
     priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
     openNow: false,
     rating: 4.6,
+    // A small count on purpose: 4.6 from 12 is not 4.6 from 1200, and the count is how
+    // the reader tells them apart.
+    userRatingCount: 12,
   }),
+  // NO RATING AT ALL — Google holds none. Exercises the removal of the invented 4.0 and
+  // the guarded star in both EateryView and RecipeView: an unguarded render puts a star
+  // beside nothing here. No userRatingCount either, since there is nothing to count.
   place('pl-3', 'Maison Verte', '77 Rue Oberkampf, 75011 Paris, France', 48.8649, 2.3765, {
     cuisine: 'French restaurant',
     primaryType: 'french_restaurant',
     priceLevel: 'PRICE_LEVEL_EXPENSIVE',
     // openNow deliberately absent — §8 says undefined is a real third state and must
     // not be collapsed into "Closed" by a truthy check.
-    rating: 4.8,
+    // rating deliberately absent for the same reason.
     phone: '01 43 57 12 90',
   }),
   place('pl-4', 'Casa Lolita', 'Carrer de Blai 22, 08004 Barcelona, Spain', 41.3736, 2.1637, {
@@ -92,10 +114,13 @@ export const PLACES = [
     cuisine: 'Chinese restaurant',
     primaryType: 'chinese_restaurant',
     priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
-    openNow: true,
     rating: 4.5,
     phone: null,
     website: null,
+    // No hours at all — Places has the address and nothing else. Covers the no-hours path:
+    // neither the today line nor the all-week disclosure may render, and openNow is left
+    // undefined rather than forced to a value.
+    hours: null,
   }),
 ];
 

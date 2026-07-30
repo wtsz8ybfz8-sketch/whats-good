@@ -379,6 +379,86 @@ async function main() {
   await page.goBack().catch(() => {});
   await page.waitForTimeout(900);
 
+  /**
+   * Rating enrichment — optional rating, its count, and the weekly-hours disclosure.
+   *
+   * The fixture is uneven on purpose (verify/fixtures/places.mjs): pl-3 Maison Verte has
+   * NO rating, pl-1 Trattoria is rated AND counted with a full week of hours, pl-6 Hoxton
+   * has no hours at all. Each assertion below names the venue whose absence or presence
+   * makes it fall.
+   *
+   * What would be red, per check:
+   *   no orphan star        — pl-3 has no rating; a star with nothing beside it =>
+   *                           the invented 4.0 default came back, or the guard was dropped
+   *   rating count renders   — pl-1 publishes 1284 ratings; missing "(1,284)" =>
+   *                           userRatingCount was not requested or not mapped
+   *   weekly hours present   — pl-1 has 7 lines; no <details> => the disclosure regressed
+   *   no hours, no module    — pl-6 has none; a Today line or an All-week door => a hours
+   *                           block rendered on a venue that published no hours
+   */
+  const starsOn = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('svg')].filter((s) =>
+        /star/i.test(s.getAttribute('class') || ''),
+      ).length,
+    );
+
+  const unrated = page.locator('[role="button"][aria-label^="View Maison Verte"]').first();
+  await unrated.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await unrated.count())) {
+    skip('venue detail: no star icon without a rating beside it', 'Maison Verte card not found');
+  } else {
+    await unrated.click();
+    await page.waitForTimeout(900);
+    const stars = await starsOn();
+    check('venue detail: no star icon without a rating beside it', stars === 0,
+      `pl-3 publishes no rating; found ${stars} star icon(s) — the invented 4.0 default was removed`);
+    await page.goBack().catch(() => {});
+    await page.waitForTimeout(900);
+  }
+
+  const rated = page.locator('[role="button"][aria-label^="View Trattoria Sorella"]').first();
+  await rated.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await rated.count())) {
+    skip('venue detail: rating count renders beside the rating', 'Trattoria Sorella card not found');
+  } else {
+    await rated.click();
+    await page.waitForTimeout(900);
+    const info = await page.evaluate(() => {
+      const txt = document.body.innerText;
+      return {
+        hasCount: /\(1,284\)/.test(txt),
+        hasWeekly: !!document.querySelector('details'),
+        allWeek: /All week/i.test(txt),
+      };
+    });
+    check('venue detail: rating count renders beside the rating', info.hasCount,
+      'pl-1 publishes userRatingCount 1284; expected "(1,284)" in en-GB');
+    check('venue detail: full-week hours disclosure present',
+      info.hasWeekly && info.allWeek, 'expected a <details> "All week" holding the 7 weekday lines');
+    await page.goBack().catch(() => {});
+    await page.waitForTimeout(900);
+  }
+
+  const noHours = page.locator('[role="button"][aria-label^="View Hoxton Steam Buns"]').first();
+  await noHours.scrollIntoViewIfNeeded().catch(() => {});
+  if (!(await noHours.count())) {
+    skip('venue detail: no hours module for a venue with no hours', 'Hoxton Steam Buns card not found');
+  } else {
+    await noHours.click();
+    await page.waitForTimeout(900);
+    const hours = await page.evaluate(() => {
+      const onPage = /Hoxton Steam Buns/.test(document.body.innerText);
+      // Scope to the venue detail: a <details> here would be the hours disclosure.
+      return { onPage, hasWeekly: !!document.querySelector('details'), allWeek: /All week/i.test(document.body.innerText) };
+    });
+    check('venue detail: no hours module for a venue with no hours',
+      hours.onPage && !hours.hasWeekly && !hours.allWeek,
+      hours.onPage ? `weekly=${hours.hasWeekly} allWeek=${hours.allWeek}` : 'not on the venue page');
+    await page.goBack().catch(() => {});
+    await page.waitForTimeout(900);
+  }
+
   // --- layout + hit targets, every view ---------------------------------------
   const MEASURE = () => {
     const miss = [];
