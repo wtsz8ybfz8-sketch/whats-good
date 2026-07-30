@@ -33,7 +33,19 @@ const Chip: React.FC<{
  selected: boolean;
  onClick: () => void;
  icon?: LucideIcon;
-}> = ({ label, selected, onClick, icon: Icon }) => (
+ /**
+  * True when this category is actually present in the CURRENT result set.
+  *
+  * The curated baseline stays visible either way — asking for sushi where none came
+  * back is a legitimate thing to do, and hiding the chip would silently shrink the
+  * app's vocabulary based on one query. But a chip that will definitely produce
+  * results is marked, so "what can I find here?" is answerable by looking rather than
+  * by tapping and being disappointed. Never inferred: it is derived from the venues
+  * already in hand (see `availableKeys`), so it costs no request and can never claim
+  * a category the data does not support.
+  */
+ available?: boolean;
+}> = ({ label, selected, onClick, icon: Icon, available }) => (
  <button
  type="button"
  aria-pressed={selected}
@@ -72,12 +84,23 @@ const FilterGroup: React.FC<{
   * list long enough to earn it. Everything else wraps, or lives in the sheet.
   */
  scroll?: boolean;
+ /**
+  * A truthful, result-backed count rendered beside the title. Optional because a
+  * group with nothing to say must say nothing — "0 available" is worse than silence,
+  * and a count that is not derived from real results would be exactly the invented
+  * metadata this product refuses to render.
+  */
+ note?: string;
  children: React.ReactNode;
-}> = ({ title, optional, scroll, children }) => (
+}> = ({ title, optional, scroll, note, children }) => {
+ return (
  <div className="flex flex-col gap-3">
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  {title}
  {optional && <span className="font-normal text-[var(--text-muted)]"> — optional</span>}
+ {note && (
+ <span className="font-normal text-[var(--accent-terracotta)]"> · {note}</span>
+ )}
  </span>
  {scroll ? (
  // Scroll on phones only. At 1440 the rail still scrolled inside a fixed-width
@@ -87,6 +110,10 @@ const FilterGroup: React.FC<{
  // truncation, and a swipe/scroll region must advertise itself. There is room to
  // wrap at this width, so it wraps and nothing is hidden; below lg it stays the
  // single horizontal rail the design permits, where a rail is the right pattern.
+ // The scroll affordance is a mask on `.chip-rail` itself (see index.css) —
+ // background-agnostic, so it is right on this card in both colour schemes.
+ // py-1.5 replaces pb-1 because overflow-x:auto computes overflow-y to auto
+ // too, and 4px clipped the focus ring off the top and bottom of every chip.
  <div className="chip-rail -mx-5 lg:mx-0 px-5 lg:px-0 flex gap-2 overflow-x-auto lg:overflow-x-visible lg:flex-wrap pb-1">
  {children}
  </div>
@@ -94,7 +121,8 @@ const FilterGroup: React.FC<{
  <div className="flex flex-wrap gap-2">{children}</div>
  )}
  </div>
-);
+ );
+};
 
 /**
  * Native-style bottom sheet. Granular filters live here, not on the canvas.
@@ -342,6 +370,44 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  return [...BASELINE_CUISINES, ...extras];
  }, [nearbyCuisines]);
 
+ /**
+  * Which categories the CURRENT results actually contain.
+  *
+  * `nearbyCuisines` is already computed in App.tsx from the venues in hand, so this
+  * whole feature is free: no extra Places request, no new field, no photo. It is the
+  * difference between a rail that lists a catalogue and a rail that answers "what can
+  * I find HERE?" — the Discovery stage of the customer journey.
+  */
+ const availableKeys = React.useMemo(() => {
+ const set = new Set<string>();
+ for (const raw of nearbyCuisines) {
+ const label = tidyCuisine(raw || '');
+ if (label) set.add(label.toLowerCase());
+ }
+ return set;
+ }, [nearbyCuisines]);
+
+ const isAvailable = React.useCallback(
+ (c: { label: string; value: string }) =>
+ availableKeys.has(c.label.toLowerCase()) || availableKeys.has(c.value.toLowerCase()),
+ [availableKeys],
+ );
+
+ /* Order is deliberately NOT changed by availability, and that is a fix rather than an
+    omission. Promoting result-backed chips to the front PREPENDS them, and the rail
+    then sat scrolled right by the width of what was inserted — measured 613px, hiding
+    the very chips the count above it advertises. The obvious repair, resetting
+    scrollLeft when the set changes, fights the browser's own scroll-into-view and made
+    a suite check time out trying to reach a chip.
+
+    Extras append, so the base order never shifts under the user. Availability is
+    carried by the dot and the count, which say the same thing and cannot move anything. */
+
+ const availableCount = React.useMemo(
+ () => cuisines.reduce((n, c) => (isAvailable(c) ? n + 1 : n), 0),
+ [cuisines, isAvailable],
+ );
+
  const [sheetOpen, setSheetOpen] = React.useState(false);
 
  // Every chip toggles: tapping the active one clears it. No "Any" option needed.
@@ -412,9 +478,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  {/* THE one horizontal rail on this screen. Cuisine is the primary axis — it is
  the decision most people arrive already holding ("I want sushi"), and it is
  the only list long enough that a rail beats a wrap. */}
- <FilterGroup title="Cuisine" optional scroll>
+ <FilterGroup
+ title="Cuisine"
+ optional
+ scroll
+ note={availableCount > 0 ? `${availableCount} in these results` : undefined}
+
+ >
  {cuisines.map((c) => (
- <Chip key={c.value} label={c.label} selected={dimensions.regional === c.value} onClick={() => toggle('regional', c.value)} icon={cuisineIcon(c.label)} />
+ <Chip
+ key={c.value}
+ label={c.label}
+ selected={dimensions.regional === c.value}
+ onClick={() => toggle('regional', c.value)}
+ icon={cuisineIcon(c.label)}
+ available={isAvailable(c)}
+ />
  ))}
  </FilterGroup>
 

@@ -571,6 +571,7 @@ html.dark .glass-subtle {
   scroll-padding-left: 1rem;
   overscroll-behavior-x: contain;
 }
+
 .chip-rail::-webkit-scrollbar {
   display: none;
 }
