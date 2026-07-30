@@ -36,15 +36,41 @@ export function placesLanguageCode(): string {
  * `${dist.toFixed(1)} km` produces "1.4 km" for everyone, including the ~half the world
  * that writes "1,4". Intl also picks the unit's correct spacing and short form per locale.
  */
+/**
+ * Regions that read road distance in miles.
+ *
+ * The US, Liberia and Myanmar are imperial outright; the UK is metric on paper and
+ * miles on every road sign and in every "how far is it" conversation, so a British
+ * reader gets miles too. Everywhere else: kilometres.
+ *
+ * `Intl` will not choose this for you — `style: 'unit'` formats whatever unit you name,
+ * so a hardcoded 'kilometer' stays kilometres in New York no matter how correct the
+ * surrounding locale plumbing is. That was the bug: the NUMBER was localised from
+ * navigator.language and the UNIT never was, so a New Yorker was told a place was
+ * "1.4 km" away. §6 bans hardcoding how the user reads; a unit is part of that.
+ */
+const MILE_REGIONS = new Set(['US', 'GB', 'LR', 'MM']);
+const KM_PER_MILE = 1.609344;
+
+function usesMiles(locale: string): boolean {
+  try {
+    const region = new Intl.Locale(locale).maximize().region;
+    return !!region && MILE_REGIONS.has(region);
+  } catch {
+    return false; // Unknown locale: metric, which is most of the world.
+  }
+}
+
 export function formatDistance(km: number, locale = userLocale()): string {
   if (!Number.isFinite(km)) return '';
   try {
+    const miles = usesMiles(locale);
     return new Intl.NumberFormat(locale, {
       style: 'unit',
-      unit: 'kilometer',
+      unit: miles ? 'mile' : 'kilometer',
       unitDisplay: 'short',
       maximumFractionDigits: 1,
-    }).format(km);
+    }).format(miles ? km / KM_PER_MILE : km);
   } catch {
     // Intl unit style is well supported but not universal; never let formatting throw
     // away a real fact.
