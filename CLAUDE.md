@@ -143,6 +143,42 @@ mark the item CONTESTED rather than picking the one that fits your plan.
 **Don't let a pipe swallow an exit code.** `npm run build | tail -20` reports `tail`'s
 status. Check `${PIPESTATUS[0]}`.
 
+**NEVER grep a failing suite for the failure.** `checks.mjs | grep -E '✗|Error'` filters
+out every `✓`, so the last check that PASSED is invisible and the abort appears to have
+happened wherever your pattern happened to match. A session ran three separate "fixes"
+against a log read that way, reported all three as *disproved hypotheses*, and wrote them
+into a handover as findings. Every one of those conclusions was worthless: the suite
+throws before `check()` prints, so there is no `✗` to find at all. Instead:
+
+```bash
+cd verify && NO_PROXY='*' node checks.mjs > /tmp/full.log 2>&1; echo "EXIT: $?"
+grep -c "✓\|✗" /tmp/full.log     # which check number it died on
+tail -20 /tmp/full.log            # UNFILTERED — Playwright names the intercepting element
+```
+
+**Run the control BEFORE the hypothesis.** `checks.mjs` on `main` alone is one command
+and tells you whether the suite is green without your change. The same session deferred
+that single run to "the next session" while spending four runs guessing, then found on
+finally running it that `main` was 51/51 and the change was the cause all along.
+
+**Fetch before asserting anything about git.** A container's remote-tracking refs are a
+CACHE and can be arbitrarily stale; `git log origin/main` will report the old SHA with no
+error. Run `git fetch --all --prune` first, or read the SHA from `git ls-remote`. A
+session asserted "only two branches", "`main` is at `5fa9c12`", "20 commits ahead" and
+"your fixes are not live" — all four false, all four from a clone that had never
+re-fetched — and on that basis publicly accused a CORRECT `HANDOVER.md` of lying.
+
+**A feature you cannot grep for is not a feature that does not exist.** Before concluding
+work is missing, read the SUBJECTS: `git log --oneline origin/main..origin/<branch>`.
+A session searched every branch for one UI string, did not find it, concluded the feature
+had never been built, and rebuilt it — while eleven commits of the user's own work
+(scroll retraction, back/forward restore, rating counts, the venue decision layer) sat
+unmerged on a branch whose commit subjects name every one of them in plain English.
+
+**Never `git checkout <branch> -- <file>` while that file has uncommitted work.** It
+overwrites from the branch with no warning and no reflog entry for the lost content. It
+destroyed a just-written `HANDOVER.md` in this repo.
+
 **Anything visible must be looked at before you claim it works.** Types passing has let
 broken layout reach the user in every session so far.
 
@@ -474,6 +510,20 @@ commit, so the hash names the state the handover actually describes.
   survivor and purges caches; `vercel.json` keeps `index.html` on `must-revalidate` and
   only hashed `/assets/*` immutable. An app whose value is "what's open near me right now"
   gains nothing from offline precaching.
+- **`sr-only` is `position: absolute`, and inside an unpositioned interactive element it
+  escapes.** Tailwind's `.sr-only` is `position:absolute; width:1px; height:1px;
+  margin:-1px; clip:rect(0,0,0,0)`. Put it inside a `<button>` with no positioning
+  context and it resolves against some ancestor instead, where it can sit over unrelated
+  content and swallow pointer events. A screen-reader hint added to a cuisine chip made
+  `checks.mjs` die at check 15 of 51 with `locator.click Timeout 30000ms` on a VENUE CARD
+  on the other side of the layout — Playwright naming an `<h1>` and an `<h2>` as
+  "subtree intercepts pointer events". If a control needs hidden text, give the control
+  `relative`, or move the text off the accessible name with `aria-describedby`.
+- **`theme-color` is decided by ORDER, and only the winner matters.** The browser uses
+  the FIRST tag whose `media` matches. The live tag driven from the manual dark class
+  must be FIRST in `<head>` — `prepend`, never `appendChild`. Appending it is a silent
+  no-op for the exact case it exists to handle, and `checks.mjs` now fails on it (proven
+  by sabotage: the check goes red on `appendChild` and green on `prepend`).
 - **All of the above passed `tsc` clean.** Types are a gate, never verification.
 
 ---

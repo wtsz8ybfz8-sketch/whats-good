@@ -493,11 +493,34 @@ async function main() {
     hh: /Happy Hour/i.test(document.body.innerText),
     city: /Lisbon/.test(document.body.innerText),
     theme: document.querySelector('meta[name="theme-color"]:not([media])')?.getAttribute('content'),
+    /**
+     * PRECEDENCE, not just presence.
+     *
+     * A browser uses the FIRST theme-color whose media matches. index.html declares two
+     * keyed to prefers-color-scheme; App.tsx maintains a third, live one driven from the
+     * MANUAL dark class. For years that live tag was appendChild'd to the end of <head>,
+     * where the media tags always won it — a silent no-op for the only case it exists to
+     * handle. On a phone set to dark with the app toggled light, Safari painted near-black
+     * chrome around a bone-white page: a hard band welded to the top of the screen beside
+     * the Dynamic Island, reported for several sessions as a "gap behind the header".
+     *
+     * "Present" could never fail that, because it WAS present. Only its position was
+     * wrong. So this asserts the winner, which is the only thing the browser reads.
+     */
+    firstThemeColorHasNoMedia: !document
+      .querySelector('meta[name="theme-color"]')
+      ?.hasAttribute('media'),
   }));
   check('?tab= opens that tab', deep.hh, deep.title);
   check('?city= is honoured', deep.city);
   check('document.title names the screen', /Happy hour/i.test(deep.title), deep.title);
   check('live theme-color meta present', !!deep.theme, deep.theme || 'missing');
+  check(
+    'live theme-color WINS (first in head, no media)',
+    deep.firstThemeColorHasNoMedia,
+    'a media-keyed tag precedes it, so the browser chrome follows the SYSTEM scheme and '
+      + 'can disagree with the app: black chrome around a light app. Use prepend, not appendChild.',
+  );
 
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
