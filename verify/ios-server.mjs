@@ -104,11 +104,30 @@ createServer(async (req, res) => {
  */
 function sendHtmlScrolled(res, buf, rawY) {
   const y = Math.max(0, Math.min(20000, Number(rawY) || 0));
+  /**
+   * A SPACER, and it is the difference between a capture that runs and a capture that
+   * reproduces.
+   *
+   * The first scrolled run worked mechanically and proved nothing. CI has no valid
+   * Places key — the Find tab renders "Google turned the search down" and Happy Hour
+   * renders its London empty state — so both pages are barely taller than the viewport.
+   * The page scrolled a little, Safari's URL bar stayed expanded, and the strip above a
+   * fixed header never opened. Read from the screenshots: the URL bar was still there.
+   *
+   * The condition under test is a BROWSER behaviour, not a content one: Safari collapses
+   * its toolbar after enough downward travel, the visual viewport grows upward, and
+   * whatever is behind the header shows through. Reproducing it needs travel, not
+   * venues. So the document is padded to guarantee the requested scroll is reachable.
+   *
+   * Inert unless `__scrollY` is set, so no ordinary response is ever altered.
+   */
+  const spacer =
+    `<div aria-hidden="true" style="height:${y + 900}px;pointer-events:none"></div>`;
   const snippet =
     `<script>addEventListener('load',function(){` +
     `requestAnimationFrame(function(){setTimeout(function(){window.scrollTo(0,${y});},400);});` +
     `});</script>`;
-  const html = buf.toString('utf8').replace('</body>', snippet + '</body>');
+  const html = buf.toString('utf8').replace('</body>', spacer + snippet + '</body>');
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   res.end(html);
 }

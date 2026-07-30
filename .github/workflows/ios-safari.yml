@@ -148,9 +148,13 @@ jobs:
       - name: Capture — light, scrolled
         run: |
           U="${{ steps.boot.outputs.udid }}"
+          # 1400px, not 700. The first run at 700 scrolled but left Safari's URL bar
+          # EXPANDED — visible in the screenshot — so the strip above the fixed header
+          # never opened and the capture proved nothing. The collapse needs real travel,
+          # which ios-server.mjs guarantees by padding the document to match the request.
           for tab in find happy-hour; do
-            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$tab&city=London&__scrollY=700"
-            sleep 8
+            xcrun simctl openurl "$U" "http://localhost:3000/?tab=$tab&city=London&__scrollY=1400"
+            sleep 9
             xcrun simctl io "$U" screenshot "shots/light-$tab-scrolled.png"
           done
 
