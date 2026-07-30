@@ -2,8 +2,18 @@
 
 ## Status
 
-**`main` is at `590055a`, pushed, and GREEN.** `verify/checks.mjs` **51/51, 0 skipped,
+**`main` is at `14730c6`, pushed, and GREEN.** `verify/checks.mjs` **53/53, 0 skipped,
 exit 0**; `npm run build` exit 0. This is the consistent slate — production is safe.
+
+**THE LESSON OF THIS SESSION, and it outranks everything below.** The user photographed
+their own phone and found a defect on three separate screens that 52 green checks could
+not see: page content drawn over the status-bar clock, above the app's own fixed header.
+**Every capture this project takes photographs the page AT REST.** The strip that opens
+above a `position: fixed` header only exists after Safari collapses its URL bar, which
+only happens after a scroll. A suite that never scrolls can be entirely green while the
+app is visibly broken in the hand. `verify/ios-server.mjs` now honours `?__scrollY=` and
+`ios-safari.yml` captures scrolled states — **use them before believing any at-rest
+result about chrome.**
 
 **The result-backed cuisine count SHIPPED** and is on `main`: the rail title reads
 "Cuisine — optional · 6 in these results", derived from venues already fetched, omitted
@@ -59,12 +69,13 @@ theme, and venue pages finally carry the decision layer written for them.
 
 | What | Command | Actual result |
 |---|---|---|
-| Regression suite on `main` | `node verify/checks.mjs` | **51/51, 0 skipped, exit 0** |
+| Regression suite on `main` | `node verify/checks.mjs` | **53/53, 0 skipped, exit 0** |
 | Build on `main` | `npm run build` | **exit 0** |
 | theme-color precedence | probe: dark system + light app | **`#F4F2EF` wins** |
 | iOS Simulator capture | `ci/ios-shots`, 8 PNGs | **all hashes distinct — genuine** |
 | Device probe | `PROBE.txt` | 402×678, dpr 3, vh 760 / dvh 678, insets all 0 |
-| Suite on `cuisine-count` | `node verify/checks.mjs` | **exit 1 — click timeout** |
+| Header fill check CAN fail | sabotage the fill | **red (bg rgba(0,0,0,0))**, green on restore |
+| Scroll injection | `?__scrollY=700` vs control | **614px vs 0** |
 | `tsc --noEmit` | — | **NOT RUN.** CI runs it on push. |
 
 **Insets read 0 in Safari portrait and that is CORRECT** — Safari's own toolbar occupies
@@ -81,17 +92,17 @@ Island, bottom 34px home indicator).
 
 ## Next session: first three actions
 
-1. **Trigger `ios-safari.yml` on `main` and read `ci/ios-shots/dark-find.png`.** The
-   theme-color fix has never rendered on a device. Expect light app + light chrome, or
-   dark + dark — never black chrome around a white page. `md5sum` the four light tabs
-   first; runs 4–7 were all the same screen behind a permission dialog.
-2. **Restore the per-chip availability dot properly.** It needs `relative` on the chip
-   button (Tailwind `sr-only` is `position: absolute` and escapes an unpositioned
-   parent), or the supplementary text moved off the accessible name via
-   `aria-describedby`. Add a check that fails when it regresses — this one cost four
-   runs.
-3. **Reconcile `kqu3fy`** if real Google rating data is wanted; it re-solves what
-   `xtv9e1` already did, with 7 conflicts, 5 in source.
+1. **Read the scrolled iOS screenshots.** `git fetch origin ci/ios-shots`, then extract
+   `light-find-scrolled.png` and `light-happy-hour-scrolled.png` and **look at them**.
+   These are the first captures this project has ever taken mid-scroll, and they are the
+   only way to confirm the header fill actually closed the strip on a real device. `md5sum`
+   the set first — runs 4-7 were all the same screen.
+2. **If the strip is still open**, the fill is not the answer and the next lever is
+   pinning the header to the VISUAL viewport (`visualViewport` API) rather than the
+   layout viewport. Do not guess a third time without a scrolled screenshot in hand.
+3. **Give `happyHourData.ts` a `lastVerified` date per entry** and render it. The listings
+   are hand-curated with no freshness signal at all, so a venue that closed last month
+   still shows with full confidence. Highest-cost remaining truthfulness gap.
 
 **How to debug this suite, learned the hard way:** run it to a file and read the tail
 UNFILTERED. Grepping for `✗|Error` hides every `✓`, so the last passing check is
@@ -108,15 +119,18 @@ cd verify && NO_PROXY='*' node checks.mjs; cd .. && node verify/serve.mjs down
 
 ## Known risks and open questions
 
-- **The theme-color fix has not rendered on a device.** Two iOS runs were queued against
-  `9aab341`; neither has been read, and neither contains `f376a2d`. Trigger
-  `ios-safari.yml` on `main` and read `ci/ios-shots/dark-find.png` — the app should now
-  be light with light chrome, or dark with dark.
+- **Neither the theme-color fix nor the header fill has rendered on a device.** A run is
+  queued on `14730c6`; it is the first that captures scrolled states. Until those PNGs
+  are read, the header fix is correct-by-specification and nothing more.
+- **The header fill is a MITIGATION, not a root fix.** It paints over the strip Safari
+  opens; it does not stop the strip opening. If a scrolled screenshot still shows bleed,
+  pin the header to `visualViewport` instead.
 - **`kqu3fy` (4 commits) and `rz1d3f` (5) remain unmerged.** `kqu3fy` has **7 conflicts**,
   5 in real source, because it re-solves rating data a second way against `xtv9e1`'s
   version. `rz1d3f` conflicts only in docs but deletes `verify/devices.mjs`.
-- **`RecipeView` still prints `recipes.length` while gating on `some(isEatery)`**, so a
-  mixed list announces recipes as eateries. A fix exists on
-  `claude/three-layer-restaurant-model-jncy93`; not merged.
+- **`happyHourData.ts` has no `lastVerified` field.** Hand-curated with no freshness
+  signal, so a venue that closed still shows confidently. Highest-cost truthfulness gap.
+- **The empty-Spend gating was not observed on a venue that lacks a price band** — the
+  logic is a one-line gate matching its two neighbours, but the case was not rendered.
 - **Vercel Authentication is OFF.** Deliberate, but a live security posture change.
 - **`tsc` has not run locally this session.** CI runs it on every push.
