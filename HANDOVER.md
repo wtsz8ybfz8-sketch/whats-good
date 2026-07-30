@@ -2,12 +2,12 @@
 
 ## Status
 
-**`main` is at `f376a2d`, pushed, and GREEN.** `verify/checks.mjs` **51/51, 0 skipped,
+**`main` is at `590055a`, pushed, and GREEN.** `verify/checks.mjs` **51/51, 0 skipped,
 exit 0**; `npm run build` exit 0. This is the consistent slate — production is safe.
 
-**Branch `cuisine-count` is RED. Do not merge it as-is.** It carries the result-backed
-cuisine count, the single feature the user has asked for most. The feature works; the
-suite does not. See "Next session".
+**The result-backed cuisine count SHIPPED** and is on `main`: the rail title reads
+"Cuisine — optional · 6 in these results", derived from venues already fetched, omitted
+at zero. The per-chip availability dot is deliberately NOT shipped — see "What changed".
 
 **Vercel Authentication is now OFF** (`ssoProtection.enabled: false`). Every
 `.vercel.app` URL is publicly readable. Done deliberately at the user's request so the
@@ -81,19 +81,23 @@ Island, bottom 34px home indicator).
 
 ## Next session: first three actions
 
-1. **Run `checks.mjs` on `main` alone** to establish whether it is still green before
-   assuming `cuisine-count` caused the timeout. The failure is
-   `locator.click Timeout 30000ms` at `checks.mjs:322` — `thin.click()`, the "Hoxton
-   Steam Buns" venue card. Not a chip, and not obviously related to the change.
-2. **Do not retest these three — all were tried and DISPROVED:** removing the chip
-   reorder and its `scrollLeft` reset; reverting the rail's `py-1.5` to `pb-1`; removing
-   the `.chip-rail` mask and `overflow-anchor`. None fixed the timeout. Flakiness after
-   many consecutive runs in this container has NOT been ruled out.
-3. **Remaining suspect: the `sr-only` span inside the chip button**, which changes each
-   available chip's accessible name from "Italian" to "Italian — in these results".
-   Supplementary text belongs in a description, not the name. Move it and re-run, then
-   ship `cuisine-count` — the user's words: "if people don't know a feature is there,
-   the changes are a waste."
+1. **Trigger `ios-safari.yml` on `main` and read `ci/ios-shots/dark-find.png`.** The
+   theme-color fix has never rendered on a device. Expect light app + light chrome, or
+   dark + dark — never black chrome around a white page. `md5sum` the four light tabs
+   first; runs 4–7 were all the same screen behind a permission dialog.
+2. **Restore the per-chip availability dot properly.** It needs `relative` on the chip
+   button (Tailwind `sr-only` is `position: absolute` and escapes an unpositioned
+   parent), or the supplementary text moved off the accessible name via
+   `aria-describedby`. Add a check that fails when it regresses — this one cost four
+   runs.
+3. **Reconcile `kqu3fy`** if real Google rating data is wanted; it re-solves what
+   `xtv9e1` already did, with 7 conflicts, 5 in source.
+
+**How to debug this suite, learned the hard way:** run it to a file and read the tail
+UNFILTERED. Grepping for `✗|Error` hides every `✓`, so the last passing check is
+invisible and the failure looks like it happened somewhere it did not. Three hypotheses
+were "disproved" against that hidden log and all three conclusions were worthless.
+`grep -c "✓\|✗"` gives the check number it died on; `main` alone is the control.
 
 **Exact starting point:**
 ```bash
