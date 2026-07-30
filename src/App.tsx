@@ -571,7 +571,23 @@ export default function App() {
  const el = document.querySelector('meta[name="theme-color"]:not([media])')
  ?? Object.assign(document.createElement('meta'), { name:'theme-color' });
  el.setAttribute('content', isDark ?'#0F0C0A' :'#F4F2EF');
- if (!el.parentNode) document.head.appendChild(el);
+ /* FIRST in <head>, not last, and that ordering is the whole fix.
+
+    A browser picks the FIRST theme-color whose media matches. The two media tags are
+    at the top of index.html, so on a phone set to dark the `prefers-color-scheme: dark`
+    tag matched and won at #0F0C0A — and this live tag, appended at the END of head,
+    was never reached. Appending it was a no-op for the exact case it exists to handle.
+
+    The visible result on a dark-system phone with the app in light mode: Safari painted
+    its chrome near-black around a bone-white page, a hard black band welded to the top
+    of the screen beside the Dynamic Island. Reported repeatedly as a "gap" behind the
+    header. It is not a gap and there was never anything wrong with the header's
+    safe-area model — checks measured that correctly all along.
+
+    Unreproducible in headless Chromium at default settings, because the app's manual
+    dark class and the emulated system scheme agree there. It took a real Mobile Safari
+    frame (ci/ios-shots, dark-find.png) to see it: black system chrome, light app. */
+ if (document.head.firstChild !== el) document.head.prepend(el);
  }, [isDark]);
 
  /**

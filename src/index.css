@@ -305,16 +305,17 @@
   .safe-x-wide { --safe-gutter: 48px; }
 }
 
-.action-bar::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 24px;
-  pointer-events: none;
-  background: linear-gradient(to top, var(--bg-warm), transparent);
-}
+/* The 24px gradient that used to sit here is deleted, on real-device evidence.
+
+   It faded to var(--bg-warm), the page canvas — so against the canvas it was
+   invisible, which is how it survived review. Against anything else it was a washed
+   band with a hard top edge. In the iOS Simulator capture of the Find tab
+   (ci/ios-shots, light-find.png) it renders directly over the "Mood, diet & budget"
+   row, greying out a live control and its value so they read as disabled.
+
+   It also duplicated work the bar already does: .action-bar is opaque and carries a
+   border-top hairline. Content passing under an opaque material needs no help
+   disappearing. One edge, drawn once. */
 
 /* ─── Label style ────────────────────────────────────────────────────────────
    The old look was uppercase + 2.5px tracking + 9px, everywhere. At that size
