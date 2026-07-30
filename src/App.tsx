@@ -411,6 +411,115 @@ export default function App() {
  const listScrollY = useRef(0);
  const prevDetailId = useRef<string | null>(null);
 
+ /**
+  * Directional chrome — the top header and the mobile tab bar retract on a deliberate
+  * downward scroll and return on the way up, near the top, or near the bottom. One
+  * passive, rAF-throttled scroll listener drives both; the transform lives in CSS
+  * (.chrome-bar / .tabbar .is-hidden), so the fixed-chrome content padding never
+  * changes and nothing reflows. The detail action bar (.action-bar) is a SEPARATE
+  * surface and is never toggled here — primary nav and detail actions are distinct.
+  *
+  * `syncChromeBaseline` re-seats the direction accumulators after a PROGRAMMATIC scroll
+  * (a tab switch, or the back-restore below), so that jump is not misread as a user
+  * gesture that yanks the chrome away the instant the list returns — check #8.
+  */
+ const headerRef = useRef<HTMLElement>(null);
+ const [chromeHidden, setChromeHidden] = useState(false);
+ const chromeHiddenRef = useRef(false);
+ const chromeLastY = useRef(0);
+ const chromeDown = useRef(0);
+ const chromeUp = useRef(0);
+ const chromeSuppressUntil = useRef(0);
+ const detailOpenRef = useRef(false);
+ const cityMenuRef = useRef(false);
+ detailOpenRef.current = !!selectedRecipe;
+ cityMenuRef.current = cityMenuOpen;
+
+ const setChrome = (hidden: boolean) => {
+ if (chromeHiddenRef.current === hidden) return;
+ chromeHiddenRef.current = hidden;
+ setChromeHidden(hidden);
+ };
+ // Re-seat the direction accumulators to a position and show the chrome. No timer.
+ const seatChrome = (y: number) => {
+ chromeLastY.current = Math.max(0, y);
+ chromeDown.current = 0;
+ chromeUp.current = 0;
+ setChrome(false);
+ };
+ // Seat AND briefly suppress the direction logic. A programmatic scroll (tab switch,
+ // back-restore, opening a menu) arrives as a burst of scroll events — including the
+ // remount settling from 0 up to the restored offset — and without this that burst
+ // reads as a deliberate downward gesture and retracts the chrome the instant the list
+ // returns (#8). For a few frames after the jump, every scroll event just re-seats the
+ // baseline and keeps the chrome visible, so direction tracking resumes from the
+ // settled position rather than mid-burst.
+ const syncChromeBaseline = (y: number) => {
+ chromeSuppressUntil.current = performance.now() + 320;
+ seatChrome(y);
+ };
+
+ useEffect(() => {
+ const reduceMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+ const DOWN = 12; // deliberate downward travel before the chrome retracts
+ const UP = 8;    // eager to bring it back — a smaller threshold on the way up
+ const TOP = 8;   // always visible within a hair of the top
+ const BOTTOM = 24; // …and within a hair of the very bottom
+ let raf = 0;
+
+ const evaluate = () => {
+ raf = 0;
+ const y = Math.max(0, window.scrollY); // clamp iOS rubber-band overscroll (negative)
+ const maxY = document.documentElement.scrollHeight - window.innerHeight;
+ const headerFocused =
+ !!headerRef.current && headerRef.current.contains(document.activeElement);
+
+ // Pin the chrome — reduced motion, a detail page, an open city menu, a focused
+ // header control, or being near either end of the scroll range.
+ if (
+ reduceMQ.matches ||
+ detailOpenRef.current ||
+ cityMenuRef.current ||
+ headerFocused ||
+ y <= TOP ||
+ y >= maxY - BOTTOM
+ ) {
+ seatChrome(y);
+ return;
+ }
+
+ // Inside the post-jump window a programmatic scroll burst must not read as a gesture.
+ if (performance.now() < chromeSuppressUntil.current) {
+ seatChrome(y);
+ return;
+ }
+
+ const dy = y - chromeLastY.current;
+ if (dy > 0) { chromeDown.current += dy; chromeUp.current = 0; }
+ else if (dy < 0) { chromeUp.current -= dy; chromeDown.current = 0; }
+ chromeLastY.current = y;
+
+ if (chromeDown.current > DOWN) setChrome(true);
+ else if (chromeUp.current > UP) setChrome(false);
+ };
+
+ const onScroll = () => { if (!raf) raf = requestAnimationFrame(evaluate); };
+ window.addEventListener('scroll', onScroll, { passive: true });
+ chromeLastY.current = Math.max(0, window.scrollY);
+ return () => {
+ window.removeEventListener('scroll', onScroll);
+ if (raf) cancelAnimationFrame(raf);
+ };
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
+
+ // Opening the city menu must never leave the header retracted (check #5). The detail
+ // page is pinned by detailOpenRef inside the listener; this covers the no-scroll case.
+ useEffect(() => {
+ if (cityMenuOpen) syncChromeBaseline(Math.max(0, window.scrollY));
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [cityMenuOpen]);
+
  useEffect(() => {
  if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
  }, []);
@@ -422,7 +531,11 @@ export default function App() {
 
  if (id && !prev) {
  // Entering a detail — remember the list position before the list unmounts.
- listScrollY.current = window.scrollY;
+ // This effect runs AFTER the detail has committed and shrunk the document, so
+ // `window.scrollY` here is already clamped down by up to a viewport — reading it
+ // loses the true list offset. `chromeLastY` is the position the scroll listener
+ // tracked while the list was still mounted, so it is the exact place to return to.
+ listScrollY.current = Math.max(chromeLastY.current, window.scrollY);
  window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
  } else if (id && prev) {
  // Detail to a different detail; still a forward move.
@@ -432,7 +545,12 @@ export default function App() {
  // after layout, so the target offset actually exists to scroll to.
  const y = listScrollY.current;
  requestAnimationFrame(() =>
- requestAnimationFrame(() => window.scrollTo({ top: y, behavior:'instant' as ScrollBehavior })),
+ requestAnimationFrame(() => {
+ window.scrollTo({ top: y, behavior:'instant' as ScrollBehavior });
+ // Re-seat the chrome to this restored position so the jump is not read as a
+ // downward gesture and the header/tab bar are not retracted on return (#8).
+ syncChromeBaseline(y);
+ }),
 );
  }
  }, [selectedRecipe?.id]);
@@ -980,24 +1098,49 @@ export default function App() {
  // which is how the app ended up with pages you could enter and not leave. Two
  // independent exits is the Apple HIG expectation, not a nicety.
  //
- // We push one history entry on open and pop it when the user closes in-app, so the
- // stack stays balanced and Back doesn't need pressing twice after a normal close.
+ // We push ONE history entry on open and retire it on in-app close, so the stack stays
+ // balanced and Back never needs a second press after a normal close.
+ //
+ // The pushed entry carries minimal, serialisable state — the item id (which is also the
+ // truthy `whatsGoodDetail` marker), the tab it was opened from, and the list scroll
+ // offset. That is what lets browser FORWARD re-open the same detail: `detailItemRef`
+ // still holds the item object within the session (venue ids are not addressable across
+ // a refresh by design — a refreshed detail URL simply lands on the list, never a wrong
+ // screen), and popstate reconciles `selectedRecipe` to whatever the current entry says
+ // rather than always closing. The scroll engine above keys off `selectedRecipe?.id`:
+ // opening starts the detail at the top, going back restores the list offset.
  const pushedDetailEntry = useRef(false);
+ const detailItemRef = useRef<ParsedRecipe | null>(null);
  useEffect(() => {
  if (selectedRecipe && !pushedDetailEntry.current) {
- window.history.pushState({ whatsGoodDetail: true }, '');
+ detailItemRef.current = selectedRecipe;
+ window.history.pushState(
+ { whatsGoodDetail: selectedRecipe.id, tab: activeTab, listScrollY: listScrollY.current },
+ '',
+ );
  pushedDetailEntry.current = true;
  } else if (!selectedRecipe && pushedDetailEntry.current) {
- // Closed from inside the app — retire the entry we added.
+ // Closed from inside the app — retire the entry we added, which keeps the in-app
+ // Back button behaviourally identical to a browser Back (#5).
  pushedDetailEntry.current = false;
  if (window.history.state?.whatsGoodDetail) window.history.back();
  }
- }, [selectedRecipe]);
+ }, [selectedRecipe, activeTab]);
 
  useEffect(() => {
  const onPop = () => {
+ const st = window.history.state as { whatsGoodDetail?: string } | null;
+ if (st?.whatsGoodDetail) {
+ // Forward into (or onto) a detail entry — reopen the same item if we still hold
+ // it. Set the flag first so the open effect does not push a duplicate entry (#6).
+ pushedDetailEntry.current = true;
+ const item = detailItemRef.current;
+ if (item && item.id === st.whatsGoodDetail) setSelectedRecipe(item);
+ } else {
+ // Back to the list entry.
  pushedDetailEntry.current = false;
  setSelectedRecipe(null);
+ }
  };
  window.addEventListener('popstate', onPop);
  return () => window.removeEventListener('popstate', onPop);
@@ -1044,7 +1187,8 @@ export default function App() {
  Dynamic Island. Padding the fixed header by the top inset keeps the logo and the
  controls clear of it; in a normal browser tab the inset is 0 and nothing moves. */}
  <header
- className="chrome-bar safe-x safe-x-wide flex items-center justify-between fixed top-0 left-0 right-0 z-50 select-none !rounded-none"
+ ref={headerRef}
+ className={`chrome-bar safe-x safe-x-wide flex items-center justify-between fixed top-0 left-0 right-0 z-50 select-none !rounded-none${chromeHidden ? ' is-hidden' : ''}`}
  style={{ height:'calc(60px + env(safe-area-inset-top))', paddingTop:'env(safe-area-inset-top)' }}
  >
  {/* Logo */}
@@ -1236,7 +1380,7 @@ export default function App() {
  {/* Mobile tab bar — this is an app, so navigation lives at the thumb, not the
  forehead. Safe-area padding keeps it clear of the iOS home indicator. */}
  <nav
- className="md:hidden safe-x fixed bottom-0 left-0 right-0 z-50 min-h-[var(--tabbar-h)] bg-[var(--bg-warm)] border-t border-[var(--rule)]"
+ className={`tabbar md:hidden safe-x fixed bottom-0 left-0 right-0 z-50 min-h-[var(--tabbar-h)] bg-[var(--bg-warm)] border-t border-[var(--rule)]${chromeHidden ? ' is-hidden' : ''}`}
  style={{ paddingBottom:'env(safe-area-inset-bottom)' }}
  aria-label="Primary"
  >

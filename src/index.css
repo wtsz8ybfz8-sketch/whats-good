@@ -224,6 +224,32 @@
   padding-right: max(1.25rem, env(safe-area-inset-right));
 }
 
+/* ─── Scroll-directional chrome ──────────────────────────
+   The fixed header and the mobile tab bar retract on a deliberate downward scroll and
+   return on the way up, near the top, or near the bottom. App.tsx owns the single
+   passive, rAF-throttled scroll listener that toggles `.is-hidden`. Transform ONLY —
+   the content padding that clears the fixed chrome is a constant, so the page never
+   reflows and cannot jump when a bar leaves or returns. pointer-events drop while a
+   bar is off-screen so a mid-transition bar cannot swallow a tap; a focused header
+   control forces the bar back (App), so keyboard/AT reach is never lost. This is the
+   detail `.action-bar`'s opposite in spirit: that bar is deliberately NOT wired here,
+   because primary navigation and detail actions are separate pieces of chrome. Under
+   prefers-reduced-motion App keeps both bars pinned and the global rule below already
+   collapses the transition, so this is inert there. */
+.chrome-bar,
+.tabbar {
+  transition: transform 0.28s var(--ease-out-expo);
+  will-change: transform;
+}
+.chrome-bar.is-hidden {
+  transform: translateY(-100%);
+  pointer-events: none;
+}
+.tabbar.is-hidden {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
 /* Full-bleed fixed chrome: keep the FILL edge to edge, push the CONTENT clear of the
    notch. Applied to the header and the mobile tab bar. In portrait and on desktop both
    insets are 0 and this is inert. */
