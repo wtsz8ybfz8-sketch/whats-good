@@ -5,7 +5,7 @@
 
 ## Status
 
-**`main` is at `c4da169`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
+**`main` is at `55a702b`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
 `npm run build` exit 0. Working tree clean. No dev server running.
 
 **Live, public, no login: https://whats-good-git-main-nizzle-s-projects.vercel.app**
@@ -145,6 +145,32 @@ grep -c "✓\|✗" /tmp/full.log; tail -20 /tmp/full.log
 cd .. && node verify/serve.mjs down          # ALWAYS
 ```
 
+## Budget, sharing, and what it costs — read before inviting anyone
+
+**USAGE LIMITS ARE A HARD CONSTRAINT UNTIL SUNDAY.** Changes must be small, verified in
+one pass, and committed. Do not start speculative refactors, broad audits, or repeated
+browser loops. One diagnosis, one focused change, one proportionate check (CLAUDE.md §2).
+
+**Can 80 people use this? Yes, and it is very likely free — but only because of a trial
+credit that is running out.** Arithmetic from the user's own Cloud Console export (July,
+confirmed): Text Search Enterprise $35/1000 after 1,000 free/month; Place Photos $7/1000
+after 1,000 free/month. The app fires **2 Text Search calls per user search** and roughly
+**5 photos per rendered card**.
+
+- 80 people × 5 searches ≈ 400 searches → ~800 text calls (inside the free 1,000, **$0**)
+  and ~4,000 photos (3,000 billable ≈ **$21**).
+- 80 people × 20 searches ≈ 1,600 searches → ~3,200 text calls (≈ **$77**) and ~16,000
+  photos (≈ **$105**). About **$180**.
+
+$123.10 of free trial credit remained at the July export, expiring **15 September 2026**.
+A launch-weekend demo lands inside it. Sustained use does not.
+
+**The uncapped risk is the real one.** Both API keys are unrestricted — no application
+restriction, no API restriction, no daily quota. A leaked or scraped key has no ceiling,
+and the key is visible in the page: `getPlacePhotoUrl` embeds it in every photo `<img>`
+URL. **A budget alert only warns. Only a per-API daily QUOTA caps spend.** This is
+console-side and only the account owner can do it.
+
 ## Known risks and open questions
 
 - **The header fill has not been confirmed on a device.** A run is queued on `c4da169`;
@@ -170,4 +196,15 @@ cd .. && node verify/serve.mjs down          # ALWAYS
 - **CI has no Places key**, so every venue surface in CI renders "Google turned the search
   down". A harness fact, not an app defect — but CI cannot exercise a venue-data path
   without fixtures.
+- **Happy Hour is Cape Town only, by construction.** `HAPPY_HOUR_CITY = 'Cape Town'` and
+  `CAPE_TOWN_HAPPY_HOURS` is the only dataset; any other city resolves to `not-covered`
+  and renders an honest empty state. A New Yorker gets a permanently empty tab — truthful,
+  but dead weight. `HappyHourView.tsx:142` also shows Cape Town data when the city is
+  unknown, captioned "You are seeing Cape Town because we do not know where you are yet";
+  that caption is doing a lot of work and should be re-read before launch. Adding a city
+  means adding a curated dataset by hand — Google publishes no happy-hour data at any tier.
+- **A New Yorker can now use this.** `formatDistance` hardcoded `unit: 'kilometer'` and was
+  fixed in `55a702b`: US/GB/LR/MM get miles, everywhere else kilometres. Everything else
+  already derived from `navigator.language`. The one thing still Cape Town-shaped is
+  Happy Hour, above.
 - **`tsc` has not run locally this session.** CI runs it on every push.
