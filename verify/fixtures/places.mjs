@@ -22,7 +22,15 @@ function place(id, name, address, lat, lng, opts = {}) {
     // only when present, so a venue Google holds no rating for renders no star at all.
     ...(opts.rating !== undefined ? { rating: opts.rating } : {}),
     ...(opts.userRatingCount !== undefined ? { userRatingCount: opts.userRatingCount } : {}),
-    priceLevel: opts.priceLevel ?? 'PRICE_LEVEL_MODERATE',
+    /* `null` means Places published no band, exactly as it does for phone and website
+       below. It defaulted to MODERATE on every fixture, so no venue in this suite could
+       ever reach the no-price path — and the Spend tile, alone of the three "at a glance"
+       tiles, was built ungated and rendered as a heading over empty space. A user
+       photographed it on a real device. A fixture that cannot express absence hides the
+       branch that handles absence. */
+    ...(opts.priceLevel === null
+      ? {}
+      : { priceLevel: opts.priceLevel ?? 'PRICE_LEVEL_MODERATE' }),
     primaryType: opts.primaryType ?? 'italian_restaurant',
     primaryTypeDisplayName: { text: opts.cuisine ?? 'Italian restaurant' },
     photos: [{ name: `places/${id}/photos/fixture` }],
@@ -113,7 +121,9 @@ export const PLACES = [
   place('pl-6', 'Hoxton Steam Buns', '41 Kingsland Road, London E2 8AG, UK', 51.5285, -0.0765, {
     cuisine: 'Chinese restaurant',
     primaryType: 'chinese_restaurant',
-    priceLevel: 'PRICE_LEVEL_INEXPENSIVE',
+    // No band either. This is the thin listing Places returns constantly — an address and
+    // very little else — so it is the right venue to carry every absence at once.
+    priceLevel: null,
     rating: 4.5,
     phone: null,
     website: null,

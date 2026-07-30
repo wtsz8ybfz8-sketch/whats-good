@@ -368,12 +368,40 @@ async function main() {
       claimsWebsite: labels.some((l) => /official website/i.test(l)) || /full menu and photos/i.test(txt),
       offersMaps: /open in google maps/i.test(txt),
       onVenuePage: /Hoxton Steam Buns/.test(txt),
+      /**
+       * An "at a glance" tile must never be a label over nothing.
+       *
+       * The Spend tile was the only one of the three built ungated, and
+       * `priceTierLabel` returns '' when Places published no band — so a venue Google
+       * holds no price for rendered a "SPEND" heading above empty space. It reached a
+       * real device and the user photographed it. Nothing here could have failed it,
+       * because the fixture factory defaulted a band onto every venue; that default is
+       * now removed and `pl-6` carries none.
+       *
+       * Counts a tile as empty when its label is present but no non-whitespace text
+       * follows it inside the same tile.
+       */
+      emptyGlanceTiles: [...document.querySelectorAll('*')]
+        .filter((el) => /^(SPEND|STATUS|DISTANCE)$/i.test((el.textContent || '').trim()))
+        .map((label) => {
+          const tile = label.closest('div');
+          const rest = (tile?.textContent || '').replace((label.textContent || '').trim(), '').trim();
+          return rest.length === 0 ? (label.textContent || '').trim() : null;
+        })
+        .filter(Boolean),
     };
   });
   check('venue with no phone renders no Call action', thinActions.onVenuePage && thinActions.telLinks === 0,
     thinActions.onVenuePage ? `${thinActions.telLinks} tel: link(s)` : 'not on the venue page');
   check('a Maps fallback is not labelled "Official website"', !thinActions.claimsWebsite);
   check('a Maps fallback says so', thinActions.offersMaps);
+  check(
+    'no "at a glance" tile is a label over nothing',
+    thinActions.onVenuePage && thinActions.emptyGlanceTiles.length === 0,
+    thinActions.emptyGlanceTiles.length
+      ? `empty: ${thinActions.emptyGlanceTiles.join(', ')}`
+      : 'all tiles carry a value',
+  );
   await page.goBack().catch(() => {});
   await page.waitForTimeout(900);
 
