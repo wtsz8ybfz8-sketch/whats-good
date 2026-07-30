@@ -250,6 +250,23 @@
   pointer-events: none;
 }
 
+/* The mood-tab "Find a place" CTA is fixed above the tab bar on mobile, so on a
+   downward scroll it would otherwise hover over the restaurant cards while the header
+   and tab bar retract beneath it. It retracts with them — full travel is its own height
+   PLUS the tab-bar-height offset it sits on, so it clears the viewport entirely rather
+   than parking half-off. Mobile only: at md+ this element is `md:static` and lives
+   inline under the filters, where retracting it would wrongly shift page flow. */
+.filter-cta {
+  transition: transform 0.28s var(--ease-out-expo);
+  will-change: transform;
+}
+@media (max-width: 767px) {
+  .filter-cta.is-hidden {
+    transform: translateY(calc(100% + var(--tabbar-h) + env(safe-area-inset-bottom)));
+    pointer-events: none;
+  }
+}
+
 /* Full-bleed fixed chrome: keep the FILL edge to edge, push the CONTENT clear of the
    notch. Applied to the header and the mobile tab bar. In portrait and on desktop both
    insets are 0 and this is inert. */
