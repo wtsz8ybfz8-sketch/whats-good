@@ -546,6 +546,30 @@ async function main() {
     const r = await page.evaluate(MEASURE);
     check(`${label}: no overflow, all targets >=44pt`, !r.over && r.miss.length === 0,
       r.miss.length ? r.miss.join(', ') : '');
+
+    /*
+     * NO FIELD UNDER 16px ON A PHONE.
+     *
+     * Mobile Safari zooms the whole page when you focus an input whose COMPUTED
+     * font-size is under 16px, and never zooms back out — the user is left scaled in
+     * and panned, which reads as three unrelated bugs at once: random zooming, wrong
+     * padding, and content moving around.
+     *
+     * The rule to prevent it existed in `index.css` for this project's entire life and
+     * NEVER APPLIED: it was written inside `@layer base`, and Tailwind's utilities sit
+     * in a later cascade layer, so `text-sm` beat it every time. Nothing could catch
+     * that, because nothing measured a COMPUTED font-size — the rule was present in the
+     * stylesheet and provably not in effect. Measured, not read: 14px on #place-search.
+     *
+     * The user found this on their own phone. Again.
+     */
+    const zoomers = await page.evaluate(() =>
+      [...document.querySelectorAll('input,select,textarea')]
+        .filter((el) => !['range', 'checkbox', 'radio', 'hidden'].includes(el.type))
+        .filter((el) => parseFloat(getComputedStyle(el).fontSize) < 16)
+        .map((el) => `${el.id || el.getAttribute('aria-label') || el.type}@${getComputedStyle(el).fontSize}`),
+    );
+    check(`${label}: no field under 16px (iOS focus-zoom)`, zoomers.length === 0, zoomers.join(', '));
   }
 
   // --- deep links and titles --------------------------------------------------

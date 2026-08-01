@@ -1858,6 +1858,17 @@ export default function App() {
  <p className="text-xs text-[var(--text-subtle)] font-sans leading-relaxed max-w-xs mx-auto">
  Restaurant info is for reference only — always confirm details with the venue directly.
  </p>
+ {/*
+   REQUIRED ATTRIBUTION, not decoration.
+   Google's Places API policy requires a "Powered by Google" credit wherever Places
+   content — names, ratings, opening hours, price bands, photos — is displayed
+   without a Google map alongside it. This app shows all five and had no attribution
+   anywhere in the tree, which is a terms violation on every venue view rather than a
+   styling omission. It costs one line and removes a real launch blocker.
+ */}
+ <p className="mt-3 text-[11px] text-[var(--text-subtle)] font-sans">
+ Place data powered by Google
+ </p>
  </footer>
  </main>
  </div>

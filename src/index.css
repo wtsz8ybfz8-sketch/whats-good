@@ -120,12 +120,18 @@
      a defect, not a preference — the guidance is to keep the interface at the
      scale the person chose.
 
-     Fixed at the base layer rather than per-field so a new input can't
-     reintroduce it. 16px only up to the phone breakpoint; desktop keeps the
-     smaller, better-proportioned size where no zoom behaviour exists. */
-  @media (max-width: 767px) {
-    input, select, textarea { font-size: 16px; }
-  }
+     THIS RULE LIVED HERE, INSIDE `@layer base`, AND THEREFORE NEVER WORKED.
+     `@import "tailwindcss"` puts utilities in a LATER cascade layer than base,
+     and a later layer beats an earlier one no matter how specific the earlier
+     selector is. So `text-sm` on the search field (14px) and `text-[13px]` on
+     the city field silently won, and every tap on a search box on an iPhone
+     zoomed the page exactly as before. Measured in Chromium at 390px:
+     `#place-search` computed to **14px**, not the 16px this block claims.
+
+     The comment that used to sit here — "fixed at the base layer so a new input
+     can't reintroduce it" — was the exact opposite of the truth: the base layer
+     is the one place the fix CANNOT hold. Moved out of the layer entirely; see
+     the unlayered rule further down this file. */
 
   /* ─── Apple HIG: respect the safe area ───────────────────────────────────
      On notched and Dynamic Island iPhones the top inset is real estate the
@@ -300,6 +306,28 @@
   .filter-cta.is-hidden {
     transform: translateY(calc(100% + var(--tabbar-h) + env(safe-area-inset-bottom)));
     pointer-events: none;
+  }
+}
+
+/* ─── iOS MUST NOT ZOOM WHEN A FIELD IS FOCUSED — the unlayered version ──────────
+   UNLAYERED ON PURPOSE. This is the same cascade fact the `.safe-x` note below
+   spells out: Tailwind's utilities live in `@layer utilities`, and unlayered CSS
+   beats every layer regardless of specificity or source order. The identical rule
+   sat inside `@layer base` for this project's whole life and lost to `text-sm`
+   every single time, so the bug it was written to kill was live on every iPhone.
+
+   Mobile Safari zooms the page when you focus a field whose computed font-size is
+   under 16px — and it does NOT zoom back out afterwards. You are left scaled in and
+   panned sideways, which is why this reads to a user as three separate bugs:
+   "random zooming", "padding looks wrong", and "things move around". One cause.
+
+   `[type='range']` is excluded — sliders have no text and no zoom behaviour.
+   Phone widths only; desktop keeps the smaller, better-proportioned size. */
+@media (max-width: 767px) {
+  input:not([type='range']):not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
   }
 }
 
