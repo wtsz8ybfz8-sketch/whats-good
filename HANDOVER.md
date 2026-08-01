@@ -5,7 +5,7 @@
 
 ## Status
 
-**`main` is at `4ec81dc`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
+**`main` is at `65f3a16`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
 `npm run build` exit 0. Working tree clean. No dev server running.
 
 **THE OUTAGE THIS SESSION FIXED, AND THE GATE IT EXPOSES.** The Happy Hour tab was
@@ -39,6 +39,33 @@ Safari collapses its URL bar, which only happens after a **scroll**. A suite tha
 scrolls can be entirely green while the app is visibly broken in the hand. It was.
 `verify/ios-server.mjs` now honours `?__scrollY=`; `ios-safari.yml` captures scrolled
 states. **Do not trust an at-rest result about chrome.**
+
+## The Places cost/security audit — what was found, fixed, and left
+
+Done 2026-08-01 by reading the code, not by guessing. **Every "fixed" row below was
+measured**, and the measurements are in the commit messages.
+
+| # | Finding | State |
+|---|---|---|
+| 1 | `referrerPolicy="no-referrer"` on all five venue images **disabled HTTP-referrer key restriction** — the one protection this file keeps advising. Restricting the key would have 403'd every venue photo with nothing linking cause to effect | **FIXED** `d4dfb58` |
+| 2 | Paid Google photos loaded **eager**, free MealDB photos loaded lazy. Backwards. Place Photos bills per request; the list renders ~40 rows and a phone shows four | **FIXED** `d4dfb58` |
+| 3 | No settled-result cache — `inFlight` deduplicated only CONCURRENT calls, so browse-back-browse re-billed the identical search | **FIXED** `65f3a16`, 10-min TTL |
+| 4 | Both search phrasings fired unconditionally. Second is now conditional on <12 results | **FIXED** `65f3a16` — measured 1 call where there were 2 |
+| 7 | Bars searched as "cocktail bar **restaurant** in \<city\>" — kind passed as a search term | **FIXED** `65f3a16`, `kind: 'bar'` |
+| 5 | **Key is public** — in the bundle and in every photo URL. Real fix is a Vercel serverless proxy so it never reaches the browser. NOTE: `vercel.json`'s rewrite currently swallows `/api/*` and must exclude it first | **OPEN** — the real security fix |
+| 6 | `maxWidthPx=800` into a 64px thumbnail. Does NOT affect billing (per request, not per pixel); wastes mobile data. Needs two widths per venue | **OPEN**, low |
+| 8 | Bundle 456KB / **139KB gzip** | Noted, acceptable |
+
+**`TTL_MS` is a ceiling, not a round number.** `openNow` is baked into the cached
+payload, so the cache also caches a flag that decays. Do not raise 10 minutes without
+moving `openNow` out of the cache first.
+
+**NOT AUDITED, so claim nothing about it:** accessibility beyond hit targets,
+`EateryView` in depth, `Sidebar`, `index.css`, the recipe path, real Lighthouse numbers.
+
+**Console-side, owner only, still open:** a per-API **daily quota** (a budget alert only
+warns — only a quota caps), and the referrer restriction, which is *now safe to apply*
+and was not before `d4dfb58`.
 
 ## Objective
 
