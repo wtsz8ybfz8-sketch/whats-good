@@ -321,6 +321,40 @@ const inFlight = new Map<
 >();
 
 /**
+ * SETTLED-RESULT CACHE — the single biggest cost lever in this file.
+ *
+ * `inFlight` only ever deduplicated CONCURRENT identical requests, and deleted its entry
+ * the instant the promise settled. So the overwhelmingly common real behaviour — tap
+ * Italian, tap back, tap Italian again; switch tabs and return; pull to refresh — re-fired
+ * and re-billed the identical Text Search every time, seconds apart, for a result that
+ * cannot meaningfully have changed. Two charged Enterprise calls per repeat.
+ *
+ * Results now survive for TTL_MS after settling. Same key, same answer, no request.
+ *
+ * TEN MINUTES IS A DELIBERATE CEILING, not a round number. This app's promise is "what is
+ * open near me RIGHT NOW", and `openNow` is baked into the cached payload — so the cache
+ * is also caching an open/closed flag that decays. Ten minutes is short enough that a
+ * venue's open state cannot drift far, and long enough to absorb the whole
+ * browse-back-browse loop. Do not raise it without moving `openNow` out of the cache.
+ *
+ * Google's terms permit temporary caching for performance; this is minutes, in memory,
+ * never written to disk, and gone on reload.
+ */
+const TTL_MS = 10 * 60 * 1000;
+const settled = new Map<string, { at: number; value: PlacesFetch }>();
+
+/** Only ever cache a real answer. Failures must stay retryable. */
+function remember(cacheKey: string, value: PlacesFetch) {
+  if (value.status !== 'ok') return;
+  settled.set(cacheKey, { at: Date.now(), value });
+  // Unbounded growth is a leak in a long session. The map is tiny, but bound it anyway.
+  if (settled.size > 60) {
+    const oldest = [...settled.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+    if (oldest) settled.delete(oldest[0]);
+  }
+}
+
+/**
  * One shared request per identical query, cancelled only when the LAST caller lets go.
  * A shared AbortController that any single caller could fire would cancel a request
  * another caller is still waiting on.
@@ -332,6 +366,11 @@ function searchTextShared(
   signal: AbortSignal,
 ): Promise<PlacesFetch> {
   const cacheKey = JSON.stringify([textQuery, priceLevels ?? null, placesLanguageCode()]);
+
+  const hit = settled.get(cacheKey);
+  if (hit && Date.now() - hit.at < TTL_MS) return Promise.resolve(hit.value);
+  if (hit) settled.delete(cacheKey);
+
   let entry = inFlight.get(cacheKey);
 
   if (!entry) {
@@ -341,11 +380,14 @@ function searchTextShared(
       waiters: 0,
       promise: Promise.resolve({ status: 'aborted' } as PlacesFetch),
     };
-    created.promise = searchTextOnce(key, textQuery, priceLevels, controller.signal).finally(
-      () => {
+    created.promise = searchTextOnce(key, textQuery, priceLevels, controller.signal)
+      .then((r) => {
+        remember(cacheKey, r);
+        return r;
+      })
+      .finally(() => {
         inFlight.delete(cacheKey);
-      },
-    );
+      });
     inFlight.set(cacheKey, created);
     entry = created;
   }
@@ -385,11 +427,18 @@ function searchTextShared(
  * not look" are different answers to the user and were previously the same value.
  * Pass `signal` from the caller's effect so a superseded search stops costing money.
  */
+/** What kind of place a search is looking for. Drives the phrasing sent to Google. */
+export type VenueKind = 'restaurant' | 'bar';
+
+/** Enough results that a second phrasing adds variety rather than necessity. */
+const ENOUGH_RESULTS = 12;
+
 export async function fetchVenues(
   query: string,
   city: string,
   priceTier?: number | null,
   signal?: AbortSignal,
+  kind: VenueKind = 'restaurant',
 ): Promise<VenueSearchResult> {
   const key = getGooglePlacesKey();
 
@@ -400,26 +449,46 @@ export async function fetchVenues(
 
   try {
     const priceLevels = tierToPriceLevels(priceTier);
-    const queries = query
-      ? [
-          `${query} restaurant in ${city}`,
-          `best ${query} places to eat in ${city}`,
-        ]
-      : [
-          `best restaurants in ${city}`,
-          `popular local eateries in ${city}`,
-        ];
+    /*
+     * Bars were being asked for as "cocktail bar restaurant in Paris", because the only
+     * phrasings this function knew were restaurant-shaped and the Happy Hour tab passed
+     * its kind in as a search TERM. Google is forgiving enough that it returned bars, but
+     * the word "restaurant" was in there biasing every result toward places that serve
+     * food. A bar search now reads like a bar search.
+     */
+    const queries: string[] =
+      kind === 'bar'
+        ? [`bars in ${city}`, `cocktail bars and pubs in ${city}`]
+        : query
+          ? [`${query} restaurant in ${city}`, `best ${query} places to eat in ${city}`]
+          : [`best restaurants in ${city}`, `popular local eateries in ${city}`];
 
-    // Both phrasings are kept deliberately — the API caps each call at 20 results, so
-    // phrasing variety is the only way to widen the pool. Identical queries share one
-    // request (searchTextShared), which is where the duplicate spend actually was.
-    const outcomes = await Promise.all(
-      queries.map((q) =>
-        searchTextShared(key, q, priceLevels, abortSignal).catch(
-          (): PlacesFetch => ({ status: 'network' }),
-        ),
-      ),
+    /*
+     * The second phrasing is now CONDITIONAL, and that is a straight halving of Text
+     * Search spend in the common case.
+     *
+     * Both were previously fired in parallel, always, on the reasoning that the API caps
+     * a call at 20 results so variety is the only way to widen the pool. True — but only
+     * WORTH PAYING FOR when the first call came back thin. A first query returning 20
+     * venues does not need a second charged Enterprise call to append more; the user is
+     * never going to reach the bottom of that list. So: fire one, and only reach for the
+     * second when the first genuinely underdelivers.
+     */
+    const first = await searchTextShared(key, queries[0], priceLevels, abortSignal).catch(
+      (): PlacesFetch => ({ status: 'network' }),
     );
+
+    const needsMore =
+      first.status !== 'ok' || first.places.length < ENOUGH_RESULTS;
+
+    const outcomes: PlacesFetch[] = needsMore
+      ? [
+          first,
+          await searchTextShared(key, queries[1], priceLevels, abortSignal).catch(
+            (): PlacesFetch => ({ status: 'network' }),
+          ),
+        ]
+      : [first];
 
     const succeeded = outcomes.filter(
       (o): o is { status: 'ok'; places: Place[] } => o.status === 'ok',

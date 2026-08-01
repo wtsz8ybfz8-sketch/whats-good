@@ -70,6 +70,16 @@ const barMapsUrl = (name: string, address: string) =>
 const BarList: React.FC<{ bars: Venue[]; city?: string }> = ({ bars, city }) => {
   const openCount = bars.filter((b) => b.openNow === true).length;
 
+  /**
+   * The one filter this list needs, mirroring the curated tab's.
+   *
+   * A list of 30+ bars sorted open-first still makes you scroll past the open ones to
+   * work out where they stop. "Open now" answers the actual question in one tap, and it
+   * costs nothing — it filters results already in hand, with no second request.
+   */
+  const [onlyOpen, setOnlyOpen] = useState(false);
+  const shown = onlyOpen ? bars.filter((b) => b.openNow === true) : bars;
+
   if (bars.length === 0) {
     return (
       <div className="mt-8 text-center py-10">
@@ -110,8 +120,37 @@ const BarList: React.FC<{ bars: Venue[]; city?: string }> = ({ bars, city }) => 
         Ask at the bar what is on.
       </p>
 
+      {/* One row, two states. Same control language as the curated tab above. */}
+      <div className="mt-5 flex flex-wrap items-center gap-2" role="group" aria-label="Filter bars">
+        {([
+          { key: false, label: 'All', count: bars.length },
+          { key: true, label: 'Open now', count: openCount },
+        ] as const).map((f) => {
+          const active = onlyOpen === f.key;
+          return (
+            <button
+              key={String(f.key)}
+              type="button"
+              aria-pressed={active}
+              disabled={f.count === 0 && f.key === true}
+              onClick={() => setOnlyOpen(f.key)}
+              className={`press hit-44 px-4 py-2 rounded-full text-[13px] font-medium border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                active
+                  ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
+                  : 'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
+              }`}
+            >
+              {f.label}
+              <span className={`ml-1.5 tabular-nums ${active ? 'opacity-80' : 'text-[var(--text-muted)]'}`}>
+                {f.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <ul className="stagger flex flex-col xl:grid xl:grid-cols-2 xl:gap-x-12 mt-5">
-        {bars.map((b) => {
+        {shown.map((b) => {
           const price = formatPriceTier(b.priceTier);
           return (
             <li key={b.id}>
@@ -245,7 +284,9 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
   const loadBars = async () => {
     if (!city) return;
     setBarsState('loading');
-    const outcome = await fetchVenues('cocktail bar', city);
+    // `kind: 'bar'` — not a search TERM. Passing 'cocktail bar' as the query produced
+    // "cocktail bar restaurant in <city>", which biased every result toward food.
+    const outcome = await fetchVenues('', city, null, undefined, 'bar');
     if (outcome.status === 'ok') {
       // Open now first — the only ordering that matches why someone opened this tab.
       // `=== true` and not truthiness: `false` is a real answer and `undefined` means
