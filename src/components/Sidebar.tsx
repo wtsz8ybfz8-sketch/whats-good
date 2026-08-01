@@ -489,7 +489,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  title="Cuisine"
  optional
  scroll
- note={availableCount > 0 ? `${availableCount} in these results` : undefined}
+ note={availableCount > 0 ? `${availableCount} available here` : undefined}
 
  >
  {cuisines.map((c) => (

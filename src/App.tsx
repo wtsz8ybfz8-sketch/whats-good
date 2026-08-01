@@ -255,6 +255,7 @@ export default function App() {
  });
 
  const [recipes, setRecipes] = useState<ParsedRecipe[]>([]);
+ const [availableCuisines, setAvailableCuisines] = useState<string[]>([]);
  const [selectedRecipe, setSelectedRecipe] = useState<ParsedRecipe | null>(null);
  const [isLoading, setIsLoading] = useState(false);
  const [error, setError] = useState<string | null>(null);
@@ -763,6 +764,7 @@ export default function App() {
 
  const resetHome = () => {
  handleTabSwitch('mood');
+ setAvailableCuisines([]);
  setDimensions({
  vibe: null,
  diet: null,
@@ -902,6 +904,13 @@ export default function App() {
  setNotice(failure);
  setIsLoading(false);
  return;
+ }
+
+ if (!dimensions.regional && customQuery === undefined) {
+ const nextCuisines = Array.from(new Set(
+ eateryList.map((eatery) => eatery.cuisine.trim()).filter(Boolean),
+ ));
+ setAvailableCuisines(nextCuisines);
  }
 
  const tempRecipes: ParsedRecipe[] = [];
@@ -1220,19 +1229,12 @@ export default function App() {
  return () => window.removeEventListener('popstate', onPop);
  }, []);
 
- // Real cuisine types from the current result set, deduped in first-seen order.
- // Feeds the Cuisine rail as a SUPPLEMENT to its curated baseline (see Sidebar).
- const nearbyCuisines = useMemo(() => {
- const out: string[] = [];
- const seen = new Set<string>();
- for (const r of recipes) {
- const c = (r.category || '').trim();
- if (!c || seen.has(c.toLowerCase())) continue;
- seen.add(c.toLowerCase());
- out.push(c);
- }
- return out;
- }, [recipes]);
+ // Cuisine suggestions come from the last unfiltered venue set and stay stable while
+ // a cuisine is selected. Recomputing them from filtered results made new chips appear
+ // after tapping Italian, which shifted the user's choices and implied that tapping a
+ // second chip was a hidden multi-step action. A cuisine change replaces the current
+ // cuisine filter; it does not rewrite the menu underneath the user's finger.
+ const nearbyCuisines = availableCuisines;
 
  const tabOrder: ActiveTab[] = ['mood','happy-hour','random','saved-recipes','saved-eateries'];
 
