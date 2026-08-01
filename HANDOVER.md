@@ -5,8 +5,24 @@
 
 ## Status
 
-**`main` is at `7ce920f`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
+**`main` is at `fbf0027`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
 `npm run build` exit 0. Working tree clean. No dev server running.
+
+**THE OUTAGE THIS SESSION FIXED, AND THE GATE IT EXPOSES.** The Happy Hour tab was
+rendering the error boundary — "This screen stopped working" — for every user, live, for
+about half an hour. Cause: the Cargo entry in `happyHourData.ts` was removed by deleting
+its fields and leaving `{}` in the array, so `mapsUrl` threw on `area.split` of undefined.
+
+**`tsc` caught it. CI went red on `6c0a299` AND on `f571781`. It deployed both times.**
+That is the finding: **a red CI run does not block a Vercel deploy.** `npm run build` is
+`vite build`, which does no typechecking, so production shipped code the type gate had
+already rejected — twice — and nothing anywhere said so. Until a check is wired as a
+required status or a deploy gate, **CI being green is something you must go and LOOK at,
+not something the pipeline enforces.** Check the Actions tab after every push to `main`.
+
+`happyHourData.ts` now validates every row at module load and drops an incomplete one with
+a named console warning, so a future hand-edit costs one venue instead of the whole tab.
+The authored array stays strictly typed, so `tsc` still catches it first.
 
 **Live, public, no login: https://whats-good-git-main-nizzle-s-projects.vercel.app**
 Vercel deploys `main` on push. Custom domains bypass auth entirely, so a purchased `.com`
@@ -26,36 +42,44 @@ states. **Do not trust an at-rest result about chrome.**
 
 ## Objective
 
-Ship a shareable, honest, functional build before a domain purchase, and find the cause of
-the header defect the user had been reporting for several sessions.
+Restore the Happy Hour tab, which was dead in production while the user was out and
+relying on it. Then, previously: ship a shareable, honest, functional build before a
+domain purchase, and find the cause of the header defect reported for several sessions.
 
 ## What changed (newest first)
 
-1. **`c4da169` — the scrolled capture now reaches the condition it tests.** The first
+1. **`fbf0027` — Happy Hour renders again, and one bad row can no longer kill it.**
+   Removed the `{}` left behind in `CAPE_TOWN_HAPPY_HOURS`, and added `isUsable()`, which
+   validates every row at module load against the fields the UI actually dereferences
+   (`venue`, `area`, `headline`, `source`, `sourceLabel`, non-empty `days` and `deals`,
+   finite `startHour`/`endHour`). A bad row is dropped with a warning naming its index and
+   its missing fields; the rest render. **Merged to `main` and deployed to production at
+   the user's explicit request** — the live site was broken and they were standing outside.
+2. **`c4da169` — the scrolled capture now reaches the condition it tests.** The first
    scrolled run worked mechanically and proved nothing: CI has no Places key, so the pages
    were barely taller than the viewport, Safari's URL bar stayed expanded (visible in the
    screenshots) and the strip never opened. `ios-server.mjs` pads the document so the
    requested scroll is reachable; the workflow asks for 1400px. Measured: scrollY 1400 in
    a 3592px document; control untouched at 0 / 1292px. Inert without the param.
-2. **`856dc6d` — a fixture that can say "Google published no price", plus a check.**
+3. **`856dc6d` — a fixture that can say "Google published no price", plus a check.**
    `priceLevel` defaulted a band onto every fixture venue, so the no-price path was
    unreachable. `null` now means absent, `pl-6` carries none, and a check fails when any
    "at a glance" tile is a label over nothing.
-3. **`14730c6` — the header bleed, and three false claims.** See below.
-4. **`6c08cc0` — theme-color precedence check + five process rules in `CLAUDE.md` §6/§12.**
-5. **`590055a` — the result-backed cuisine count shipped.** Rail title reads "Cuisine —
+4. **`14730c6` — the header bleed, and three false claims.** See below.
+5. **`6c08cc0` — theme-color precedence check + five process rules in `CLAUDE.md` §6/§12.**
+6. **`590055a` — the result-backed cuisine count shipped.** Rail title reads "Cuisine —
    optional · N in these results", derived from venues already fetched, omitted at zero.
    **The per-chip availability dot is NOT shipped** — see Risks.
-6. **`9aab341` — eleven unmerged commits reached `main`.** All of
+7. **`9aab341` — eleven unmerged commits reached `main`.** All of
    `claude/branch-comparison-merge-plan-xtv9e1`: chrome retraction on scroll, list-state
    restore on back/forward, rating counts and weekly hours, the "why this place" decision
    layer, un-squished venue actions, no phantom phone numbers. **Production had never
    served any of it** — the user reported these as regressions; they were unmerged work.
-7. **`f376a2d` — the black band at the Dynamic Island.** A browser uses the FIRST
+8. **`f376a2d` — the black band at the Dynamic Island.** A browser uses the FIRST
    `theme-color` whose media matches. `App.tsx` maintained a live one driven from the
    manual dark class and `appendChild`d it to the END of `<head>`, where the media-keyed
    tags always beat it — a no-op for the only case it existed for. Now `prepend`ed.
-8. **`ee70b25` — PWA installability.** Manifest + 192/512/maskable/apple-touch icons from
+9. **`ee70b25` — PWA installability.** Manifest + 192/512/maskable/apple-touch icons from
    the existing header mark. Icons live under `/assets/` because `vercel.json` rewrites
    every other path to `/`; `-vN` filenames because that directory is immutable for a year.
 
@@ -99,6 +123,13 @@ with the app's theme and content no longer bleeds into the status bar.
 | iOS Simulator capture | `ci/ios-shots`, 11 PNGs | all hashes distinct — genuine |
 | Device probe | `PROBE.txt` | 402×678, dpr 3, vh 760 / dvh 678, insets all 0 |
 | `tsc --noEmit` | — | **NOT RUN locally.** CI runs it on every push. |
+| Happy Hour crash, BEFORE fix | Chromium 390×844, click the tab | **error boundary**, `TypeError: ... reading 'split'` at `mapsUrl` |
+| Other three tabs, BEFORE fix | same | Find / Stay In / Saved all **rendered** — only Happy Hour was dead |
+| Happy Hour, AFTER fix | same | **8 venues, 3 live, no boundary**, screenshot read |
+| Row validator CAN fail | re-insert `{}` + a half-filled row | **both dropped by name**, no boundary, 8 rows still render |
+| Typecheck on `fbf0027` | GH Actions | **success** (it was FAILING on `6c0a299` and `f571781`) |
+| Production deploy | Vercel API | `dpl_8YaAqCcbPEjstS5N9msxpNmSBJDM` **READY**, target production, sha `fbf0027` |
+| Live site serves | Vercel `web_fetch` of the main alias | **HTTP 200** |
 
 **Insets read 0 in Safari portrait and that is CORRECT** — Safari's toolbar owns that
 space. They are non-zero only in the installed home-screen app (top 59px, bottom 34px).
@@ -116,6 +147,14 @@ space. They are non-zero only in the installed home-screen app (top 59px, bottom
 
 ## Next session: first three actions
 
+0. **MAKE A RED CI RUN BLOCK A DEPLOY. This now outranks everything below it.** Production
+   shipped a crash twice in a row that `tsc` had already rejected, because nothing connects
+   the two. The cheapest real fix is a **required status check** on `main` (GitHub →
+   Settings → Branches), which stops a red commit becoming the deploy source at all;
+   Vercel's "ignored build step" reading the commit status is the alternative. Both are
+   console-side and only the repo owner can do them. **Until one exists, every push to
+   `main` needs a human to open the Actions tab.** A doc line asking an agent to remember
+   is exactly the class of gate §13.2 says does not work.
 1. **Read `ci/ios-shots/light-find-scrolled.png` from the run on `c4da169`.** It is the
    first capture that should actually collapse Safari's URL bar. **If the strip is still
    open**, the fill is not the answer and the next lever is pinning the header to the
@@ -196,6 +235,15 @@ console-side and only the account owner can do it.
 - **CI has no Places key**, so every venue surface in CI renders "Google turned the search
   down". A harness fact, not an app defect — but CI cannot exercise a venue-data path
   without fixtures.
+- **CONTESTED — `VITE_GOOGLE_PLACES_KEY` may already be set in Vercel.** This file has
+  asserted for several sessions that it is the one blocker on venue discovery. Evidence
+  the other way, gathered 2026-08-01 and NOT conclusive: the production bundle for
+  `fbf0027` is `index-B8lKoe0c.js` while the identical local build produced
+  `index-B290cj64.js`, with the **CSS hash identical** (`index-DQbr-Yti.css`) in both.
+  Vite inlines `import.meta.env.*` at build time, so an empty key locally and a real key
+  on Vercel would produce exactly that signature — different JS, identical CSS. Other
+  build-time env differences could also explain it. **Resolve by opening the live site on
+  a real device and seeing whether venues render**, not by reasoning about hashes.
 - **Happy Hour is Cape Town only, but is no longer a dead end.** The uncovered state now
   offers "See Cape Town's N confirmed windows" (opt-in, no request, data already bundled),
   with its own banner and a Back control — the previous "we do not know where you are"
