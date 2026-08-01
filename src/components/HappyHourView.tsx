@@ -289,45 +289,52 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
   ];
 
   if (!covered) {
+    /**
+     * Once real local results are on screen, the apology above them is noise.
+     *
+     * It shipped as a permanent header: a full-height card explaining what we do NOT
+     * have, sitting on top of 33 bars we DO have, in the user's own city. And the
+     * loudest secondary control on it offered another country. Cape Town is a fine
+     * curiosity and a terrible thing to rank above where someone is standing.
+     *
+     * So the explanation is pre-search only, and Cape Town is a quiet footer line at
+     * all times — reachable, never competing.
+     */
+    const hasBars = bars !== null && barsState === 'idle';
+
     return (
       <div className="max-w-[820px] mx-auto w-full sm:px-10 pb-[calc(var(--tabbar-h)+2rem+env(safe-area-inset-bottom))] md:pb-16">
-        <div className="surface rounded-3xl px-7 py-12 text-center mt-2">
-          <div className="w-12 h-12 rounded-full bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mx-auto mb-5">
-            <Martini className="w-5 h-5 text-[var(--accent-terracotta)]" strokeWidth={1.75} />
+        {!hasBars && (
+          <div className="surface rounded-3xl px-7 py-12 text-center mt-2">
+            <div className="w-12 h-12 rounded-full bg-[var(--accent-tint)] border border-[var(--accent-tint-border)] flex items-center justify-center mx-auto mb-5">
+              <Martini className="w-5 h-5 text-[var(--accent-terracotta)]" strokeWidth={1.75} />
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl leading-[1.1] tracking-tight mb-3">
+              No confirmed happy hours in {city} yet
+            </h2>
+            {/* Says what we don't have, then immediately what we do. The old copy spent
+                its last sentence on Cape Town, which is not this reader's city. */}
+            <p className="text-sm leading-relaxed text-[var(--text-muted)] max-w-[380px] mx-auto">
+              Google publishes no happy-hour data anywhere, so every window here is
+              confirmed by a human first and we would rather show you nothing than send
+              you across town for a deal that does not exist. What we can show you right
+              now is which bars in {city} are actually open.
+            </p>
+            <div className="mt-6 flex justify-center">
+              {isPlacesConfigured() && (
+                <button
+                  type="button"
+                  onClick={loadBars}
+                  disabled={barsState === 'loading'}
+                  className="hit-44 press inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border border-[var(--accent-terracotta)] cursor-pointer transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Martini className="w-4 h-4" strokeWidth={1.75} />
+                  {barsState === 'loading' ? 'Finding bars…' : `Bars open now in ${city}`}
+                </button>
+              )}
+            </div>
           </div>
-          <h2 className="font-serif text-2xl sm:text-3xl leading-[1.1] tracking-tight mb-3">
-            No confirmed happy hours in {city} yet
-          </h2>
-          <p className="text-sm leading-relaxed text-[var(--text-muted)] max-w-[380px] mx-auto">
-            Google publishes no happy-hour data, so every window here is confirmed by a
-            human first. {HAPPY_HOUR_CITY} is covered today. We would rather show you
-            nothing than send you across town for a deal that does not exist.
-          </p>
-          {/* The way forward. Named city, named count — so the tap is a decision, not a
-              mystery — and it reveals data already in the bundle, so it costs nothing. */}
-          {/* The primary way forward, and the one that works in this user's own city.
-              Listed FIRST because it is about where they are actually standing. */}
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            {isPlacesConfigured() && (
-              <button
-                type="button"
-                onClick={loadBars}
-                disabled={barsState === 'loading'}
-                className="hit-44 press inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border border-[var(--accent-terracotta)] cursor-pointer transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Martini className="w-4 h-4" strokeWidth={1.75} />
-                {barsState === 'loading' ? 'Finding bars…' : `Bars open now in ${city}`}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowCoveredCity(true)}
-              className="hit-44 press inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] cursor-pointer transition-colors hover:border-[var(--accent-terracotta)]"
-            >
-              See {HAPPY_HOUR_CITY}&rsquo;s {CAPE_TOWN_HAPPY_HOURS.length} confirmed windows
-            </button>
-          </div>
-        </div>
+        )}
 
         {barsState === 'loading' && (
           <div className="mt-6">
@@ -357,7 +364,20 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
           </div>
         )}
 
-        {bars !== null && barsState === 'idle' && <BarList bars={bars} city={city} />}
+        {hasBars && <BarList bars={bars} city={city} />}
+
+        {/* Cape Town, demoted. Another country's data must never outrank the city the
+            reader is standing in — it was a full-size button competing with their own
+            city's results. Still one tap, just no longer shouting. */}
+        <p className="font-mono text-xs text-[var(--text-subtle)] mt-8 text-center">
+          <button
+            type="button"
+            onClick={() => setShowCoveredCity(true)}
+            className="hit-44 press underline underline-offset-2 hover:text-[var(--accent-terracotta)] cursor-pointer bg-transparent border-0 p-0 font-inherit relative"
+          >
+            See {HAPPY_HOUR_CITY}&rsquo;s {CAPE_TOWN_HAPPY_HOURS.length} confirmed windows
+          </button>
+        </p>
       </div>
     );
   }

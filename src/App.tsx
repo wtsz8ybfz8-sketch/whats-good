@@ -1797,10 +1797,17 @@ export default function App() {
  >
  {/* Thumbnail image */}
  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[var(--surface-quiet-bg)] flex-shrink-0 border border-[var(--rule)]">
+ {/* `loading="lazy"` is a BILLING control here, not only a perf one. Every Places
+ photo URL hit is a separately charged request, and this list renders up to ~40
+ rows of which a phone shows about four. This was the ONLY <img> in the app
+ without it — the FREE MealDB images were lazy and the PAID Google ones were
+ eager, which is exactly backwards. `referrerPolicy` removed: see the note on
+ getPlacePhotoUrl in placesService.ts, it was disabling the key restriction. */}
  <img
  src={r.image}
  alt={r.name}
- referrerPolicy="no-referrer"
+ loading="lazy"
+ decoding="async"
  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
  />
  </div>

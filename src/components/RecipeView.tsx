@@ -184,7 +184,6 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  src={r.image}
  alt={r.name}
  decoding="async"
- referrerPolicy="no-referrer"
  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
  />
  {/* Premium aesthetic overlay */}
@@ -535,7 +534,6 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  alt={rawEatery.name}
  loading="lazy"
  decoding="async"
- referrerPolicy="no-referrer"
  onError={(e) => { (e.currentTarget as HTMLImageElement).src = eateryPlaceholderImage(rawEatery.name); }}
  className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
  />
@@ -610,7 +608,6 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  alt={r.name}
  loading="lazy"
  decoding="async"
- referrerPolicy="no-referrer"
  className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
  />
  {/* Premium gradient overlay for depth */}

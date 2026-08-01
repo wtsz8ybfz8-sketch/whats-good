@@ -138,6 +138,25 @@ function weeklyHours(hours?: PlaceOpeningHours, utcOffsetMinutes?: number): stri
 }
 
 /** Returns a direct photo URL for a Google Places photo reference. */
+/**
+ * NEVER put `referrerPolicy="no-referrer"` on an <img> that loads one of these URLs.
+ *
+ * It was on all five venue images in this app, and it quietly disabled the single most
+ * valuable protection this project has been told to apply for several sessions. The key
+ * is embedded in this URL and therefore public — it is in the page source of every venue
+ * card — so the only thing standing between a scraped key and an unbounded bill is an
+ * HTTP-referrer restriction in the Google Cloud console. That restriction works by
+ * checking the `Referer` header. `no-referrer` strips it. So the moment the owner
+ * followed the advice in HANDOVER.md and restricted the key, **every venue photo in the
+ * app would have started 403-ing**, with nothing connecting the cause to the effect.
+ *
+ * Removed everywhere. Restrict the key first, then confirm photos still load.
+ *
+ * `maxWidthPx=800` does NOT affect billing — Place Photos is charged per request, not
+ * per pixel — but it is still ~3x oversized for the 64-80px list thumbnail, which costs
+ * the user mobile data on a street. Fixing that properly means two widths per venue and
+ * is not done here.
+ */
 export function getPlacePhotoUrl(photoName: string): string {
   const key = getGooglePlacesKey();
   return `${PLACES_BASE}/${photoName}/media?maxWidthPx=800&key=${key}`;

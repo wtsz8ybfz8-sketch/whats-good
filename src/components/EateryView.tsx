@@ -220,7 +220,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
         <motion.img
           src={r.image}
           alt={rawEatery.name}
-          referrerPolicy="no-referrer"
           initial={{ scale: 1.14 }}
           animate={{ scale: 1 }}
           transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
