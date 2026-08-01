@@ -560,9 +560,39 @@ export default function App() {
  window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
  }, [activeTab]);
 
+ /**
+  * Follow the system while the user has expressed no preference of their own.
+  *
+  * The persist below used to live in the apply-effect, so it ran on MOUNT — before any
+  * tap, on the very first visit ever. That converted "no preference, follow the system"
+  * into a stored explicit choice on first paint, and since the initialiser only consults
+  * `matchMedia` when `stored === null`, the system was read exactly once in the app's
+  * lifetime and then frozen. A user whose phone was light at first visit and dark
+  * afterwards got a light app for good, with the toggle as the only way out. Reported
+  * as "I'm on dark mode and the site opened on light mode".
+  *
+  * Storage is now written ONLY by the toggle (see the header button). No stored value
+  * means no preference, so the OS stays authoritative — including while the app is
+  * open, which the old code could not do at all: there was no change listener, so
+  * flipping the system theme did nothing until a reload.
+  */
+ useEffect(() => {
+ const mq = window.matchMedia('(prefers-color-scheme: dark)');
+ const follow = (e: MediaQueryListEvent) => {
+ // Re-read on every event: the user may have tapped the toggle since mount, and a
+ // value captured at subscribe time would keep overriding their explicit choice.
+ try {
+ if (localStorage.getItem('whats_good_dark_mode') === null) setIsDark(e.matches);
+ } catch {
+ setIsDark(e.matches);
+ }
+ };
+ mq.addEventListener('change', follow);
+ return () => mq.removeEventListener('change', follow);
+ }, []);
+
  useEffect(() => {
  document.documentElement.classList.toggle('dark', isDark);
- localStorage.setItem('whats_good_dark_mode', String(isDark));
 
  /* The two <meta name="theme-color"> tags key off prefers-color-scheme, but this app's
     dark mode is a manual class — so a user on a light phone who taps the moon gets a
@@ -1329,7 +1359,14 @@ export default function App() {
  </button>
 
  <button
- onClick={() => setIsDark((d) => !d)}
+ /* The ONLY writer of the stored preference. Persisting anywhere else (it used to
+    happen in the apply-effect, i.e. on mount) records a choice the user never made
+    and pins the app away from their system setting for good. */
+ onClick={() => setIsDark((d) => {
+ const next = !d;
+ try { localStorage.setItem('whats_good_dark_mode', String(next)); } catch { /* private mode: session-only, still correct */ }
+ return next;
+ })}
  className="hit-44 flex w-10 h-10 items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
  aria-label={isDark ?'Switch to light mode' :'Switch to dark mode'}
  >
