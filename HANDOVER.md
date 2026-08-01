@@ -5,7 +5,7 @@
 
 ## Status
 
-**`main` is at `fbf0027`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
+**`main` is at `4ec81dc`, pushed, GREEN.** `verify/checks.mjs` **54/54, 0 skipped, exit 0**;
 `npm run build` exit 0. Working tree clean. No dev server running.
 
 **THE OUTAGE THIS SESSION FIXED, AND THE GATE IT EXPOSES.** The Happy Hour tab was
@@ -48,38 +48,49 @@ domain purchase, and find the cause of the header defect reported for several se
 
 ## What changed (newest first)
 
-1. **`fbf0027` — Happy Hour renders again, and one bad row can no longer kill it.**
+1. **`4ec81dc` — Happy Hour finally answers the question in EVERY city.** Outside Cape
+   Town the tab was an apology. Happy-hour *pricing* still has no source and coverage is
+   still one city — that constraint is real and stays. But Google publishes, everywhere,
+   which bars exist and whether they are open right now, and that was being withheld from
+   every user outside one city. The uncovered state now offers live bars in the user's own
+   city: open-now first, today's hours, rating + count, price band, directions. **Never
+   called a happy hour** — the list header states "No happy-hour prices are confirmed in
+   \<city\> — these are bars, not deals." **Opt-in, one tap**: two Text Search calls fire
+   only on press, nothing at all for a user who never opens the tab. Reuses `fetchVenues`
+   and `StatusStates`. `openNow` is compared against `true`/`false` explicitly —
+   `undefined` renders "Hours n/a", never "Closed".
+2. **`fbf0027` — Happy Hour renders again, and one bad row can no longer kill it.**
    Removed the `{}` left behind in `CAPE_TOWN_HAPPY_HOURS`, and added `isUsable()`, which
    validates every row at module load against the fields the UI actually dereferences
    (`venue`, `area`, `headline`, `source`, `sourceLabel`, non-empty `days` and `deals`,
    finite `startHour`/`endHour`). A bad row is dropped with a warning naming its index and
    its missing fields; the rest render. **Merged to `main` and deployed to production at
    the user's explicit request** — the live site was broken and they were standing outside.
-2. **`c4da169` — the scrolled capture now reaches the condition it tests.** The first
+3. **`c4da169` — the scrolled capture now reaches the condition it tests.** The first
    scrolled run worked mechanically and proved nothing: CI has no Places key, so the pages
    were barely taller than the viewport, Safari's URL bar stayed expanded (visible in the
    screenshots) and the strip never opened. `ios-server.mjs` pads the document so the
    requested scroll is reachable; the workflow asks for 1400px. Measured: scrollY 1400 in
    a 3592px document; control untouched at 0 / 1292px. Inert without the param.
-3. **`856dc6d` — a fixture that can say "Google published no price", plus a check.**
+4. **`856dc6d` — a fixture that can say "Google published no price", plus a check.**
    `priceLevel` defaulted a band onto every fixture venue, so the no-price path was
    unreachable. `null` now means absent, `pl-6` carries none, and a check fails when any
    "at a glance" tile is a label over nothing.
-4. **`14730c6` — the header bleed, and three false claims.** See below.
-5. **`6c08cc0` — theme-color precedence check + five process rules in `CLAUDE.md` §6/§12.**
-6. **`590055a` — the result-backed cuisine count shipped.** Rail title reads "Cuisine —
+5. **`14730c6` — the header bleed, and three false claims.** See below.
+6. **`6c08cc0` — theme-color precedence check + five process rules in `CLAUDE.md` §6/§12.**
+7. **`590055a` — the result-backed cuisine count shipped.** Rail title reads "Cuisine —
    optional · N in these results", derived from venues already fetched, omitted at zero.
    **The per-chip availability dot is NOT shipped** — see Risks.
-7. **`9aab341` — eleven unmerged commits reached `main`.** All of
+8. **`9aab341` — eleven unmerged commits reached `main`.** All of
    `claude/branch-comparison-merge-plan-xtv9e1`: chrome retraction on scroll, list-state
    restore on back/forward, rating counts and weekly hours, the "why this place" decision
    layer, un-squished venue actions, no phantom phone numbers. **Production had never
    served any of it** — the user reported these as regressions; they were unmerged work.
-8. **`f376a2d` — the black band at the Dynamic Island.** A browser uses the FIRST
+9. **`f376a2d` — the black band at the Dynamic Island.** A browser uses the FIRST
    `theme-color` whose media matches. `App.tsx` maintained a live one driven from the
    manual dark class and `appendChild`d it to the END of `<head>`, where the media-keyed
    tags always beat it — a no-op for the only case it existed for. Now `prepend`ed.
-9. **`ee70b25` — PWA installability.** Manifest + 192/512/maskable/apple-touch icons from
+10. **`ee70b25` — PWA installability.** Manifest + 192/512/maskable/apple-touch icons from
    the existing header mark. Icons live under `/assets/` because `vercel.json` rewrites
    every other path to `/`; `-vN` filenames because that directory is immutable for a year.
 
@@ -130,6 +141,10 @@ with the app's theme and content no longer bleeds into the status bar.
 | Typecheck on `fbf0027` | GH Actions | **success** (it was FAILING on `6c0a299` and `f571781`) |
 | Production deploy | Vercel API | `dpl_8YaAqCcbPEjstS5N9msxpNmSBJDM` **READY**, target production, sha `fbf0027` |
 | Live site serves | Vercel `web_fetch` of the main alias | **HTTP 200** |
+| Bars-in-any-city path | fixture + Chromium, `?city=London` | **6 rows** at 390 light, 390 dark, 1440, 844×390 landscape; caveat present; no boundary; no page errors |
+| Bars path, overflow | same four | `scrollWidth === innerWidth` at **all four** |
+| Bars path, looked at | 390 light + dark PNGs | **read, both correct** |
+| CI on `4ec81dc` (main) | GH Actions | **every step success** — typecheck, build, checks, WebKit sweep |
 
 **Insets read 0 in Safari portrait and that is CORRECT** — Safari's toolbar owns that
 space. They are non-zero only in the installed home-screen app (top 59px, bottom 34px).
@@ -244,16 +259,20 @@ console-side and only the account owner can do it.
   on Vercel would produce exactly that signature — different JS, identical CSS. Other
   build-time env differences could also explain it. **Resolve by opening the live site on
   a real device and seeing whether venues render**, not by reasoning about hashes.
-- **Happy Hour is Cape Town only, but is no longer a dead end.** The uncovered state now
-  offers "See Cape Town's N confirmed windows" (opt-in, no request, data already bundled),
-  with its own banner and a Back control — the previous "we do not know where you are"
-  copy would have been false once the user asked. Original constraint stands: `HAPPY_HOUR_CITY = 'Cape Town'` and
-  `CAPE_TOWN_HAPPY_HOURS` is the only dataset; any other city resolves to `not-covered`
-  and renders an honest empty state. A New Yorker gets a permanently empty tab — truthful,
-  but dead weight. `HappyHourView.tsx:142` also shows Cape Town data when the city is
-  unknown, captioned "You are seeing Cape Town because we do not know where you are yet";
-  that caption is doing a lot of work and should be re-read before launch. Adding a city
-  means adding a curated dataset by hand — Google publishes no happy-hour data at any tier.
+- **Happy-hour PRICING is Cape Town only — the TAB is not.** Two different claims, and
+  conflating them is what made this a dead end for a month. Curated windows: still one
+  city, `HAPPY_HOUR_CITY = 'Cape Town'`, `CAPE_TOWN_HAPPY_HOURS` the only dataset, because
+  Google publishes no happy-hour data at any tier and the only truthful source is a human
+  typing it in. **That constraint is real and stays.** But since `4ec81dc` an uncovered
+  city gets live bars — open now, hours, rating, price band, directions — opt-in, one tap,
+  two Text Search calls only on press. It is never labelled a happy hour and the list
+  header says so. Adding a *curated* city is still hand work; making the tab useful in a
+  new city is no longer blocked on it.
+  **Not yet seen against real Google data** — verified against the harness fixture only,
+  because this container cannot reach Places. First real-world look is the open item.
+  `HappyHourView.tsx` still shows Cape Town data when the city is UNKNOWN, captioned "You
+  are seeing Cape Town because we do not know where you are yet"; that caption is doing a
+  lot of work and should be re-read before launch.
 - **A New Yorker can now use this.** `formatDistance` hardcoded `unit: 'kilometer'` and was
   fixed in `55a702b`: US/GB/LR/MM get miles, everywhere else kilometres. Everything else
   already derived from `navigator.language`. The one thing still Cape Town-shaped is
