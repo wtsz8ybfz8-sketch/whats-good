@@ -667,6 +667,21 @@ self-description of when it should trigger.
   product. It carries the four laws below and the surface coverage rules.
 - **`qa-gate`** (project skill, `.claude/skills/qa-gate/`) — the mechanical gate. Run it,
   then apply `inspect` to what it did and did not cover.
+- **`judge`** (project skill, `.claude/skills/judge/`) — **the adversarial pre-ship review,
+  mandatory before calling anything ready, done, shippable or good, and before any deploy.**
+  `inspect` stops you deceiving yourself about facts; `judge` stops you shipping something
+  true but bad. Scores street usage, the §5 customer journey, product coherence,
+  engineering blast radius and Apple HIG, and is allowed to return DO NOT SHIP. A run that
+  finds nothing is not a pass — it means the review was not performed.
+
+**SECURITY POSTURE — settled, do not re-litigate at 1am.** The Places key is inlined into
+the client bundle by Vite. That is the NORMAL architecture for a browser Places app; the
+key is not in git (`.env*` is ignored, verified 2026-08-01) and Google's designed
+mitigation for a browser key is an **HTTP-referrer restriction plus a daily quota**, both
+console-side. A serverless proxy is real defence-in-depth and is worth building — but
+`vite dev` does not serve `/api`, so it CANNOT be verified from this container, and
+shipping an unverifiable rewrite of the data layer is how this project breaks itself.
+Build it deliberately, with the user present, never as a late-night "quick fix".
 
 ### 14.1.1 The four laws — memorise these, they are the whole failure history
 
