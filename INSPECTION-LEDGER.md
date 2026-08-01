@@ -54,8 +54,21 @@ removed and this was left because nobody had opened the recipe path.
 scaler divided by**, so "x1.5" meant 1.5× an invented serving of 2.
 
 Edits made in `recipeUtils.ts` and `RecipeView.tsx` (real step/ingredient counts replace
-the invented minutes; `serves: '1'` = the recipe as written). **NOT VERIFIED IN A BROWSER
-AND NOT COMMITTED** — the session hit its budget ceiling first. Treat as unproven.
+the invented minutes; `serves: '1'` = the recipe as written).
+
+**SHIPPED IN `7f470b5` AND NOT VERIFIED IN A BROWSER.** They passed `esbuild` parse only.
+`checks.mjs` was NOT run against them and no screenshot was taken of the recipe view.
+
+**And `7f470b5`'s own commit message is wrong about this.** It states the recipe edits
+were excluded and that the commit was documentation only. They were swept in by
+`git add -A`. The message was written before the staging command and never reconciled
+with it — the exact "presence is not effect" error in Law 1, applied to a commit instead
+of a stylesheet: the intent was in the message, the behaviour was in the command, and
+only the command was real.
+
+Not rewritten, because the false message is now part of the record and hiding it would be
+worse than carrying it. **This entry is the correction.** First action next session:
+open the recipe view in a browser and either confirm these edits or revert them.
 
 ### 2. The API key is public — OPEN, highest severity
 In the bundle and in every photo URL. Only real fix is a serverless proxy. Note
