@@ -7,7 +7,10 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { ParsedRecipe } from '../types';
 import { getHappyHourStatus, compareHappyHour, formatDays, type HappyHourStatus } from '../venueExtras';
 import { CAPE_TOWN_HAPPY_HOURS, HAPPY_HOUR_CITY, mapsUrl, type CuratedHappyHour } from '../happyHourData';
-import { MapPin, Clock, Navigation, Martini } from 'lucide-react';
+import { fetchVenues, formatPriceTier, isPlacesConfigured } from '../placesService';
+import type { Venue } from '../venue';
+import { LoadingState, ErrorState } from './StatusStates';
+import { MapPin, Clock, Navigation, Martini, Star } from 'lucide-react';
 
 interface HappyHourViewProps {
   // Kept for API compatibility with the tab router; the happy-hour list is now real
@@ -53,6 +56,132 @@ interface Entry {
  * happy-hour guides and confirmed July 2026. Times can still change, so each row links
  * to directions and the footer says to confirm before travelling.
  */
+/** Directions for a live Places result. NOT `mapsUrl` — that one appends "Cape Town". */
+const barMapsUrl = (name: string, address: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address}`)}`;
+
+/**
+ * Live bars for a city we have no curated windows for.
+ *
+ * Every field rendered here is one Google actually returned. There is no price band
+ * invented, no "vibe", and above all no drinks deal — the whole point is that this is
+ * the truthful thing we CAN say everywhere, sitting where an apology used to be.
+ */
+const BarList: React.FC<{ bars: Venue[]; city?: string }> = ({ bars, city }) => {
+  const openCount = bars.filter((b) => b.openNow === true).length;
+
+  if (bars.length === 0) {
+    return (
+      <div className="mt-8 text-center py-10">
+        <p className="font-serif text-2xl mb-2">No bars came back for {city}</p>
+        <p className="text-sm text-[var(--text-muted)]">
+          Google returned nothing for that search. Try the Find tab for places to eat instead.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
+          Bars in {city}
+        </p>
+        <span className="font-mono text-xs uppercase tracking-wider px-2 py-0.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] font-bold">
+          Live from Google
+        </span>
+      </div>
+
+      <h2 className="font-serif text-3xl sm:text-4xl leading-[1.05] tracking-tight">
+        {openCount > 0 ? (
+          <>
+            <span className="text-[var(--accent-terracotta)]">{openCount} open</span> right now
+          </>
+        ) : (
+          <>Nothing open right now</>
+        )}
+      </h2>
+
+      {/* The honest caveat, stated once and plainly. These are bars, not confirmed
+          deals — saying otherwise is the exact harm the curated list exists to avoid. */}
+      <p className="text-sm leading-relaxed text-[var(--text-muted)] mt-3 max-w-[520px]">
+        Open hours are live from Google. <strong className="font-semibold text-[var(--charcoal)]">
+        No happy-hour prices are confirmed in {city}</strong> — these are bars, not deals.
+        Ask at the bar what is on.
+      </p>
+
+      <ul className="stagger flex flex-col xl:grid xl:grid-cols-2 xl:gap-x-12 mt-5">
+        {bars.map((b) => {
+          const price = formatPriceTier(b.priceTier);
+          return (
+            <li key={b.id}>
+              <a
+                href={barMapsUrl(b.name, b.address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-left py-5 border-b border-[var(--row-border)] flex flex-col sm:flex-row items-start gap-1.5 sm:gap-4 group cursor-pointer press min-h-[44px]"
+              >
+                {/* `undefined` is not `false`. Google publishes no hours for some venues,
+                    and claiming "Closed" for those would be inventing a fact. */}
+                <div className="w-auto sm:w-[78px] flex-shrink-0 pt-0.5">
+                  {b.openNow === true ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
+                      <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
+                        Open
+                      </span>
+                    </span>
+                  ) : b.openNow === false ? (
+                    <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
+                      Closed
+                    </span>
+                  ) : (
+                    <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
+                      Hours n/a
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-0.5 sm:gap-3">
+                    <h3 className="font-serif text-lg leading-tight sm:truncate group-hover:text-[var(--accent-terracotta)] transition-colors">
+                      {b.name}
+                    </h3>
+                    {b.hoursToday && (
+                      <span className="font-mono text-xs tabular-nums whitespace-nowrap sm:flex-shrink-0 text-[var(--text-muted)]">
+                        {b.hoursToday}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 font-mono text-xs text-[var(--text-subtle)] flex-wrap mt-2">
+                    {typeof b.rating === 'number' && (
+                      <span className="flex items-center gap-1">
+                        <Star className="w-3 h-3" />
+                        <span className="tabular-nums">{b.rating}</span>
+                        {typeof b.userRatingCount === 'number' && (
+                          <span className="tabular-nums">({b.userRatingCount})</span>
+                        )}
+                      </span>
+                    )}
+                    {price && <span className="tabular-nums">{price}</span>}
+                    <span className="flex items-center gap-1 truncate">
+                      <MapPin className="w-3 h-3 flex-shrink-0" /> {b.address}
+                    </span>
+                    <span className="flex items-center gap-1 text-[var(--accent-terracotta)] opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Navigation className="w-3 h-3" /> Directions
+                    </span>
+                  </div>
+                </div>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+};
+
 export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
   // Re-tick every minute so countdowns stay honest without a render storm.
   const [now, setNow] = useState(() => new Date());
@@ -90,6 +219,47 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
    * acting on real data: the count in the headline moves with it.
    */
   const [when, setWhen] = useState<'all' | 'live' | 'today'>('all');
+
+  /**
+   * THE ANSWER FOR EVERY CITY THAT IS NOT THE ONE CURATED CITY.
+   *
+   * Happy-hour PRICING cannot be had for an arbitrary city: Google publishes none at any
+   * tier, so the only truthful source is a human typing it in, and that is why coverage
+   * is one city. What Google DOES publish, everywhere on earth, is which bars exist, if
+   * they are open right now, and until when. That is most of the question someone
+   * standing on a street is actually asking, and it was being withheld from everyone
+   * outside Cape Town in favour of an apology.
+   *
+   * So the uncovered state now offers real, live bars nearby. It is deliberately NOT
+   * called a happy hour and carries no prices — presenting a bar listing as a drinks
+   * deal would be the invented-fact failure (§8) wearing a new costume. The copy says
+   * what it is: open now, ask at the bar.
+   *
+   * OPT-IN, one tap, never automatic. Two Text Search calls fire only when the button is
+   * pressed, which is the same cost as one ordinary search on the Find tab and nothing
+   * at all for a user who never opens this tab.
+   */
+  const [bars, setBars] = useState<Venue[] | null>(null);
+  const [barsState, setBarsState] = useState<'idle' | 'loading' | 'error' | 'unconfigured'>('idle');
+
+  const loadBars = async () => {
+    if (!city) return;
+    setBarsState('loading');
+    const outcome = await fetchVenues('cocktail bar', city);
+    if (outcome.status === 'ok') {
+      // Open now first — the only ordering that matches why someone opened this tab.
+      // `=== true` and not truthiness: `false` is a real answer and `undefined` means
+      // Google published no hours, and those two must not collapse into each other.
+      const openFirst = [...outcome.venues].sort(
+        (a, b) => Number(b.openNow === true) - Number(a.openNow === true),
+      );
+      setBars(openFirst);
+      setBarsState('idle');
+    } else {
+      setBars(null);
+      setBarsState(outcome.status === 'unconfigured' ? 'unconfigured' : 'error');
+    }
+  };
 
   const allEntries = useMemo<Entry[]>(() => {
     if (!covered) return [];
@@ -135,14 +305,59 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
           </p>
           {/* The way forward. Named city, named count — so the tap is a decision, not a
               mystery — and it reveals data already in the bundle, so it costs nothing. */}
-          <button
-            type="button"
-            onClick={() => setShowCoveredCity(true)}
-            className="tap-44 mt-6 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] cursor-pointer transition-colors hover:border-[var(--accent-terracotta)]"
-          >
-            See {HAPPY_HOUR_CITY}&rsquo;s {CAPE_TOWN_HAPPY_HOURS.length} confirmed windows
-          </button>
+          {/* The primary way forward, and the one that works in this user's own city.
+              Listed FIRST because it is about where they are actually standing. */}
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            {isPlacesConfigured() && (
+              <button
+                type="button"
+                onClick={loadBars}
+                disabled={barsState === 'loading'}
+                className="hit-44 press inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border border-[var(--accent-terracotta)] cursor-pointer transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Martini className="w-4 h-4" strokeWidth={1.75} />
+                {barsState === 'loading' ? 'Finding bars…' : `Bars open now in ${city}`}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowCoveredCity(true)}
+              className="hit-44 press inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] text-[var(--accent-terracotta)] cursor-pointer transition-colors hover:border-[var(--accent-terracotta)]"
+            >
+              See {HAPPY_HOUR_CITY}&rsquo;s {CAPE_TOWN_HAPPY_HOURS.length} confirmed windows
+            </button>
+          </div>
         </div>
+
+        {barsState === 'loading' && (
+          <div className="mt-6">
+            <LoadingState count={3} />
+          </div>
+        )}
+
+        {barsState === 'error' && (
+          <div className="mt-6">
+            <ErrorState
+              title="Could not reach Google just then"
+              message="The bar search did not come back. Your connection or Google's — either way, trying again is worth a tap."
+              onRetry={loadBars}
+            />
+          </div>
+        )}
+
+        {barsState === 'unconfigured' && (
+          <div className="mt-6">
+            <ErrorState
+              tone="notice"
+              showRetry={false}
+              title="Live bar search is not switched on"
+              message="This build has no Google Places key, so nearby bars cannot be looked up. The confirmed windows above still work."
+              onRetry={loadBars}
+            />
+          </div>
+        )}
+
+        {bars !== null && barsState === 'idle' && <BarList bars={bars} city={city} />}
       </div>
     );
   }
