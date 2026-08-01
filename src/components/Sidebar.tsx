@@ -121,9 +121,7 @@ const FilterGroup: React.FC<{
  // background-agnostic, so it is right on this card in both colour schemes.
  // py-1.5 replaces pb-1 because overflow-x:auto computes overflow-y to auto
  // too, and 4px clipped the focus ring off the top and bottom of every chip.
- <div className="chip-rail -mx-5 lg:mx-0 px-5 lg:px-0 flex gap-2 overflow-x-auto lg:overflow-x-visible lg:flex-wrap pb-1">
- {children}
- </div>
+ <div className="flex flex-wrap gap-2">{children}</div>
  ) : (
  <div className="flex flex-wrap gap-2">{children}</div>
  )}
@@ -488,7 +486,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  <FilterGroup
  title="Cuisine"
  optional
- scroll
  note={availableCount > 0 ? `${availableCount} available here` : undefined}
 
  >

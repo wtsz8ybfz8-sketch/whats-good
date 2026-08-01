@@ -100,7 +100,10 @@ function buildFitReasons(
   }
 
   if (typeof rawEatery.rating === 'number' && rawEatery.rating > 0) {
-    reasons.push({ text: `Rated ${rawEatery.rating} by Google reviewers`, source: 'Google Places' });
+    const reviewCount = typeof rawEatery.userRatingCount === 'number'
+      ? ` from ${formatQuantity(rawEatery.userRatingCount, 0)} Google reviews`
+      : ' by Google reviewers';
+    reasons.push({ text: `Rated ${rawEatery.rating}${reviewCount}`, source: 'Google Places' });
   }
 
   return reasons;
@@ -138,6 +141,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
   if (!rawEatery) return null;
 
   const directionsUrl = `https://maps.google.com/?q=${encodeURIComponent(rawEatery.address)}`;
+  const googleDetailsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${rawEatery.name}, ${rawEatery.address}`)}`;
   // Venues saved to localStorage before this field existed carry no flag, and defaulting
   // those to "no site" would mislabel a real website as Maps. The fallback URL has a
   // known shape, so read the destination itself when the flag is absent; the flag stays
@@ -686,11 +690,22 @@ export const EateryView: React.FC<EateryViewProps> = ({
           {hasOwnWebsite ? 'See the full menu and photos' : 'Open in Google Maps'}
         </a>
 
+        <a
+          href={googleDetailsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 inline-flex items-center gap-2 text-[13px] font-medium text-[var(--accent-terracotta)] hover:underline underline-offset-4"
+        >
+          <Star className="w-3.5 h-3.5" />
+          Read Google reviews and see more photos
+        </a>
+
         <div className="mt-5 flex items-start gap-2.5">
           <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[var(--text-subtle)]" />
           <p className="text-[12px] text-[var(--text-muted)] leading-relaxed max-w-[58ch]">
-            Spend is the band Google publishes for this venue, not a quoted price. Menus and
-            prices change — confirm with the venue before you go.
+            Place details, ratings and photos are powered by Google. Spend is the band Google
+            publishes for this venue, not a quoted price. Menus and prices change — confirm
+            with the venue before you go.
           </p>
         </div>
       </div>
