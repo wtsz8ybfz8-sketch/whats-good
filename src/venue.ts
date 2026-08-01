@@ -66,5 +66,19 @@ export interface Venue {
   estimatedWait: string;
   photoUrl?: string; // Optional override for dynamic sources (e.g. Google Places)
   openNow?: boolean; // Live from Google Places; undefined for hardcoded fallback entries
+  /**
+   * True when the venue is open now AND its published hours say it closes within the
+   * next ~45 minutes (see `isClosingSoon` in placesService.ts). Always `false` when
+   * `openNow` isn't `true` — render sites should still guard on `openNow` first, since
+   * `false` here also covers "we don't know" for a closed or unconfigured venue.
+   */
+  closingSoon?: boolean;
   hoursToday?: string; // e.g. "9:00 AM – 10:00 PM"; from Google Places
+  /**
+   * "Quiet" / "Lively" / "Packed" — not currently populated. Google Places (New) does
+   * not publish a live-popularity field, so nothing sets this today; the type exists so
+   * a future data source can fill it without a render-site change. Cards must already
+   * render nothing when it's absent, which is every venue right now.
+   */
+  busyLevel?: 'quiet' | 'lively' | 'packed';
 }

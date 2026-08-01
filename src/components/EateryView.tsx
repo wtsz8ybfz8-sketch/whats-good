@@ -81,7 +81,11 @@ function buildFitReasons(
   // answer — compared against undefined, never truthiness.
   if (rawEatery.openNow === true) {
     reasons.push({
-      text: rawEatery.hoursToday ? `Open now — today ${rawEatery.hoursToday}` : 'Open right now',
+      text: rawEatery.closingSoon
+        ? `Open now, but closing soon${rawEatery.hoursToday ? ` — today ${rawEatery.hoursToday}` : ''}`
+        : rawEatery.hoursToday
+          ? `Open now — today ${rawEatery.hoursToday}`
+          : 'Open right now',
       source: 'Google Places',
     });
   } else if (rawEatery.openNow === false) {
@@ -111,7 +115,7 @@ function buildFitReasons(
  * it says how the venue was found, which is true, instead of what it feels like inside,
  * which we do not know.
  */
-function matchedTerms(intent: SearchIntent | undefined): string[] {
+export function matchedTerms(intent: SearchIntent | undefined): string[] {
   if (!intent) return [];
   return [intent.query, intent.cuisine, intent.vibe, intent.diet].filter(
     (t): t is string => typeof t === 'string' && t.trim().length > 0,
@@ -181,10 +185,12 @@ export const EateryView: React.FC<EateryViewProps> = ({
     rawEatery.openNow !== undefined
       ? {
           label: 'Status',
-          value: rawEatery.openNow ? 'Open now' : 'Closed',
+          value: rawEatery.openNow ? (rawEatery.closingSoon ? 'Closing soon' : 'Open now') : 'Closed',
           icon: Clock,
           tone: rawEatery.openNow
-            ? 'text-emerald-700 dark:text-emerald-400'
+            ? rawEatery.closingSoon
+              ? 'text-amber-600 dark:text-amber-400'
+              : 'text-emerald-700 dark:text-emerald-400'
             : 'text-[var(--text-muted)]',
         }
       : null,

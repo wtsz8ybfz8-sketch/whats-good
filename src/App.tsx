@@ -1571,6 +1571,18 @@ export default function App() {
  savedIds={savedIds}
  onToggleSave={handleToggleSave}
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
+ // The live filters, for the card grid's vibe pills — same shape EateryView's
+ // detail page already builds from `dimensions`. Always defined here: this
+ // branch only renders under the mood tab, never the saved tabs.
+ intent={{
+ vibe: dimensions.vibe,
+ cuisine: dimensions.regional,
+ diet: dimensions.diet,
+ priceTier: Number.isInteger(Number(dimensions.capacity))
+ ? Number(dimensions.capacity)
+ : null,
+ query: dimensions.searchQuery.trim(),
+ }}
  />
 ) : activeConstraints.length > 0 ? (
  /* Contextual recovery (§5, the stage this app most often skipped). "Nothing matched

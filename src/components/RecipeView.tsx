@@ -5,11 +5,12 @@
 
 import React, { useState, useEffect } from'react';
 import { eateryPlaceholderImage } from '../App';
-import { formatPriceTier, priceTierLabel } from '../placesService';
+import { priceTierLabel } from '../placesService';
 import { ParsedRecipe } from'../types';
 import { formatQuantity } from '../locale';
-import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, MapPin, Star } from'lucide-react';
+import { Clock, Flame, ChevronLeft, ChevronDown, Check, Compass, ExternalLink, Heart, ShoppingBag, Store, MapPin, Star, Users } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
+import { type SearchIntent } from './EateryView';
 
 interface RecipeViewProps {
  recipes: ParsedRecipe[];
@@ -22,6 +23,23 @@ interface RecipeViewProps {
  isSavedTab?: boolean;
  onFindCorrespondingRestaurants?: (recipe: ParsedRecipe) => void;
  city?: string;
+ /** The live search filters, for the card grid's vibe pills. Undefined on the saved
+  *  tabs, where the filters on screen didn't produce this list — see App.tsx. */
+ intent?: SearchIntent;
+}
+
+/**
+ * Up to 3 "vibe pills" for the card grid — the mood, diet and free-text terms that went
+ * into this search. Cuisine is deliberately excluded: it already renders as its own
+ * badge, sourced from the venue's real Places type, and repeating the filter's cuisine
+ * value here would suggest a second, separate confirmation that doesn't exist. These are
+ * search terms, not verified facts about the venue — see matchedTerms in EateryView.
+ */
+function vibePills(intent: SearchIntent | undefined): string[] {
+ if (!intent) return [];
+ return [intent.vibe, intent.diet, intent.query.trim()]
+ .filter((t): t is string => typeof t === 'string' && t.length > 0)
+ .slice(0, 3);
 }
 
 export const RecipeView: React.FC<RecipeViewProps> = ({
@@ -40,6 +58,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
     render site already drops the whole "near …" clause rather than guessing. */
  city = '',
  onFindCorrespondingRestaurants,
+ intent,
 }) => {
  // Local state to keep track of checked ingredients for checklist interaction
  const [completedIngredients, setCompletedIngredients] = useState<Record<string, boolean>>({});
@@ -487,8 +506,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  const rawEatery = (r as any).rawEatery;
 
  if (isRestaurant && rawEatery) {
- // Minimal restaurant card — name, cuisine, rating, price tier, distance only.
- // No food photos, no signature dishes, no plate copy.
+ // Photo-first restaurant card — hero photo, open-now status, cuisine, vibe
+ // pills, rating, price tier and distance. No signature dishes, no plate copy:
+ // Places doesn't publish those, and a template is not data (see venue.ts).
+ const pills = vibePills(intent);
  return (
  <div
  key={r.id}
@@ -504,6 +525,34 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  }}
  className="surface surface-hover rounded-2xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[#fca5a5]"
  >
+ {/* Open / closing soon / closed — overlaid on the photo, prominent by design.
+     `false` ("Closed") is a real answer, so this checks presence with
+     `!== undefined`, never truthiness — a bare `rawEatery.openNow &&` would
+     silently drop the badge for every closed venue. */}
+ {rawEatery.openNow !== undefined && (
+ <span
+ className={`absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 rounded-full backdrop-blur-md shadow-sm px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wider bg-white/85 dark:bg-black/55 ${
+ rawEatery.openNow
+ ? rawEatery.closingSoon
+ ?'text-amber-600 dark:text-amber-400'
+ :'text-emerald-700 dark:text-emerald-400'
+ :'text-[var(--text-muted)]'
+ }`}
+ >
+ <span
+ aria-hidden="true"
+ className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+ rawEatery.openNow
+ ? rawEatery.closingSoon
+ ?'bg-amber-500'
+ :'bg-emerald-500'
+ :'bg-[var(--text-subtle)]'
+ }`}
+ />
+ {rawEatery.openNow ? (rawEatery.closingSoon ?'Closing soon' :'Open') :'Closed'}
+ </span>
+ )}
+
  {/* Save button */}
  <button
  type="button"
@@ -512,10 +561,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onToggleSave(r);
  }}
  // tap-44: drawn at 32px, tapped at 44px (HIG minimum) on touch devices.
- className={`tap-44 absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+ className={`tap-44 absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white'
- :'text-[var(--text-subtle)] hover:text-[var(--accent-terracotta)] hover:bg-black/5 dark:hover:bg-white/5'
+ :'text-[var(--text-subtle)] bg-white/85 dark:bg-black/55 hover:text-[var(--accent-terracotta)]'
  }`}
  title={savedIds.includes(r.id) ?'Remove from saved' :'Save eatery'}
  aria-label={savedIds.includes(r.id) ? `Remove ${rawEatery.name} from saved` : `Save ${rawEatery.name}`}
@@ -539,19 +588,36 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  />
  </div>
 
- {/* Cuisine tag */}
+ {/* Cuisine tag — the venue's own Places type, a verified fact, so it keeps
+ the filled accent treatment. */}
  {rawEatery.cuisine && (
- <span className="inline-flex self-start font-mono text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--accent-tint)] text-[var(--accent-terracotta)] mb-4 max-w-[70%] truncate">
+ <span className="inline-flex self-start font-mono text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--accent-tint)] text-[var(--accent-terracotta)] mb-3 max-w-[70%] truncate">
  {rawEatery.cuisine}
  </span>
  )}
+
+ {/* Vibe pills — the mood/diet/search terms that produced this result, not a
+ claim about the venue. Outlined rather than filled so they read distinctly
+ from the cuisine tag's Places-sourced confidence (see vibePills above). */}
+ {pills.length > 0 && (
+ <div className="flex flex-wrap gap-1.5 mb-3">
+ {pills.map((term) => (
+ <span
+ key={term}
+ className="inline-flex items-center rounded-full border border-[var(--rule)] px-2.5 py-0.5 font-sans text-[11px] font-medium text-[var(--text-muted)] truncate max-w-[45%]"
+ >
+ {term}
+ </span>
+))}
+ </div>
+)}
 
  {/* Name */}
  <h3 className="font-serif text-xl sm:text-2xl text-[var(--charcoal)] group-hover:text-[#7C2D12] dark:group-hover:text-[#fca5a5] transition-colors leading-snug mb-4 pr-8">
  {rawEatery.name}
  </h3>
 
- {/* Rating · price · distance · open now */}
+ {/* Rating · price · distance · busy level */}
  <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-mono text-[var(--text-muted)]">
  {/* Guarded: rating is optional (venue.ts). Unguarded, an unrated venue drew a star
      beside nothing; the trailing separator rides with it so price does not open on a
@@ -564,20 +630,41 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <span className="opacity-30">·</span>
  </>
  )}
- <span className="font-bold text-[var(--charcoal)]" aria-label={priceTierLabel(rawEatery.priceTier)}>{formatPriceTier(rawEatery.priceTier)}</span>
+ {/* Price tier as dot indicators — the same 1-4 Places signal, drawn as real
+     elements rather than the unicode ●/○ glyph string, so the filled/hollow
+     contrast is consistent instead of depending on the font's own circles. */}
+ {typeof rawEatery.priceTier ==='number' && (
+ <>
+ <span className="flex items-center gap-[3px]" aria-label={priceTierLabel(rawEatery.priceTier)}>
+ {Array.from({ length: 4 }, (_, i) => (
+ <span
+ key={i}
+ aria-hidden="true"
+ className={`w-1.5 h-1.5 rounded-full ${
+ i < rawEatery.priceTier ?'bg-[var(--accent-terracotta)]' :'bg-[var(--rule)]'
+ }`}
+ />
+))}
+ </span>
+ <span className="opacity-30">·</span>
+ </>
+ )}
  {typeof r.tags[1] ==='string' && r.tags[1].includes('km') && (
  <>
- <span className="opacity-30">·</span>
  <span className="flex items-center gap-1 text-[var(--accent-terracotta)] font-bold">
  <MapPin className="w-3 h-3" /> {r.tags[1]}
  </span>
  </>
 )}
- {rawEatery.openNow !== undefined && (
+ {/* Busy level — only when a data source actually populates it. Google Places
+     (New) publishes no live-popularity field today, so this never renders yet;
+     the card is ready the moment a source does (venue.ts busyLevel), per §8's
+     "real field or absent" rule — never a synthesised guess. */}
+ {rawEatery.busyLevel && (
  <>
  <span className="opacity-30">·</span>
- <span className={`font-bold ${rawEatery.openNow ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--text-muted)]'}`}>
- {rawEatery.openNow ? 'Open now' : 'Closed'}
+ <span className="flex items-center gap-1 capitalize">
+ <Users className="w-3 h-3" /> {rawEatery.busyLevel}
  </span>
  </>
  )}

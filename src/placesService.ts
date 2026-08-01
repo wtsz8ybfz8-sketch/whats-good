@@ -17,9 +17,23 @@ interface PlaceDisplayName {
   languageCode?: string;
 }
 
+interface PlaceHoursPoint {
+  /** 0-6, Sunday-first — Google's own convention for periods, NOT the Monday-first
+   *  index weekdayDescriptions uses (see venueDayIndex). Do not conflate the two. */
+  day?: number;
+  hour?: number;
+  minute?: number;
+}
+
+interface PlaceHoursPeriod {
+  open?: PlaceHoursPoint;
+  close?: PlaceHoursPoint;
+}
+
 interface PlaceOpeningHours {
   openNow?: boolean;
   weekdayDescriptions?: string[];
+  periods?: PlaceHoursPeriod[];
 }
 
 interface Place {
@@ -135,6 +149,43 @@ function weeklyHours(hours?: PlaceOpeningHours, utcOffsetMinutes?: number): stri
   if (!lines || lines.length !== 7) return undefined;
   const today = venueDayIndex(utcOffsetMinutes);
   return Array.from({ length: 7 }, (_, i) => localiseHours(lines[(today + i) % 7]));
+}
+
+/**
+ * Whether an open venue is about to close, within `thresholdMinutes` (default 45).
+ *
+ * Built from `regularOpeningHours.periods`, which arrives free with the same
+ * `places.regularOpeningHours` field mask entry already requested for `openNow` and
+ * `weekdayDescriptions` — no new field, no billing change.
+ *
+ * Only trusts a same-day period (open and close on the same `day`) that closes later
+ * today. Overnight spans and periods missing a close time are skipped rather than
+ * guessed — an ambiguous close time renders as plain "Open", never a wrong "Closing
+ * soon". Google's period `day` is Sunday-first (0-6), a different convention from the
+ * Monday-first index `weekdayDescriptions` uses, so this resolves "today" independently
+ * rather than reusing venueDayIndex.
+ */
+function isClosingSoon(
+  hours: PlaceOpeningHours | undefined,
+  utcOffsetMinutes: number | undefined,
+  thresholdMinutes = 45,
+): boolean {
+  if (hours?.openNow !== true || !hours.periods?.length) return false;
+
+  const now = new Date();
+  const venueNow =
+    typeof utcOffsetMinutes === 'number'
+      ? new Date(now.getTime() + (utcOffsetMinutes + now.getTimezoneOffset()) * 60_000)
+      : now;
+  const today = venueNow.getDay();
+  const nowMinutes = venueNow.getHours() * 60 + venueNow.getMinutes();
+
+  return hours.periods.some((p) => {
+    if (!p.close || p.open?.day !== p.close.day || p.close.day !== today) return false;
+    const closeMinutes = (p.close.hour ?? 0) * 60 + (p.close.minute ?? 0);
+    const diff = closeMinutes - nowMinutes;
+    return diff > 0 && diff <= thresholdMinutes;
+  });
 }
 
 /** Returns a direct photo URL for a Google Places photo reference. */
@@ -536,6 +587,7 @@ export async function fetchVenues(
         : undefined;
       const openNow = place.regularOpeningHours?.openNow;
       const hoursToday = todaysHours(place.regularOpeningHours, place.utcOffsetMinutes);
+      const closingSoon = isClosingSoon(place.regularOpeningHours, place.utcOffsetMinutes);
 
       return {
         id: `eat-places-${place.id ?? index}`,
@@ -579,6 +631,7 @@ export async function fetchVenues(
         estimatedWait: '', // Not published by Places. "Check with venue" is filler, not a wait time.
         photoUrl,
         openNow,
+        closingSoon,
         hoursToday,
         // Undefined when Google published no rating; the star render is guarded on it.
         userRatingCount: place.userRatingCount,
