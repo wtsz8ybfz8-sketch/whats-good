@@ -43,7 +43,11 @@ const CTM_LABEL = 'Cape Town Magazine';
  */
 export const HAPPY_HOUR_CITY = 'Cape Town';
 
-export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = [
+/**
+ * Authored strictly, so `tsc` still refuses a malformed row at author time. The runtime
+ * filter below is the SECOND gate, not a replacement for this one.
+ */
+const CURATED: CuratedHappyHour[] = [
   {
     venue: 'Woodstock Brewery',
     area: 'Woodstock · 252 Albert Rd',
@@ -54,8 +58,6 @@ export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = [
     deals: ['R70 for two Born Slippy draughts', 'R35 a single draught'],
     source: CTM,
     sourceLabel: CTM_LABEL,
-  },
-  {
   },
   {
     venue: 'Down South Food Bar',
@@ -135,6 +137,54 @@ export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = [
     sourceLabel: 'Time Out Market',
   },
 ];
+
+/**
+ * ONE MALFORMED ROW MUST NEVER TAKE DOWN THE TAB.
+ *
+ * This file is hand-edited — that is the point of it (§8: if it isn't confirmed, don't
+ * render it), and it is edited directly on GitHub as often as in an editor. On
+ * 2026-08-01 a venue that had permanently closed was removed by deleting its fields and
+ * leaving `{}` behind in the array. Everything downstream dereferences those fields
+ * without asking, so `mapsUrl` threw on `area.split` of undefined, the render died, and
+ * the whole Happy Hour tab became the error boundary for every user.
+ *
+ * `tsc` DID catch it — CI went red on that commit and the one after it. It shipped
+ * anyway, because `npm run build` is `vite build` and Vercel therefore deploys code the
+ * typecheck has already rejected. A red CI run is not a deploy gate, and until it is,
+ * the type gate cannot be the only thing standing between a hand-edit and a dead tab.
+ *
+ * So every row is validated before anything reads it. A row missing a field the UI
+ * dereferences is dropped with a console warning naming the index and the fields; the
+ * rest still render. Losing one venue is a bad afternoon. Losing the tab is what this
+ * prevents.
+ */
+const REQUIRED_TEXT = ['venue', 'area', 'headline', 'source', 'sourceLabel'] as const;
+
+function isUsable(h: Partial<CuratedHappyHour>, i: number): h is CuratedHappyHour {
+  const missing: string[] = [];
+
+  if (!h || typeof h !== 'object') {
+    console.warn(`[happyHourData] Dropping entry ${i}: not an object.`);
+    return false;
+  }
+  for (const k of REQUIRED_TEXT) {
+    if (typeof h[k] !== 'string' || !(h[k] as string).trim()) missing.push(k);
+  }
+  // `days` and `deals` are both mapped over directly in the view.
+  if (!Array.isArray(h.days) || h.days.length === 0) missing.push('days');
+  if (!Array.isArray(h.deals) || h.deals.length === 0) missing.push('deals');
+  // Hours drive every status calculation; NaN would silently poison the sort.
+  if (typeof h.startHour !== 'number' || !Number.isFinite(h.startHour)) missing.push('startHour');
+  if (typeof h.endHour !== 'number' || !Number.isFinite(h.endHour)) missing.push('endHour');
+
+  if (missing.length === 0) return true;
+  console.warn(
+    `[happyHourData] Dropping entry ${i} (${h.venue ?? 'unnamed'}) — missing or invalid: ${missing.join(', ')}`,
+  );
+  return false;
+}
+
+export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = CURATED.filter(isUsable);
 
 /** Google Maps directions link for a venue — a real, useful action from each row. */
 export function mapsUrl(venue: string, area: string): string {
