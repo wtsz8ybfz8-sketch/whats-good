@@ -117,7 +117,7 @@ export function getHappyHourStatus(hh: HappyHour, now: Date = new Date()): Happy
   const minutesNow = now.getHours() * 60 + now.getMinutes();
   const startMin = hh.startHour * 60;
   const endMin = hh.endHour * 60;
-  const runsToday = hh.days.includes(day);
+  const runsToday = hh.days?.includes(day) ?? false;
 
   if (runsToday && minutesNow >= startMin && minutesNow < endMin) {
     const left = endMin - minutesNow;
@@ -141,7 +141,7 @@ export function getHappyHourStatus(hh: HappyHour, now: Date = new Date()): Happy
   // Next day it runs.
   for (let i = 1; i <= 7; i++) {
     const d = (day + i) % 7;
-    if (hh.days.includes(d)) {
+    if (hh.days?.includes(d)) {
       return {
         state: 'another-day',
         minutes: i * 24 * 60,
@@ -149,7 +149,7 @@ export function getHappyHourStatus(hh: HappyHour, now: Date = new Date()): Happy
       };
     }
   }
-  return { state: 'another-day', minutes: Infinity, label: formatDays(hh.days) };
+  return { state: 'another-day', minutes: Infinity, label: formatDays(hh.days ?? []) };
 }
 
 /** Sort order for the Happy Hour tab: live first (ending soonest last), then soonest upcoming. */
