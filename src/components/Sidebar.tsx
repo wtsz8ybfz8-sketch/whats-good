@@ -73,9 +73,16 @@ const FilterGroup: React.FC<{
  optional?: boolean;
  /**
   * Apple Maps pattern: one row that scrolls sideways instead of a two-row wall of
-  * pills. The row bleeds to the screen edge (-mx) so a chip is always cut off at the
-  * right — that clipped edge is the only honest affordance that there is more to the
-  * right — while the content keeps the page's outer margin via matching padding.
+  * pills. The row bleeds to the screen edge (-mx) while the content keeps the page's
+  * outer margin via matching padding.
+  *
+  * The affordance is the gradient mask on `.chip-rail` in index.css — and unlike the
+  * previous version of this comment, that mask now actually exists. This block used to
+  * claim the clipped chip at the right edge was the cue; it was not, because
+  * scroll-snap parks chips flush instead of clipped, so the row ended clean and looked
+  * complete. Nine cuisines were unreachable unless you guessed to swipe. Do not delete
+  * the mask, and do not re-describe this as self-evident: verify the CSS before
+  * trusting any claim made here (.claude/skills/perceive).
   *
   * EXACTLY ONE group on any screen may set this. Three stacked rails was carousel
   * hell: the eye can't tell which axis is the real one, and a rail whose contents
