@@ -56,15 +56,6 @@ export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = [
     sourceLabel: CTM_LABEL,
   },
   {
-    venue: 'Cargo',
-    area: 'Tamboerskloof · 158 Kloof St',
-    days: MON_THU,
-    startHour: 16,
-    endHour: 18,
-    headline: 'After Work',
-    deals: ['R20 house red, white, rosé or beer', 'R20 tequila shots'],
-    source: CTM,
-    sourceLabel: CTM_LABEL,
   },
   {
     venue: 'Down South Food Bar',
