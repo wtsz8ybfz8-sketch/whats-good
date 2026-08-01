@@ -384,14 +384,42 @@ export default function App() {
 );
  };
 
+ /**
+  * THEME_KEY is deliberately NOT the old `whats_good_dark_mode`, and that rename is the
+  * entire fix rather than a tidy-up.
+  *
+  * The old key is unusable because its stored values are not trustworthy: the previous
+  * apply-effect called setItem in its body, so it ran on MOUNT and stamped a preference
+  * for every visitor who had never touched the toggle. Nothing distinguishes "the user
+  * chose light" from "the bug wrote light on first paint" — the two are byte-identical.
+  * Repairing the writer (done in the previous commit) therefore fixed nothing for anyone
+  * who had already loaded the app once, which is everybody. The user's report was exact:
+  * "when I switch the toggle on my phone to light mode, the app doesn't change."
+  *
+  * Moving to a fresh key discards every poisoned value in one step. Absent = no
+  * preference = follow the OS, which is the correct default and what a returning user
+  * gets. The old key is deleted rather than read, so it can never resurrect this.
+  */
+ const THEME_KEY = 'whats_good_theme'; // 'dark' | 'light'; absent = follow the system
+
  const [isDark, setIsDark] = useState<boolean>(() => {
+ // Guard the whole body: Safari private mode throws on localStorage access itself,
+ // not just on write, and a theme that throws takes the entire app down with it.
  try {
- const stored = localStorage.getItem('whats_good_dark_mode');
- const dark = stored !== null ? stored === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+ localStorage.removeItem('whats_good_dark_mode'); // one-way migration; never read again
+ const stored = localStorage.getItem(THEME_KEY);
+ const dark =
+ stored !== null
+ ? stored === 'dark'
+ : window.matchMedia('(prefers-color-scheme: dark)').matches;
  document.documentElement.classList.toggle('dark', dark);
  return dark;
  } catch {
- return false;
+ /* Was `return false` — a hardcoded light default that ignored a dark OS for anyone
+    with storage blocked. matchMedia needs no storage, so it still answers here. */
+ const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+ document.documentElement.classList.toggle('dark', dark);
+ return dark;
  }
  });
 
@@ -582,7 +610,7 @@ export default function App() {
  // Re-read on every event: the user may have tapped the toggle since mount, and a
  // value captured at subscribe time would keep overriding their explicit choice.
  try {
- if (localStorage.getItem('whats_good_dark_mode') === null) setIsDark(e.matches);
+ if (localStorage.getItem(THEME_KEY) === null) setIsDark(e.matches);
  } catch {
  setIsDark(e.matches);
  }
@@ -1364,7 +1392,7 @@ export default function App() {
     and pins the app away from their system setting for good. */
  onClick={() => setIsDark((d) => {
  const next = !d;
- try { localStorage.setItem('whats_good_dark_mode', String(next)); } catch { /* private mode: session-only, still correct */ }
+ try { localStorage.setItem(THEME_KEY, next ? 'dark' : 'light'); } catch { /* private mode: session-only, still correct */ }
  return next;
  })}
  className="hit-44 flex w-10 h-10 items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
