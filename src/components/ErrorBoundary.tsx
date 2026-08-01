@@ -62,16 +62,35 @@ export class ErrorBoundary extends Component<Props, State> {
             This screen stopped working
           </h1>
 
-          <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-2">
+          <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-4">
             Something in the data we loaded was not the shape we expected, so this view
             could not finish drawing. Your saved items are untouched.
           </p>
 
-          {/* The message, not just a shrug. An error a user cannot describe is an error
-              nobody can fix. */}
-          <p className="font-mono text-xs text-[var(--text-subtle)] break-words mb-8">
-            {error.message || String(error)}
+          {/*
+            THE RAW EXCEPTION USED TO BE THE SECOND THING A USER READ.
+            `error.message` was printed here in mono, unlabelled — "Cannot read properties
+            of undefined (reading 'split')" sitting under the headline on a food app. That
+            is a developer's sentence in a stranger's hands: it explains nothing, it reads
+            as broken software, and it is the line a person screenshots.
+
+            Best practice is neither hiding it nor leading with it. Lead with what the
+            person needs — it is reported, it is not their fault, here is the way out —
+            and keep the technical detail one tap away for when they do want to send it.
+            <details> because it needs no state and stays accessible and copyable.
+          */}
+          <p className="text-sm leading-relaxed text-[var(--text-muted)] mb-6">
+            This has been reported automatically. Nothing you did caused it.
           </p>
+
+          <details className="mb-8 text-left">
+            <summary className="hit-44 relative cursor-pointer list-none font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] hover:text-[var(--accent-terracotta)] transition-colors text-center">
+              Technical detail
+            </summary>
+            <p className="font-mono text-xs text-[var(--text-subtle)] break-words mt-3 p-3 rounded-xl bg-[var(--surface-quiet-bg,rgba(0,0,0,0.03))] border border-[var(--rule)] select-all">
+              {error.message || String(error)}
+            </p>
+          </details>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button

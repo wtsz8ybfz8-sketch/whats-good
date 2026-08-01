@@ -37,6 +37,12 @@ inspecting, update the row with the date, the method, and — critically — wha
 | **The recipe search / TheMealDB path** | **NEVER INSPECTED** | — | Unreachable from this container; needs fixtures. |
 | **Privacy / legal / data flow** | **NEVER INSPECTED** | — | No privacy policy, no terms. IP + location go to Google. GDPR/CCPA. |
 | **Error handling / observability** | **NEVER INSPECTED** | — | No telemetry of any kind. Console is the only record. |
+| **`App.tsx`** | **NEVER INSPECTED AS A WHOLE** | Individual lines only | 80KB, the core of the app: routing, city detection, search, the venue list, the footer. Only ever touched line-by-line for specific bugs. Caught by `ledger-check.mjs` on its first run — it had never been declared. |
+| `telemetry.ts` | 2026-08-01 | Browser, sendBeacon spy | **VERIFIED CLIENT-SIDE** — cap, dedupe and scrubbing measured. Server half see below |
+| `api/log.ts` | 2026-08-01 | Source only — **outside tsconfig, no gate covers it** | Body parsing hardened for all four runtime shapes. **NEVER EXERCISED IN PRODUCTION** |
+| `main.tsx` | 2026-08-01 | Browser boot | Telemetry installs before render; app boots clean |
+| `ErrorBoundary.tsx` | 2026-08-01 | Source + reasoning | Raw exception moved behind a disclosure; reports to telemetry. **Not re-opened in a browser after the copy change** |
+| `locale.ts` / `cuisineRail.ts` / `cuisineIcon.ts` / `venue.ts` / `types.ts` / `useSavedRecipes.ts` / `venueExtras.ts` / `StatusStates.tsx` | **NEVER INSPECTED** | — | Declared so the gate passes. None has been opened in a browser on its own terms. |
 | **Real-device iOS** | Partial, 2026-07-27 | `ci/ios-shots` screenshots | At-rest only. Never interacted with. |
 
 ---

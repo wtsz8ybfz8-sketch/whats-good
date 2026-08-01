@@ -47,6 +47,12 @@ jobs:
       - run: npm ci
 
       # The gate. Runs tsc --noEmit — the check that has never completed locally.
+      # Prose rules get skimmed; this one cannot be. Every source file must be declared
+      # in INSPECTION-LEDGER.md, so an untracked surface — the thing that let a dead tab
+      # and invented recipe timings reach the user — fails the build instead of hiding.
+      - name: Every source file is declared in the inspection ledger
+        run: node verify/ledger-check.mjs
+
       - name: Typecheck
         run: npm run lint
 

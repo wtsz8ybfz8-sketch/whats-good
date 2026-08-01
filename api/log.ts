@@ -6,28 +6,64 @@
 /**
  * Where client errors land.
  *
- * Deliberately the smallest possible thing that works: it validates, it caps size, and it
- * writes to stdout. On Vercel, stdout from a function IS the runtime log — readable in the
- * dashboard under the project's Logs tab, and queryable through the Vercel API. So this
- * gives real observability with **no external service, no account, no SDK and no data
- * processor agreement**, which is the difference between shipping it tonight and adding a
- * vendor to a product that has no privacy policy yet.
+ * Writes to stdout, which on Vercel IS the runtime log — readable in the project's Logs
+ * tab. Real observability with no external service, no account, no SDK and no data
+ * processor agreement, which is what made it shippable against a product that still has
+ * no privacy policy.
  *
- * NOT a database. Vercel retains runtime logs for a limited window (roughly an hour on
- * Hobby, longer on Pro). That is enough to answer "is it broken right now", which is the
- * question this project has never once been able to answer. Durable storage is a later
- * decision and needs the privacy policy to exist first.
+ * NOT a database. Vercel retains runtime logs for a limited window. That is enough to
+ * answer "is it broken right now", which this project has never been able to answer.
+ * Durable storage needs the privacy policy to exist first.
  *
- * IMPORTANT: `vercel.json`'s catch-all rewrite sends every path to `/` so the SPA can
- * route. `api/` had to be added to its exclusion list or this endpoint would receive
- * index.html and never run. That trap was documented before this file existed.
+ * `vercel.json`'s catch-all rewrite sends every path to `/` for SPA routing. `api/` had to
+ * be added to its exclusion list or this endpoint would receive index.html and never run.
  *
- * No types are imported from `@vercel/node` on purpose — it is not a dependency of this
- * project and this handler does not need it. `api/` is outside tsconfig's include, so
- * this file is not typechecked by `npm run lint`; keep it simple enough not to need it.
+ * ─── WHY THE BODY PARSING LOOKS PARANOID ────────────────────────────────────────────
+ * The first version of this file assumed `req.body` would be a string or a parsed object.
+ * That was a guess, and it was the weakest point in the whole feature: `sendBeacon` sends
+ * a **Blob**, and depending on the runtime and the content-type negotiation, a handler can
+ * receive a parsed object, a JSON string, a Buffer, or nothing at all with the payload
+ * still sitting unread in the request stream. Three of those four would have silently
+ * dropped every report — and the failure mode is invisible, because a telemetry endpoint
+ * that logs nothing looks exactly like an app with no errors.
+ *
+ * `api/` sits outside tsconfig's include, so `npm run lint` never typechecks this file and
+ * `checks.mjs` never calls it. Nothing gates it. That is precisely why it handles all four
+ * shapes explicitly instead of trusting one.
  */
 
-const MAX_BODY = 4000;
+const MAX_BODY = 8000;
+
+/** Every shape a Vercel Node handler can plausibly receive, including "not read yet". */
+async function readBody(req: any): Promise<string> {
+  const b = req?.body;
+
+  if (typeof b === 'string') return b;
+  if (b && typeof b === 'object' && !Buffer.isBuffer(b) && Object.keys(b).length > 0) {
+    return JSON.stringify(b);
+  }
+  if (Buffer.isBuffer(b)) return b.toString('utf8');
+
+  // Nothing parsed — drain the stream ourselves. This is the sendBeacon-Blob case.
+  return await new Promise<string>((resolve) => {
+    let raw = '';
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(raw); } };
+    try {
+      req.setEncoding?.('utf8');
+      req.on('data', (c: any) => {
+        raw += c;
+        if (raw.length > MAX_BODY) { raw = raw.slice(0, MAX_BODY); finish(); }
+      });
+      req.on('end', finish);
+      req.on('error', finish);
+      // Never hang the function on a stalled stream.
+      setTimeout(finish, 1500);
+    } catch {
+      finish();
+    }
+  });
+}
 
 export default async function handler(req: any, res: any) {
   try {
@@ -36,14 +72,17 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // sendBeacon delivers a Blob; depending on the runtime, req.body may already be
-    // parsed or may still be a string. Handle both rather than assuming.
+    const raw = (await readBody(req)).slice(0, MAX_BODY);
+
     let payload: Record<string, unknown> = {};
-    const raw = req.body;
-    if (typeof raw === 'string') {
-      payload = JSON.parse(raw.slice(0, MAX_BODY));
-    } else if (raw && typeof raw === 'object') {
-      payload = raw;
+    try {
+      payload = JSON.parse(raw) ?? {};
+    } catch {
+      // A body we cannot parse is still a signal that something reported. Log it rather
+      // than discard it — a silent drop here is how you end up trusting an empty log.
+      console.error(JSON.stringify({ tag: 'client-error', level: 'warn', message: 'unparseable report', raw: raw.slice(0, 300) }));
+      res.status(204).end();
+      return;
     }
 
     const level = payload.level === 'warn' ? 'warn' : 'error';
@@ -53,26 +92,29 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    const str = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : undefined);
+
     // One line, prefixed, so it is greppable in the Vercel log stream.
     const line = JSON.stringify({
       tag: 'client-error',
       level,
       message,
-      stack: typeof payload.stack === 'string' ? payload.stack.slice(0, 1500) : undefined,
-      path: String(payload.path ?? '').slice(0, 200),
-      viewport: String(payload.viewport ?? '').slice(0, 20),
-      ua: String(payload.ua ?? '').slice(0, 200),
-      ts: String(payload.ts ?? new Date().toISOString()).slice(0, 40),
+      stack: str(payload.stack, 1500),
+      path: str(payload.path, 200),
+      viewport: str(payload.viewport, 20),
+      ua: str(payload.ua, 200),
+      ts: str(payload.ts, 40) ?? new Date().toISOString(),
     });
 
     if (level === 'warn') console.warn(line);
     else console.error(line);
 
-    // 204: nothing to say, and sendBeacon ignores the body anyway.
+    // 204: nothing to say, and sendBeacon ignores the response body anyway.
     res.status(204).end();
-  } catch {
-    // A malformed report must not produce a 500 in the logs — that would be noise about
-    // the logger inside the log it is meant to keep clean.
+  } catch (e: any) {
+    // A malformed report must never surface as a 500 — that would be noise about the
+    // logger inside the log it exists to keep readable.
+    try { console.error(JSON.stringify({ tag: 'client-error', level: 'warn', message: 'log handler threw', detail: String(e?.message).slice(0, 200) })); } catch {}
     res.status(204).end();
   }
 }
