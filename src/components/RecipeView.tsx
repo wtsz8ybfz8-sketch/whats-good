@@ -192,20 +192,25 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  {/* Structured Ticket Stats */}
  <div className="grid grid-cols-3 border-t border-b border-dashed border-[var(--rule)] py-5 my-2 max-w-[500px]">
+ {/* These two tiles used to read "15 Min" / "22 Min", invented from a step-count
+     heuristic and — when an effort filter was set — from the FILTER ITSELF. See the
+     long note in recipeUtils.ts. TheMealDB publishes no timings at all, so the two
+     most prominent numbers on the screen were the least real data in the app.
+     Steps and ingredients are counted from the actual payload. */}
  <div className="text-center">
- <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block">
- {r.prepTime}
+ <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block tabular-nums">
+ {r.steps.length}
  </span>
  <span className="text-xs uppercase tracking-wider text-[var(--text-muted)] block mt-1">
- Prep
+ {r.steps.length === 1 ? 'Step' : 'Steps'}
  </span>
  </div>
  <div className="text-center border-l border-r border-[#e6e4e0] dark:border-white/10">
- <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block">
- {r.cookTime}
+ <span className="font-mono text-lg sm:text-xl font-bold text-[var(--charcoal)] block tabular-nums">
+ {r.ingredients.length}
  </span>
  <span className="text-xs uppercase tracking-wider text-[var(--text-muted)] block mt-1">
- Cook
+ {r.ingredients.length === 1 ? 'Ingredient' : 'Ingredients'}
  </span>
  </div>
  <div className="text-center flex flex-col items-center justify-center">

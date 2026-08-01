@@ -661,8 +661,38 @@ self-description of when it should trigger.
 
 ### 14.1 Always
 
-- **`qa-gate`** (project skill, `.claude/skills/qa-gate/`) — mandatory before the words in
-  §13.4, and before any deploy. It is the only skill that gates a claim.
+- **`inspect`** (project skill, `.claude/skills/inspect/`) — **mandatory before the words
+  in §13.4, before any deploy, and before answering "does X work?"** `qa-gate` proves the
+  SUITE is green; `inspect` is what stops a green suite being reported as a working
+  product. It carries the four laws below and the surface coverage rules.
+- **`qa-gate`** (project skill, `.claude/skills/qa-gate/`) — the mechanical gate. Run it,
+  then apply `inspect` to what it did and did not cover.
+
+### 14.1.1 The four laws — memorise these, they are the whole failure history
+
+Every defect this project shipped was one of these. Every one was found by the USER.
+
+1. **Presence is not effect.** A rule in a file is not a rule applying. The anti-zoom rule
+   sat in `@layer base` under a comment claiming it was safe there; Tailwind utilities are
+   a later layer and beat it. **Measured 14px where the file promised 16px**, for the
+   project's whole life. Read computed values from a browser, never `grep`.
+2. **A document is a claim, not evidence.** `HANDOVER.md` insisted the Places key was
+   unset and was the one blocker. A user screenshot showed 33 live Paris bars. Cite
+   provenance; mark disagreements CONTESTED.
+3. **An unopened surface is not a working surface.** Read `INSPECTION-LEDGER.md` before
+   reporting on anything. If it says NEVER INSPECTED, say those words to the user.
+4. **Validate the test before believing it.** A cost script reported the cache broken; the
+   script was wrong. Before accepting a number, say what a *working* system would have
+   produced — if the test cannot tell the two apart, it is not a test.
+
+**"Impossible" requires a command and its output.** "I can't see the app, send a
+screenshot" was false for weeks while Chromium sat pre-installed. See the register at the
+foot of `INSPECTION-LEDGER.md`.
+
+**`INSPECTION-LEDGER.md` must be updated whenever a surface is inspected** — with the
+date, the method, and what was NOT checked. It is not optional and it is not a summary of
+the handover; it is the coverage map that makes "I have never looked at this" visible
+before a claim rather than after a user complaint.
 
 ### 14.2 Use when the task calls for it
 
