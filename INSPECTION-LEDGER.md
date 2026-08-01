@@ -43,32 +43,22 @@ inspecting, update the row with the date, the method, and — critically — wha
 
 ## Open findings
 
-### 1. Recipe timings were invented — PARTIALLY FIXED, uncommitted
+### 1. Recipe timings were invented — REVERTED, still OPEN
 `prepTime` / `cookTime` were fabricated from a step-count heuristic and rendered as the
-three largest numbers on the recipe. When an effort filter was set, the times were derived
-**from the filter** — pick "low effort" and a bourguignon became 10 min prep. Same class as
-the deleted synthesised menus and the deleted invented nutrition science; those were
-removed and this was left because nobody had opened the recipe path.
+three largest numbers on the recipe. With an effort filter set they were derived **from
+the filter** — pick "low effort" and a bourguignon became 10 min prep. `serves: '2 Plates'`
+was hardcoded and was the baseline the ingredient scaler divided by, so "x1.5" meant 1.5x
+an invented serving of 2.
 
-`serves: '2 Plates'` was hardcoded onto every recipe **and was the baseline the ingredient
-scaler divided by**, so "x1.5" meant 1.5× an invented serving of 2.
+A fix was written, accidentally shipped in `7f470b5` unverified, and **reverted in the
+telemetry commit** — because `checks.mjs` went 57/58: the locale check proves decimal
+separators via the scale chip, and with a baseline of 1 the chip reads "x2" with no
+decimal in it. `main` was RED and nobody had noticed.
 
-Edits made in `recipeUtils.ts` and `RecipeView.tsx` (real step/ingredient counts replace
-the invented minutes; `serves: '1'` = the recipe as written).
-
-**SHIPPED IN `7f470b5` AND NOT VERIFIED IN A BROWSER.** They passed `esbuild` parse only.
-`checks.mjs` was NOT run against them and no screenshot was taken of the recipe view.
-
-**And `7f470b5`'s own commit message is wrong about this.** It states the recipe edits
-were excluded and that the commit was documentation only. They were swept in by
-`git add -A`. The message was written before the staging command and never reconciled
-with it — the exact "presence is not effect" error in Law 1, applied to a commit instead
-of a stylesheet: the intent was in the message, the behaviour was in the command, and
-only the command was real.
-
-Not rewritten, because the false message is now part of the record and hiding it would be
-worse than carrying it. **This entry is the correction.** First action next session:
-open the recipe view in a browser and either confirm these edits or revert them.
+**The finding stands; the fix does not.** Doing it properly means deciding what the
+scaler's honest baseline is without breaking the locale check — likely by pointing that
+check at an ingredient quantity instead of the multiplier. Needs a browser and a clear
+head, not a budget ceiling.
 
 ### 2. The API key is public — OPEN, highest severity
 In the bundle and in every photo URL. Only real fix is a serverless proxy. Note

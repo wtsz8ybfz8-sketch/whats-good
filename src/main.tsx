@@ -38,7 +38,12 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
 
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { initTelemetry } from './telemetry.ts';
 import './index.css';
+
+// Installed BEFORE render, so a throw during the very first paint is still reported.
+// Never throws; if /api/log is absent it silently does nothing.
+initTelemetry();
 
 // The boundary wraps App rather than living inside it: a throw during App's own render
 // — bad cached state, a malformed localStorage value — has to be caught by something

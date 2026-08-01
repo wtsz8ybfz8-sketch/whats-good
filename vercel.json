@@ -35,7 +35,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!sw\\.js|registerSW\\.js|manifest\\.webmanifest|assets/).*)",
+      "source": "/((?!api/|sw\\.js|registerSW\\.js|manifest\\.webmanifest|assets/).*)",
       "destination": "/"
     }
   ]

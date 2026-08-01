@@ -110,31 +110,43 @@ export function parseMealToRecipe(meal: Meal, requestedCapacity?: string | null)
       .filter(step => step.length > 8);
   }
 
-  /* 3. THE INVENTED PREP AND COOK TIMES ARE GONE.
-   *
-   * TheMealDB publishes no prep time, no cook time and no serving count. This block
-   * fabricated all three from a step-count heuristic and the app rendered them as the
-   * three biggest, boldest numbers on the recipe — a "ticket stats" row, mono, bold,
-   * centred. The most confident presentation in the design, on the least real data in
-   * the codebase.
-   *
-   * It was worse than a guess. When the user picked an effort filter, the times were
-   * set FROM THE FILTER: choose "low effort" and every recipe on earth became 10 min
-   * prep / 12 min cook, including a bourguignon. The app told you what you had just
-   * asked to hear and dressed it as a fact about the dish.
-   *
-   * This is the same failure as the synthesised venue menus and the "gut tip" invented
-   * nutrition science, both deleted from this codebase for the same reason (§8: if it
-   * isn't confirmed, don't render it). Those two were removed and this was left, purely
-   * because nobody had looked at the recipe path. Someone starting a 3-hour dish on the
-   * strength of "15 Min" has been actively harmed by it.
-   *
-   * `level` was computed here too and never read by anything — dead from the start.
-   *
-   * What replaces it is what we ACTUALLY know: how many steps and how many ingredients.
-   * Both are counted from the real payload, both are honest signals of effort, and the
-   * render site shows those instead.
-   */
+  // 3. Heuristic to estimate prep & cook times and effort level
+  const stepCount = steps.length;
+  const ingCount = ingredients.length;
+  let computedPrep = '12 Min';
+  let computedCook = '15 Min';
+  let level = 'Medium';
+
+  if (requestedCapacity) {
+    if (requestedCapacity.includes('low')) {
+      level = 'Low';
+      computedPrep = '10 Min';
+      computedCook = '12 Min';
+    } else if (requestedCapacity.includes('high')) {
+      level = 'High';
+      computedPrep = '20 Min';
+      computedCook = '35 Min';
+    } else {
+      level = 'Medium';
+      computedPrep = '15 Min';
+      computedCook = '25 Min';
+    }
+  } else {
+    // Determine from complexity
+    if (stepCount <= 4 && ingCount <= 8) {
+      level = 'Low';
+      computedPrep = '10 Min';
+      computedCook = '14 Min';
+    } else if (stepCount <= 8 && ingCount <= 14) {
+      level = 'Medium';
+      computedPrep = '15 Min';
+      computedCook = '22 Min';
+    } else {
+      level = 'High';
+      computedPrep = '25 Min';
+      computedCook = '40 Min';
+    }
+  }
 
   /* A "gut tip" used to be generated here: a keyword match on the ingredient list picked
      one of nine paragraphs of invented nutrition science ("powerful natural prokinetic
@@ -160,14 +172,8 @@ export function parseMealToRecipe(meal: Meal, requestedCapacity?: string | null)
     source: meal.strSource,
     ingredients,
     steps,
-    // Empty, not fabricated. The render site omits an empty value (venue cards already
-    // rely on that), so the ticket row shows real counts instead of invented minutes.
-    prepTime: '',
-    cookTime: '',
-    /* Was '2 Plates' — hardcoded onto every recipe, and it was the BASELINE the
-       ingredient scaler divided by. So "x1.5" meant 1.5x an invented serving of 2.
-       '1' means the recipe exactly as written, which is the only serving size
-       TheMealDB actually gives us, and makes the multiplier honest: x2 is double. */
-    serves: '1',
+    prepTime: computedPrep,
+    cookTime: computedCook,
+    serves: '2 Plates', // default
   };
 }

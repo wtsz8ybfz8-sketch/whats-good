@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertCircle, RotateCcw } from 'lucide-react';
+import { report } from '../telemetry';
 
 /**
  * The app had no error boundary at all.
@@ -37,6 +38,11 @@ export class ErrorBoundary extends Component<Props, State> {
     // No telemetry in this project, so the console is the only record. Keep both the
     // error and the component stack — the stack is what identifies which view died.
     console.error('Render failed:', error, info.componentStack);
+    // The event that matters most. This boundary firing means a user is looking at
+    // "This screen stopped working" right now — which happened to every user of the
+    // Happy Hour tab for half an hour, and was discovered only because the owner
+    // opened the app on their own phone. Never again silently.
+    report('error', `boundary: ${error.message}`, error.stack || info.componentStack || undefined);
   }
 
   private reset = () => this.setState({ error: null });
