@@ -1,7 +1,7 @@
 import React from'react';
 import { createPortal } from'react-dom';
 import { Dimensions } from'../types';
-import { Search, SlidersHorizontal, X, type LucideIcon } from'lucide-react';
+import { Search, SlidersHorizontal, X, ChevronRight, type LucideIcon } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
 
 interface SidebarProps {
@@ -98,8 +98,9 @@ const FilterGroup: React.FC<{
   * metadata this product refuses to render.
   */
  note?: string;
+ action?: React.ReactNode;
  children: React.ReactNode;
-}> = ({ title, optional, scroll, note, children }) => {
+}> = ({ title, optional, scroll, note, action, children }) => {
  return (
  <div className="flex flex-col gap-3">
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
@@ -109,6 +110,7 @@ const FilterGroup: React.FC<{
  <span className="font-normal text-[var(--accent-terracotta)]"> · {note}</span>
  )}
  </span>
+ {action}
  {scroll ? (
  // Scroll on phones only. At 1440 the rail still scrolled inside a fixed-width
  // card, so the last chip was sliced mid-word ("Burger…") against the card edge
@@ -487,7 +489,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  title="Cuisine"
  optional
  note={availableCount > 0 ? `${availableCount} available here` : undefined}
-
+ action={cuisines.length > 0 ? (
+ <button
+ type="button"
+ onClick={() => setSheetOpen(true)}
+ className="tap-44 inline-flex items-center gap-1 self-start text-[12px] font-semibold text-[var(--accent-terracotta)] hover:opacity-70 transition-opacity cursor-pointer"
+ >
+ See all {cuisines.length}
+ <ChevronRight className="w-3 h-3" aria-hidden="true" />
+ </button>
+ ) : null}
  >
  {cuisines.map((c) => (
  <Chip

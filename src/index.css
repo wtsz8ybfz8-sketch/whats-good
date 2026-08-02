@@ -622,89 +622,11 @@ html.dark .glass-subtle {
   display: none;
 }
 
-/* Apple Maps-style filter rail. One row that scrolls sideways instead of a two-row
-   wall of pills. Three things make it feel native rather than like an overflow bug:
-   no visible scrollbar, momentum scrolling on iOS, and proximity snapping so a chip
-   never comes to rest half-clipped at the left edge.
-
-   THE AFFORDANCE IS THE MASK, AND IT MUST NEVER COME OUT AGAIN.
-
-   This block used to end "the chip clipped at the right IS the affordance", and
-   Sidebar.tsx carried a comment promising "a mask on .chip-rail itself (see
-   index.css)". There was no mask here. Both claims were false in the same direction:
-   the scrollbar is explicitly deleted just below, snapping parks chips flush at the
-   edge rather than clipped, and with 3 chips visible on a 390px phone the row ended
-   clean against the card edge with nothing suggesting six more existed. A user
-   reported it as "if I didn't know I'd have to scroll, I'd be fucked" — they were
-   right, and no gate in this project could ever have caught it, because a comment
-   describing a feature is not a feature (see .claude/skills/perceive).
-
-   `mask-image` fades the rail's own pixels, so it is background-agnostic: correct on
-   this card, on --bg-warm, and in both colour schemes, with no colour to keep in sync.
-   The fade is applied on BOTH edges via a scroll-driven animation so it appears only
-   on the side that actually has more content — a permanent left fade on an unscrolled
-   rail would be lying in the other direction. Browsers without animation-timeline
-   (the property is progressively enhanced) simply keep the right-edge fade, which is
-   the state that matters on first paint. */
+/* Cuisine choices stay visible on the canvas; the full set is available through "See all". */
 .chip-rail {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
-  scroll-padding-left: 1rem;
-  overscroll-behavior-x: contain;
-  /* Fade the trailing edge so the row visibly continues past the cut. 2.25rem is
-     wide enough to read as a fade rather than as a rendering artifact, and narrow
-     enough that it never obscures a whole chip label. */
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.25rem), transparent 100%);
-  mask-image: linear-gradient(to right, #000 calc(100% - 2.25rem), transparent 100%);
-}
-
-/* Scrolled fully to the end: drop the right fade and fade the LEFT instead, so the
-   cue always points at content that is really there. Scroll-driven animations are
-   supported where this matters (iOS 18+/Chrome 115+) and degrade to the static
-   right-edge fade above everywhere else. */
-@supports (animation-timeline: scroll(self inline)) {
-  .chip-rail {
-    animation: chip-rail-fade linear both;
-    animation-timeline: scroll(self inline);
-  }
-
-  @keyframes chip-rail-fade {
-    /* Start: more to the right only. */
-    0% {
-      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.25rem), transparent 100%);
-      mask-image: linear-gradient(to right, #000 calc(100% - 2.25rem), transparent 100%);
-    }
-    /* Middle: more in both directions. */
-    50% {
-      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 2.25rem, #000 calc(100% - 2.25rem), transparent 100%);
-      mask-image: linear-gradient(to right, transparent 0, #000 2.25rem, #000 calc(100% - 2.25rem), transparent 100%);
-    }
-    /* End: more to the left only. */
-    100% {
-      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 2.25rem, #000 100%);
-      mask-image: linear-gradient(to right, transparent 0, #000 2.25rem, #000 100%);
-    }
-  }
-}
-
-/* The rail wraps at lg and no longer scrolls, so a fade there would dim a chip for no
-   reason — it would be a cue pointing at nothing. */
-@media (min-width: 1024px) {
-  .chip-rail {
-    -webkit-mask-image: none;
-    mask-image: none;
-    animation: none;
-  }
-}
-
-.chip-rail::-webkit-scrollbar {
-  display: none;
-}
-.chip-rail > * {
-  scroll-snap-align: start;
-  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 /* ─── Glass Range Slider ─────────────────────────────── */
