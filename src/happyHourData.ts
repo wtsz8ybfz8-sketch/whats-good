@@ -1,201 +1,153 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import React, { useState, useEffect } from 'react';
+import { Clock, MapPin, Moon, Sparkles } from 'lucide-react';
+import { CAPE_TOWN_HAPPY_HOURS, type CuratedHappyHour } from '../happyHourData';
+import type { ParsedRecipe } from '../types';
 
-/**
- * REAL Cape Town happy hours — curated, not synthesised.
- *
- * Google Places publishes no happy-hour data at any tier, so there is no live feed to
- * pull. These are real venues with their actual, publicly-listed happy-hour windows,
- * hand-collected from Cape Town Magazine's happy-hour guide and other local listings
- * (see `source` on each entry). Confirmed July 2026.
- *
- * Happy-hour times change — a venue can move or drop a window without updating a
- * listing. The UI says "confirm before you go" for exactly that reason. This is real
- * data, honestly caveated — not invented placeholders.
- *
- * Day numbers match Date.getDay(): 0 = Sunday … 6 = Saturday.
- */
-
-import type { HappyHour } from './venueExtras';
-
-export interface CuratedHappyHour extends HappyHour {
-  venue: string;
-  area: string;
-  /** Where the listing came from, shown to the user so the claim is checkable. */
-  source: string;
-  sourceLabel: string;
+interface HappyHourViewProps {
+  recipes: ParsedRecipe[];
+  onSelectRecipe: (recipe: ParsedRecipe) => void;
+  city: string;
+  onExploreLateNight?: () => void; 
 }
 
-const DAILY = [0, 1, 2, 3, 4, 5, 6];
-const MON_FRI = [1, 2, 3, 4, 5];
-const MON_THU = [1, 2, 3, 4];
+interface ProcessedHappyHour extends CuratedHappyHour {
+  minutesRemaining?: number;
+  isLive: boolean;
+  isUpcoming: boolean;
+  timeDisplay: string;
+}
 
-const CTM = 'https://www.capetownmagazine.com/happy-hours';
-const CTM_LABEL = 'Cape Town Magazine';
+export function HappyHourView({ recipes, onSelectRecipe, city, onExploreLateNight }: HappyHourViewProps) {
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-/**
- * The city this curated set covers. Coverage is a property of the DATA, not a string
- * typed into a view — HappyHourView used to compare against a hardcoded 'cape town',
- * so when the app stopped defaulting the city to Cape Town the tab silently went
- * empty for every user on earth and nothing pointed at why.
- */
-export const HAPPY_HOUR_CITY = 'Cape Town';
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
-/**
- * Authored strictly, so `tsc` still refuses a malformed row at author time. The runtime
- * filter below is the SECOND gate, not a replacement for this one.
- */
-const CURATED: CuratedHappyHour[] = [
-  {
-    venue: 'Woodstock Brewery',
-    area: 'Woodstock · 252 Albert Rd',
-    days: DAILY,
-    startHour: 16,
-    endHour: 18,
-    headline: 'Brewery Hour',
-    deals: ['R70 for two Born Slippy draughts', 'R35 a single draught'],
-    source: CTM,
-    sourceLabel: CTM_LABEL,
-  },
-  {
-    venue: 'Down South Food Bar',
-    area: 'Rondebosch · Main Centre',
-    days: DAILY,
-    startHour: 17,
-    endHour: 19,
-    headline: 'The Late Pour',
-    deals: ['R15 shots', 'R32 Black Label draught', 'Cocktails from R40'],
-    source: CTM,
-    sourceLabel: CTM_LABEL,
-  },
-  {
-    venue: 'Café Extrablatt',
-    area: 'Green Point · Exhibition Building',
-    days: MON_FRI,
-    startHour: 17,
-    endHour: 20,
-    headline: 'Sundowner Hour',
-    deals: ['R45 cocktails', 'R33 mocktails', 'Wine & beer specials'],
-    source: CTM,
-    sourceLabel: CTM_LABEL,
-  },
-  {
-    venue: 'Gusto Urban Italian',
-    area: 'Century City · Bridgewater',
-    days: MON_FRI,
-    startHour: 17,
-    endHour: 19,
-    headline: 'Golden Hour',
-    deals: ['2-for-1 beer & wine (Mon–Thu)', '2-for-1 cocktails (Fri)'],
-    source: CTM,
-    sourceLabel: CTM_LABEL,
-  },
-  {
-    venue: 'SurfaRosa',
-    area: 'District Six · 61a Harrington St',
-    days: DAILY,
-    startHour: 15,
-    endHour: 18,
-    headline: 'Happy Hour',
-    deals: ['Rotating daily drink specials'],
-    source: CTM,
-    sourceLabel: CTM_LABEL,
-  },
-  {
-    venue: 'The Slug & Lettuce',
-    area: 'Gardens · Kloof St',
-    days: DAILY,
-    startHour: 17,
-    endHour: 19,
-    headline: 'Half-Price Hour',
-    deals: ['R27 draughts', 'R20 bottled beer', 'R15 tequila', 'R25 wine'],
-    source: 'https://secretcapetown.co.za/happy-hour-specials-in-cape-town/',
-    sourceLabel: 'Secret Cape Town',
-  },
-  {
-    venue: 'Bossa',
-    area: 'Multiple locations',
-    days: DAILY,
-    startHour: 16,
-    endHour: 18,
-    headline: 'Golden Hour',
-    deals: ['R59 cocktails & jars'],
-    source: 'https://www.food-blog.co.za/tag/happy-hour-specials-cape-town/',
-    sourceLabel: 'Food Blog SA',
-  },
-  {
-    venue: 'Time Out Market Cape Town',
-    area: 'Foreshore · Old Power Station',
-    days: MON_FRI,
-    startHour: 16,
-    endHour: 18,
-    headline: 'Market Hour',
-    deals: ['30% off house beer, wine & selected cocktails'],
-    source: 'https://www.timeout.com/time-out-market-cape-town/things-to-do/happy-hour',
-    sourceLabel: 'Time Out Market',
-  },
-];
+  const currentDay = currentTime.getDay();
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  const absoluteMinutes = currentHour * 60 + currentMinute;
 
-/**
- * ONE MALFORMED ROW MUST NEVER TAKE DOWN THE TAB.
- *
- * This file is hand-edited — that is the point of it (§8: if it isn't confirmed, don't
- * render it), and it is edited directly on GitHub as often as in an editor. On
- * 2026-08-01 a venue that had permanently closed was removed by deleting its fields and
- * leaving `{}` behind in the array. Everything downstream dereferences those fields
- * without asking, so `mapsUrl` threw on `area.split` of undefined, the render died, and
- * the whole Happy Hour tab became the error boundary for every user.
- *
- * `tsc` DID catch it — CI went red on that commit and the one after it. It shipped
- * anyway, because `npm run build` is `vite build` and Vercel therefore deploys code the
- * typecheck has already rejected. A red CI run is not a deploy gate, and until it is,
- * the type gate cannot be the only thing standing between a hand-edit and a dead tab.
- *
- * So every row is validated before anything reads it. A row missing a field the UI
- * dereferences is dropped with a console warning naming the index and the fields; the
- * rest still render. Losing one venue is a bad afternoon. Losing the tab is what this
- * prevents.
- */
-const REQUIRED_TEXT = ['venue', 'area', 'headline', 'source', 'sourceLabel'] as const;
+  const processedHours: ProcessedHappyHour[] = CAPE_TOWN_HAPPY_HOURS.filter((hh) => hh.days.includes(currentDay)).map((hh) => {
+    const startMinutes = hh.startHour * 60;
+    const endMinutes = hh.endHour * 60;
+    
+    const isLive = absoluteMinutes >= startMinutes && absoluteMinutes < endMinutes;
+    const isUpcoming = absoluteMinutes < startMinutes;
+    
+    let minutesRemaining = 0;
+    let timeDisplay = `${hh.startHour}:00 - ${hh.endHour}:00`;
 
-function isUsable(h: Partial<CuratedHappyHour>, i: number): h is CuratedHappyHour {
-  const missing: string[] = [];
+    if (isLive) {
+      minutesRemaining = endMinutes - absoluteMinutes;
+      timeDisplay = minutesRemaining < 60 
+        ? `Ends in ${minutesRemaining}m` 
+        : `Ends at ${hh.endHour}:00`;
+    } else if (isUpcoming) {
+      const minutesUntil = startMinutes - absoluteMinutes;
+      timeDisplay = minutesUntil < 60 
+        ? `Starts in ${minutesUntil}m` 
+        : `Starts at ${hh.startHour}:00`;
+    }
 
-  if (!h || typeof h !== 'object') {
-    console.warn(`[happyHourData] Dropping entry ${i}: not an object.`);
-    return false;
+    return { ...hh, isLive, isUpcoming, minutesRemaining, timeDisplay };
+  });
+
+  const liveDeals = processedHours.filter((hh) => hh.isLive).sort((a, b) => (a.minutesRemaining || 0) - (b.minutesRemaining || 0));
+  const upcomingDeals = processedHours.filter((hh) => hh.isUpcoming).sort((a, b) => a.startHour - b.startHour);
+
+  if (liveDeals.length === 0 && upcomingDeals.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-[revealUp_0.4s_ease-out]">
+        <div className="w-16 h-16 rounded-full bg-[var(--surface-quiet-bg)] flex items-center justify-center mb-6 border border-[var(--rule)]">
+          <Moon className="w-8 h-8 text-[var(--text-muted)]" />
+        </div>
+        <h2 className="font-serif text-3xl font-semibold text-[var(--heading-color)] mb-3">
+          Happy Hours have wrapped up.
+        </h2>
+        <p className="text-[var(--text-muted)] max-w-[40ch] mb-8 leading-relaxed">
+          The deals in {city || 'this area'} are done for the day, but the night isn't. Let's pivot to late-night dining and drinks.
+        </p>
+        <button
+          onClick={onExploreLateNight}
+          className="hit-44 inline-flex items-center gap-2 px-6 py-3 bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] rounded-xl font-sans font-bold shadow-md hover:opacity-90 transition-opacity cursor-pointer"
+        >
+          <Sparkles className="w-4 h-4" /> Find Late Night Spots
+        </button>
+      </div>
+    );
   }
-  for (const k of REQUIRED_TEXT) {
-    if (typeof h[k] !== 'string' || !(h[k] as string).trim()) missing.push(k);
-  }
-  // `days` and `deals` are both mapped over directly in the view.
-  if (!Array.isArray(h.days) || h.days.length === 0) missing.push('days');
-  if (!Array.isArray(h.deals) || h.deals.length === 0) missing.push('deals');
-  // Hours drive every status calculation; NaN would silently poison the sort.
-  if (typeof h.startHour !== 'number' || !Number.isFinite(h.startHour)) missing.push('startHour');
-  if (typeof h.endHour !== 'number' || !Number.isFinite(h.endHour)) missing.push('endHour');
 
-  if (missing.length === 0) return true;
-  console.warn(
-    `[happyHourData] Dropping entry ${i} (${h.venue ?? 'unnamed'}) — missing or invalid: ${missing.join(', ')}`,
-  );
-  return false;
-}
+  return (
+    <div className="w-full max-w-2xl mx-auto pb-12 animate-[revealUp_0.4s_ease-out]">
+      <div className="mb-8 px-4 sm:px-0">
+        <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[var(--heading-color)] tracking-tight">
+          Active Deals
+        </h2>
+        <p className="text-[var(--text-muted)] mt-2">
+          Curated specials in {city || 'your area'}, calculated for right now.
+        </p>
+      </div>
 
-export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = CURATED.filter(isUsable);
+      <div className="flex flex-col gap-8">
+        {liveDeals.length > 0 && (
+          <section>
+            <div className="flex flex-col gap-4">
+              {liveDeals.map((deal, idx) => (
+                <div key={idx} className="surface rounded-2xl p-5 border border-[var(--accent-tint-border)] shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--accent-terracotta)]" />
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-serif text-xl font-semibold text-[var(--charcoal)]">{deal.venue}</h3>
+                      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] mt-1">
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>{deal.area.split('·')[0].trim()}</span>
+                      </div>
+                    </div>
+                    <div className="bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm motion-safe:animate-pulse">
+                      <Clock className="w-3.5 h-3.5" />
+                      {deal.timeDisplay}
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold text-[var(--text-subtle)] uppercase tracking-wider mb-2">{deal.headline}</p>
+                    <ul className="flex flex-col gap-1.5">
+                      {deal.deals.map((d, i) => (
+                        <li key={i} className="text-[15px] text-[var(--charcoal)] flex items-start gap-2">
+                          <span className="text-[var(--accent-terracotta)] mt-0.5">•</span> {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
-/** Google Maps directions link for a venue — a real, useful action from each row. */
-export function mapsUrl(venue: string, area: string): string {
-  const q = encodeURIComponent(`${venue} ${area.split('·')[0].trim()} Cape Town`);
-  return `https://www.google.com/maps/search/?api=1&query=${q}`;
-}
-
-/** Case-insensitive lookup so a venue's own detail page can show its real window. */
-export function findCuratedHappyHour(venueName: string): CuratedHappyHour | undefined {
-  const n = venueName.trim().toLowerCase();
-  return CAPE_TOWN_HAPPY_HOURS.find(
-    (h) => n === h.venue.toLowerCase() || n.includes(h.venue.toLowerCase()) || h.venue.toLowerCase().includes(n),
+        {upcomingDeals.length > 0 && (
+          <section className="mt-4">
+            <h3 className="font-mono text-xs uppercase tracking-widest text-[var(--text-muted)] font-semibold mb-4 px-4 sm:px-0">
+              Starting Later
+            </h3>
+            <div className="flex flex-col gap-3">
+              {upcomingDeals.map((deal, idx) => (
+                <div key={idx} className="surface-quiet rounded-xl p-4 flex justify-between items-center opacity-80 hover:opacity-100 transition-opacity border border-[var(--rule)]">
+                  <div>
+                    <h4 className="font-serif text-lg font-medium text-[var(--charcoal)]">{deal.venue}</h4>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{deal.headline}</p>
+                  </div>
+                  <div className="text-sm font-medium text-[var(--charcoal)] bg-white/50 dark:bg-black/20 px-3 py-1 rounded-lg">
+                    {deal.timeDisplay}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
   );
 }
