@@ -496,7 +496,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
 
  // Showcase grid if multiple matches are returned and none are explicitly active
  return (
- <div className="max-w-[1000px] mx-auto w-full sm:px-8 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ <div className="max-w-[1200px] mx-auto w-full px-5 sm:px-8 lg:px-10 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
  <div className="flex flex-col gap-2 mb-8 sm:mb-12">
  <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
  Here's what we found
@@ -513,7 +513,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </p>
  </div>
 
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+ <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
  {recipes.map((r) => {
  const isRestaurant = r.id.startsWith('eat');
  const rawEatery = (r as any).rawEatery;
