@@ -213,6 +213,11 @@ export default function App() {
  return valid.includes(t as ActiveTab) ? (t as ActiveTab) :'mood';
  } catch { return 'mood'; }
  })();
+ const initialParams = new URLSearchParams(window.location.search);
+ const initialSharedMeal = initialParams.get('meal')?.trim() || '';
+ const initialSharedVenue = initialParams.get('venue')?.trim() || '';
+ const initialSharedVenueName = initialParams.get('name')?.trim() || '';
+ const hasSharedDetail = Boolean(initialSharedMeal || initialSharedVenue);
  const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
  const [prevTab, setPrevTab] = useState<ActiveTab>(initialTab);
  // City is auto-detected from the user's location, or typed. There is deliberately no
@@ -251,7 +256,7 @@ export default function App() {
  regional: null,
  capacity: null,
  searchQuery:'',
- locationMode:'dineout',
+ locationMode: initialSharedMeal ? 'gourmet' : 'dineout',
  });
 
  const [recipes, setRecipes] = useState<ParsedRecipe[]>([]);
@@ -465,6 +470,38 @@ export default function App() {
  detailOpenRef.current = !!selectedRecipe;
  cityMenuRef.current = cityMenuOpen;
 
+ const shareUrl = (recipe: ParsedRecipe) => {
+ const raw = (recipe as ParsedRecipe & { rawEatery?: Venue }).rawEatery;
+ const shareCity = city || recipe.area || '';
+ const url = new URL(window.location.href);
+ if (shareCity) url.searchParams.set('city', shareCity);
+ else url.searchParams.delete('city');
+ url.searchParams.set('tab', raw ? 'mood' : 'random');
+ url.searchParams.delete('venue');
+ url.searchParams.delete('name');
+ url.searchParams.delete('meal');
+ if (raw) {
+ url.searchParams.set('venue', raw.id);
+ url.searchParams.set('name', raw.name);
+ } else {
+ url.searchParams.set('meal', recipe.id);
+ }
+ return url.toString();
+ };
+
+ const shareRecipe = async (recipe: ParsedRecipe) => {
+ const url = shareUrl(recipe);
+ try {
+ if (navigator.share) {
+ await navigator.share({ title: recipe.name, text: `See ${recipe.name} on What's Good`, url });
+ return;
+ }
+ await navigator.clipboard?.writeText(url);
+ } catch {
+ // Share cancellation or an unavailable clipboard is a normal user action.
+ }
+ };
+
  const selectRecipeFromList = (recipe: ParsedRecipe | null) => {
    if (recipe && !selectedRecipe) {
      listScrollY.current = Math.max(lastListScrollY.current, window.scrollY);
@@ -562,6 +599,16 @@ export default function App() {
  useEffect(() => {
  if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
  }, []);
+
+ useEffect(() => {
+ const venueId = new URLSearchParams(window.location.search).get('venue');
+ if (!venueId || recipes.length === 0 || selectedRecipe) return;
+ const match = recipes.find((recipe) => {
+ const raw = (recipe as ParsedRecipe & { rawEatery?: Venue }).rawEatery;
+ return raw?.id === venueId || recipe.id === venueId;
+ });
+ if (match) selectRecipeFromList(match);
+ }, [recipes, selectedRecipe]);
 
  useEffect(() => {
  const id = selectedRecipe?.id ?? null;
@@ -814,10 +861,11 @@ export default function App() {
  // calls — for two answers nobody ever read. The delay is short enough to feel immediate
  // when the user stops, and the cleanup cancels a search the user has already replaced.
  useEffect(() => {
+ if (hasSharedDetail) return;
  if (activeTab !=='mood' && activeTab !=='random') return;
  const timer = setTimeout(() => { handleTriggerMatch(); }, SEARCH_DEBOUNCE_MS);
  return () => clearTimeout(timer);
- }, [activeTab, dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.capacity, userCoords, city]);
+ }, [activeTab, dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.capacity, userCoords, city, hasSharedDetail]);
 
  // Perform fetching from TheMealDB or local structures
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
@@ -1239,6 +1287,57 @@ export default function App() {
  return () => window.removeEventListener('popstate', onPop);
  }, []);
 
+ const sharedDetailLoaded = useRef(false);
+ useEffect(() => {
+ if (sharedDetailLoaded.current || !hasSharedDetail) return;
+ if (initialSharedMeal) {
+ sharedDetailLoaded.current = true;
+ fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${encodeURIComponent(initialSharedMeal)}`)
+ .then((response) => response.json())
+ .then((data) => {
+ const meal = data.meals?.[0] as Meal | undefined;
+ if (!meal) {
+ setError('This recipe link has expired or is unavailable.');
+ return;
+ }
+ const parsed = parseMealToRecipe(meal);
+ setActiveTab('random');
+ setRecipes([parsed]);
+ setSelectedRecipe(parsed);
+ })
+ .catch(() => setError('This recipe link could not be opened right now.'));
+ return;
+ }
+ if (!initialSharedVenue) return;
+ if (!city) {
+ setError('This restaurant link needs a location before it can open.');
+ return;
+ }
+ sharedDetailLoaded.current = true;
+ setIsLoading(true);
+ fetchVenues(initialSharedVenueName, city, null, undefined)
+ .then((outcome) => {
+ if (outcome.status !== 'ok') {
+ setError('This restaurant link could not be opened right now.');
+ return;
+ }
+ const wantedId = initialSharedVenue;
+ const wantedName = initialSharedVenueName.toLowerCase();
+ const venue = outcome.venues.find((item) => item.id === wantedId)
+ || (wantedName ? outcome.venues.find((item) => item.name.toLowerCase() === wantedName) : undefined);
+ if (!venue) {
+ setError('This restaurant was not returned by Google for that location.');
+ return;
+ }
+ const parsed = createEateryResult(venue, city, userCoords);
+ setActiveTab('mood');
+ setRecipes([parsed]);
+ setSelectedRecipe(parsed);
+ })
+ .catch(() => setError('This restaurant link could not be opened right now.'))
+ .finally(() => setIsLoading(false));
+ }, [city, hasSharedDetail, initialSharedMeal, initialSharedVenue, initialSharedVenueName, userCoords]);
+
  // Cuisine suggestions come from the last unfiltered venue set and stay stable while
  // a cuisine is selected. Recomputing them from filtered results made new chips appear
  // after tapping Italian, which shifted the user's choices and implied that tapping a
@@ -1583,6 +1682,7 @@ export default function App() {
  onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
  savedIds={savedIds}
  onToggleSave={handleToggleSave}
+ onShare={shareRecipe}
  isSavedTab={activeTab ==='saved-recipes' || activeTab ==='saved-eateries'}
  // What the user actually asked for. The venue page can then say why THIS place
  // is in front of them without inventing a single fact about it. Omitted on the
@@ -1612,6 +1712,7 @@ export default function App() {
  onToggleSave={handleToggleSave}
  isSavedTab={activeTab ==='saved-recipes' || activeTab ==='saved-eateries'}
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
+ onShare={shareRecipe}
  />
 )
 ) : (
@@ -1822,6 +1923,7 @@ export default function App() {
  savedIds={savedIds}
  onToggleSave={handleToggleSave}
  onFindCorrespondingRestaurants={handleFindCorrespondingRestaurants}
+ onShare={shareRecipe}
  />
 ) : (
  <p className="sm:px-4 py-16 text-sm text-[var(--text-muted)]">

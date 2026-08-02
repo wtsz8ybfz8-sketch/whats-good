@@ -22,6 +22,7 @@ interface RecipeViewProps {
  onToggleSave: (recipe: ParsedRecipe) => void;
  isSavedTab?: boolean;
  onFindCorrespondingRestaurants?: (recipe: ParsedRecipe) => void;
+ onShare?: (recipe: ParsedRecipe) => void;
  city?: string;
  /** The live search filters, for the card grid's vibe pills. Undefined on the saved
   *  tabs, where the filters on screen didn't produce this list — see App.tsx. */
@@ -58,6 +59,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
     render site already drops the whole "near …" clause rather than guessing. */
  city = '',
  onFindCorrespondingRestaurants,
+ onShare,
  intent,
 }) => {
  // Local state to keep track of checked ingredients for checklist interaction
@@ -182,6 +184,17 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {r.name}
  </h2>
  </div>
+
+ {onShare && (
+ <button
+ type="button"
+ onClick={() => onShare(r)}
+ aria-label={`Share ${r.name}`}
+ className="hit-44 flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)] transition-colors cursor-pointer"
+ >
+ <ExternalLink className="w-4 h-4" /> Share
+ </button>
+ )}
 
  <button
  onClick={() => onToggleSave(r)}

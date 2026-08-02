@@ -31,6 +31,7 @@ interface EateryViewProps {
   onRegenerate: () => void;
   savedIds: string[];
   onToggleSave: (recipe: ParsedRecipe) => void;
+  onShare?: (recipe: ParsedRecipe) => void;
   isSavedTab?: boolean;
   intent?: SearchIntent;
 }
@@ -132,6 +133,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
   onRegenerate,
   savedIds,
   onToggleSave,
+  onShare,
   isSavedTab,
   intent,
 }) => {
@@ -245,6 +247,16 @@ export const EateryView: React.FC<EateryViewProps> = ({
         >
           <ChevronLeft className="w-3 h-3" />
           {isSavedTab ? `Saved (${recipes.length})` : `Results (${recipes.length})`}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onShare?.(r)}
+          aria-label={`Share ${rawEatery.name}`}
+          className="tap-44 absolute top-5 right-20 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md bg-black/20 text-white hover:bg-black/35 transition-all cursor-pointer px-3.5"
+        >
+          <ExternalLink className="w-4 h-4" />
+          <span className="hidden sm:inline font-mono text-xs uppercase tracking-wider">Share</span>
         </button>
 
         {/* Save — top right */}
