@@ -1627,7 +1627,7 @@ export default function App() {
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
- className={`transition-all duration-500 overflow-hidden w-full max-w-6xl mx-auto px-5 lg:px-8 ${
+ className={`transition-all duration-500 overflow-hidden w-full max-w-6xl mx-auto px-5 lg:px-8 md:max-h-[1500px] md:opacity-100 md:pointer-events-auto md:mt-6 ${
  activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >
