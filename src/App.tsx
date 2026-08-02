@@ -1562,7 +1562,7 @@ export default function App() {
  viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
  overhang (that's what ate the Back button), and a grid cannot overflow
  horizontally, so it has nothing left to guard. */}
- <main className="page-grid py-6 sm:py-10 lg:py-16 overflow-y-auto min-h-[calc(100dvh-60px)] w-full relative">
+ <main className="page-grid py-6 sm:py-10 lg:py-16 min-h-[calc(100dvh-60px)] w-full relative">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
