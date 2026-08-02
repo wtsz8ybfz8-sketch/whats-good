@@ -188,6 +188,8 @@ async function main() {
     hasTouch: true,
     isMobile: true,
     locale: 'en-GB',
+    geolocation: { latitude: 51.5136, longitude: -0.1385 },
+    permissions: ['geolocation'],
   });
   await ctx.addInitScript(() => {
     try { localStorage.setItem('whats_good_city', 'London'); } catch {}

@@ -438,6 +438,7 @@ export default function App() {
   * the browser applying its own guess on popstate and fighting this.
   */
  const listScrollY = useRef(0);
+ const lastListScrollY = useRef(0);
  const prevDetailId = useRef<string | null>(null);
 
  /**
@@ -499,6 +500,7 @@ export default function App() {
  const evaluate = () => {
  raf = 0;
  const y = Math.max(0, window.scrollY); // clamp iOS rubber-band overscroll (negative)
+ if (!detailOpenRef.current) lastListScrollY.current = y;
  const maxY = document.documentElement.scrollHeight - window.innerHeight;
  const headerFocused =
  !!headerRef.current && headerRef.current.contains(document.activeElement);
@@ -535,6 +537,7 @@ export default function App() {
  const onScroll = () => { if (!raf) raf = requestAnimationFrame(evaluate); };
  window.addEventListener('scroll', onScroll, { passive: true });
  chromeLastY.current = Math.max(0, window.scrollY);
+ lastListScrollY.current = chromeLastY.current;
  return () => {
  window.removeEventListener('scroll', onScroll);
  if (raf) cancelAnimationFrame(raf);
@@ -564,7 +567,7 @@ export default function App() {
  // `window.scrollY` here is already clamped down by up to a viewport — reading it
  // loses the true list offset. `chromeLastY` is the position the scroll listener
  // tracked while the list was still mounted, so it is the exact place to return to.
- listScrollY.current = Math.max(chromeLastY.current, window.scrollY);
+ listScrollY.current = Math.max(lastListScrollY.current, window.scrollY);
  window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
  } else if (id && prev) {
  // Detail to a different detail; still a forward move.
