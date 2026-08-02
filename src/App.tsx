@@ -1528,7 +1528,7 @@ export default function App() {
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
- className={`transition-all duration-500 overflow-hidden w-full max-w-4xl mx-auto px-5 ${
+ className={`transition-all duration-500 overflow-hidden w-full max-w-6xl mx-auto px-5 lg:px-8 ${
  activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >
@@ -1536,7 +1536,7 @@ export default function App() {
  carries no padding of its own; the Sidebar owns only its inner rhythm. The old
  wrapper px-4 + card p-2 + aside px-6 stack put content 48px in on a 390px
  device and starved the Cuisine rail. */}
- <div className="surface rounded-3xl overflow-hidden mb-6">
+ <div className="surface rounded-3xl overflow-hidden mb-8 lg:mb-10">
  <Sidebar
  dimensions={dimensions}
  nearbyCuisines={nearbyCuisines}
@@ -1572,7 +1572,7 @@ export default function App() {
  viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
  overhang (that's what ate the Back button), and a grid cannot overflow
  horizontally, so it has nothing left to guard. */}
- <main className="page-grid py-6 sm:py-10 lg:py-16 min-h-[calc(100dvh-60px)] w-full relative">
+ <main className="page-grid py-6 sm:py-10 lg:py-12 min-h-[calc(100dvh-60px)] w-full relative">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
