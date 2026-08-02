@@ -6,7 +6,7 @@
 import React from 'react';
 import { motion, MotionConfig } from 'motion/react';
 import { ParsedRecipe } from '../types';
-import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info, Sparkles, Wallet } from 'lucide-react';
+import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info, Sparkles, Wallet, MessageSquare } from 'lucide-react';
 // getVenueExtras is deliberately no longer called — it synthesised menus, prices and
 // "specials" from a hash of the venue id. See the "What to expect" block below.
 import { getHappyHourStatus, formatDays } from '../venueExtras';
@@ -696,7 +696,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           rel="noopener noreferrer"
           className="mt-5 inline-flex items-center gap-2 text-[13px] font-medium text-[var(--accent-terracotta)] hover:underline underline-offset-4"
         >
-          <Star className="w-3.5 h-3.5" />
+          <MessageSquare className="w-3.5 h-3.5" />
           Read Google reviews and see more photos
         </a>
 

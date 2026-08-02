@@ -465,6 +465,13 @@ export default function App() {
  detailOpenRef.current = !!selectedRecipe;
  cityMenuRef.current = cityMenuOpen;
 
+ const selectRecipeFromList = (recipe: ParsedRecipe | null) => {
+   if (recipe && !selectedRecipe) {
+     listScrollY.current = Math.max(lastListScrollY.current, window.scrollY);
+   }
+   setSelectedRecipe(recipe);
+ };
+
  const setChrome = (hidden: boolean) => {
  if (chromeHiddenRef.current === hidden) return;
  chromeHiddenRef.current = hidden;
@@ -1572,7 +1579,7 @@ export default function App() {
  <EateryView
  recipes={recipes.length > 0 ? recipes : savedRecipes}
  selectedRecipe={selectedRecipe}
- onSelectRecipe={setSelectedRecipe}
+ onSelectRecipe={selectRecipeFromList}
  onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
  savedIds={savedIds}
  onToggleSave={handleToggleSave}
@@ -1598,7 +1605,7 @@ export default function App() {
  <RecipeView
  recipes={recipes.length > 0 ? recipes : savedRecipes}
  selectedRecipe={selectedRecipe}
- onSelectRecipe={setSelectedRecipe}
+ onSelectRecipe={selectRecipeFromList}
  onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
  isRandomMode={activeTab ==='random'}
  savedIds={savedIds}
@@ -1635,7 +1642,7 @@ export default function App() {
  <RecipeView
  recipes={recipes}
  selectedRecipe={selectedRecipe}
- onSelectRecipe={setSelectedRecipe}
+ onSelectRecipe={selectRecipeFromList}
  onRegenerate={() => handleTriggerMatch()}
  isRandomMode={false}
  savedIds={savedIds}
@@ -1809,7 +1816,7 @@ export default function App() {
  <RecipeView
  recipes={recipes}
  selectedRecipe={null}
- onSelectRecipe={setSelectedRecipe}
+ onSelectRecipe={selectRecipeFromList}
  onRegenerate={() => handleTriggerMatch()}
  isRandomMode={false}
  savedIds={savedIds}
