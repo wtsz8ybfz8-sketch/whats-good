@@ -133,7 +133,7 @@ const FilterGroup: React.FC<{
  // Below lg this is a single horizontal rail (Apple Maps pattern) instead of the
  // ragged multi-row wrap it used to render as; at lg the card is wide enough to
  // wrap with nothing hidden, so it wraps and index.css drops the fade there.
- <div className="chip-rail flex flex-nowrap gap-2 overflow-x-auto py-1.5 lg:flex-wrap lg:overflow-visible">
+ <div className="chip-rail flex flex-wrap gap-2 overflow-visible">
  {children}
  </div>
  ) : (
