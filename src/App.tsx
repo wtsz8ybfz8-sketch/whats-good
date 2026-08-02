@@ -537,6 +537,7 @@ export default function App() {
  const onScroll = () => { if (!raf) raf = requestAnimationFrame(evaluate); };
  window.addEventListener('scroll', onScroll, { passive: true });
  chromeLastY.current = Math.max(0, window.scrollY);
+ lastListScrollY.current = chromeLastY.current;
  return () => {
  window.removeEventListener('scroll', onScroll);
  if (raf) cancelAnimationFrame(raf);
