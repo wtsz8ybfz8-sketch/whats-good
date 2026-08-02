@@ -31,7 +31,7 @@ inspecting, update the row with the date, the method, and — critically — wha
 | Google attribution (ToS) | 2026-08-01 | Grep — absent everywhere | **FIXED** — "Place data powered by Google" added to footer |
 | **`RecipeView.tsx` rendering** | **NEVER INSPECTED** | — | Only the timings block was touched. Never opened in a browser. |
 | **`EateryView.tsx`** | **NEVER INSPECTED** | — | 39KB. The §8 first-class surface. Never audited against its own six requirements. |
-| **`Sidebar.tsx`** | **NEVER INSPECTED** | — | 24KB. Contains two of the three inputs in the app. |
+| **`Sidebar.tsx`** — cuisine filter | 2026-08-02 | Source + browser, 390px light+dark | **FIXED** — dedup was exact-match only, so Google's "Hamburger" rendered a chip beside "Burgers"; raw API types ("Fast food") leaked in; chips rendered as a ragged `flex-wrap`, not the `.chip-rail` the design calls for; the availability dot and the `scroll` branch were both orphaned. Canonical resolver (junk dropped, synonyms folded, clean pass-through), single horizontal rail restored, dot restored. **NOT checked:** removal of real Google junk on live data (Places unreachable here — confirms post-deploy); the mood/diet sheet inputs. |
 | **Accessibility** | **NEVER INSPECTED** | — | Beyond hit targets. No contrast audit, focus order, landmarks, screen-reader pass. Real legal exposure. |
 | **Saved tab / `useSavedRecipes`** | **NEVER INSPECTED** | — | localStorage. Never tested for quota failure or corrupt data. |
 | **The recipe search / TheMealDB path** | **NEVER INSPECTED** | — | Unreachable from this container; needs fixtures. |
