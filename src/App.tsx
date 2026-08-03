@@ -1503,46 +1503,50 @@ export default function App() {
  <nav className="desktop-nav hidden md:flex items-center gap-5 whitespace-nowrap" aria-label="Primary">
  <button
  onClick={() => handleTabSwitch('mood')}
+ aria-current={activeTab === 'mood' ? 'page' : undefined}
  className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
- activeTab ==='mood'
- ?'text-[var(--charcoal)]'
- :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
+ activeTab === 'mood'
+ ? 'text-[var(--charcoal)]'
+ : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
  Find a Place
  </button>
  <button
  onClick={() => {
- setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
+ setDimensions((prev) => ({ ...prev, locationMode: 'gourmet' }));
  handleTabSwitch('random');
  }}
+ aria-current={activeTab === 'random' ? 'page' : undefined}
  className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
- activeTab ==='random'
- ?'text-[var(--charcoal)]'
- :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
+ activeTab === 'random'
+ ? 'text-[var(--charcoal)]'
+ : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
  Stay In
  </button>
  <button
  onClick={() => handleTabSwitch('happy-hour')}
+ aria-current={activeTab === 'happy-hour' ? 'page' : undefined}
  className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
- activeTab ==='happy-hour'
- ?'text-[var(--charcoal)]'
- :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
+ activeTab === 'happy-hour'
+ ? 'text-[var(--charcoal)]'
+ : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
  <span>Happy Hour</span>
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
+ aria-current={activeTab === 'saved-recipes' ? 'page' : undefined}
  className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
- activeTab ==='saved-recipes'
- ?'text-[var(--charcoal)]'
- :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
+ activeTab === 'saved-recipes'
+ ? 'text-[var(--charcoal)]'
+ : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
- <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-[var(--accent-terracotta)] fill-current' :'text-[var(--accent-terracotta)]'}`} />
+ <Heart className={`w-3 h-3 ${activeTab === 'saved-recipes' ? 'text-[var(--accent-terracotta)] fill-current' : 'text-[var(--accent-terracotta)]'}`} />
  <span>Saved{savedRecipes.length > 0 ? ` (${savedRecipes.length})` : ''}</span>
  </button>
  </nav>
