@@ -630,7 +630,9 @@ export default function App() {
  const y = listScrollY.current;
  requestAnimationFrame(() =>
  requestAnimationFrame(() => {
- window.scrollTo({ top: y, behavior:'instant' as ScrollBehavior });
+ const target = Math.max(0, y);
+ window.scrollTo({ top: target, behavior:'instant' as ScrollBehavior });
+ if (Math.abs(window.scrollY - target) > 24) window.scrollTo(0, target);
  // Re-seat the chrome to this restored position so the jump is not read as a
  // downward gesture and the header/tab bar are not retracted on return (#8).
  syncChromeBaseline(y);
@@ -1551,8 +1553,7 @@ export default function App() {
  forehead. Safe-area padding keeps it clear of the iOS home indicator. */}
  <nav
  className={`tabbar md:hidden safe-x fixed bottom-0 left-0 right-0 z-50 min-h-[var(--tabbar-h)] bg-[var(--bg-warm)] border-t border-[var(--rule)]${chromeHidden ? ' is-hidden' : ''}`}
- style={{ paddingBottom:'env(safe-area-inset-bottom)', pointerEvents: filtersOpen ? 'none' : undefined }}
- aria-hidden={filtersOpen}
+ style={{ paddingBottom:'env(safe-area-inset-bottom)' }}
  aria-label="Primary"
  >
  <ul className="flex items-stretch">
@@ -2046,7 +2047,7 @@ export default function App() {
      results auto-load from the debounced search, and the "Hide filters / Adjust
      filters" toggle already collapses the panel. So it is simply hidden at md+. */}
  {activeTab ==='mood' && !selectedRecipe && filtersOpen && !isLoading && (
- <div className={`filter-cta action-bar fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-40 px-5 pb-4 pt-3 flex justify-center md:hidden${chromeHidden ? ' is-hidden' : ''}`}>
+ <div className={`filter-cta action-bar fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-[60] px-5 pb-4 pt-3 flex justify-center md:hidden${chromeHidden ? ' is-hidden' : ''}`}>
  <button
  onClick={() => { handleTriggerMatch(); setFiltersOpen(false); }}
  className="w-full max-w-md py-4 rounded-2xl font-sans font-semibold text-base tracking-[-0.01em] transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] hover:opacity-90 hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-[0.97]"
