@@ -502,7 +502,7 @@ export default function App() {
 
  const selectRecipeFromList = (recipe: ParsedRecipe | null) => {
    if (recipe && !selectedRecipe) {
-     listScrollY.current = Math.max(lastListScrollY.current, window.scrollY);
+     listScrollY.current = Math.max(listScrollY.current, lastListScrollY.current, window.scrollY);
    }
    setSelectedRecipe(recipe);
  };
@@ -542,7 +542,7 @@ export default function App() {
  const evaluate = () => {
  raf = 0;
  const y = Math.max(0, window.scrollY); // clamp iOS rubber-band overscroll (negative)
- if (!detailOpenRef.current) lastListScrollY.current = y;
+    if (!detailOpenRef.current && y > 0) lastListScrollY.current = y;
  const maxY = document.documentElement.scrollHeight - window.innerHeight;
  const headerFocused =
  !!headerRef.current && headerRef.current.contains(document.activeElement);
