@@ -532,6 +532,16 @@ html {
   /* iOS rubber-band overscroll reveals whatever is behind the document. With a painted
      canvas that is --bg-warm; without this the browser can show its own default. */
   overscroll-behavior-y: none;
+  /* Mobile Safari inflates font sizes when you rotate to landscape unless this is
+     pinned — a text-size jump on rotation is an Apple HIG defect (the interface must
+     hold the scale the person chose). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Kill the grey/blue box iOS and Android paint over any custom-styled control on
+     tap. Apple's own apps never show it on styled controls; our press states
+     (active:scale, colour changes) are the intended feedback. Inherits, so setting it
+     once here covers every button, link and role="button" in the tree. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 html.dark {
