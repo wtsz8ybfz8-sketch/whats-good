@@ -1360,7 +1360,7 @@ export default function App() {
  <header
  ref={headerRef}
  className={`chrome-bar safe-x safe-x-wide flex items-center justify-between fixed top-0 left-0 right-0 z-50 select-none !rounded-none${chromeHidden ? ' is-hidden' : ''}`}
- style={{ height:'calc(60px + env(safe-area-inset-top))', paddingTop:'env(safe-area-inset-top)' }}
+ style={{ height:'calc(72px + env(safe-area-inset-top))', paddingTop:'env(safe-area-inset-top)' }}
  >
  {/* Logo */}
  <div 
@@ -1600,7 +1600,7 @@ export default function App() {
     inset. A hardcoded 76px was a guess against 57px of chrome; when it ran short the
     last list row sat under the bar, unreachable. */
  className="flex-1 flex flex-col relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0"
- style={{ paddingTop:'calc(60px + env(safe-area-inset-top))' }}
+ style={{ paddingTop:'calc(72px + env(safe-area-inset-top))' }}
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
@@ -1648,7 +1648,7 @@ export default function App() {
  viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
  overhang (that's what ate the Back button), and a grid cannot overflow
  horizontally, so it has nothing left to guard. */}
- <main className="page-grid py-6 sm:py-10 lg:py-12 min-h-[calc(100dvh-60px)] w-full relative">
+ <main className="page-grid py-6 sm:py-10 lg:py-14 min-h-[calc(100dvh-72px)] w-full relative">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
