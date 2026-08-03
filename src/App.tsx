@@ -1608,7 +1608,7 @@ export default function App() {
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
- className={`transition-all duration-500 overflow-hidden w-full max-w-6xl mx-auto px-5 lg:px-8 ${
+ className={`transition-all duration-500 overflow-hidden w-full max-w-7xl mx-auto px-5 lg:px-8 ${
  activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >
@@ -1616,7 +1616,7 @@ export default function App() {
  carries no padding of its own; the Sidebar owns only its inner rhythm. The old
  wrapper px-4 + card p-2 + aside px-6 stack put content 48px in on a 390px
  device and starved the Cuisine rail. */}
- <div className="surface filter-panel overflow-hidden mb-10 lg:mb-14">
+ <div className="surface filter-panel overflow-hidden mb-10 lg:mb-14 desktop-editorial-panel">
  <Sidebar
  dimensions={dimensions}
  nearbyCuisines={nearbyCuisines}

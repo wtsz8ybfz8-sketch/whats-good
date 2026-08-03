@@ -50,7 +50,7 @@ const Chip: React.FC<{
  type="button"
  aria-pressed={selected}
  onClick={onClick}
- className={`press tap-44 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-medium border transition-colors duration-150 cursor-pointer whitespace-nowrap ${
+ className={`press tap-44 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-[13px] font-medium border transition-colors duration-150 cursor-pointer whitespace-nowrap ${
  selected
  ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] border-[var(--accent-terracotta)]'
  : 'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]'
@@ -523,7 +523,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  value={dimensions.searchQuery}
  onChange={(e) => onChange({ ...dimensions, searchQuery: e.target.value })}
  placeholder="A place, a dish, or an area…"
- className="w-full bg-white/70 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 rounded-2xl py-3 pl-10 pr-14 text-sm text-[var(--charcoal)] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-1 focus:ring-[var(--accent-terracotta)] placeholder:text-[var(--text-subtle)] transition-all"
+ className="w-full bg-white/70 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 rounded-lg py-3 pl-10 pr-14 text-sm text-[var(--charcoal)] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-1 focus:ring-[var(--accent-terracotta)] placeholder:text-[var(--text-subtle)] transition-all"
  />
  <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[var(--text-muted)]" />
  {dimensions.searchQuery && (
@@ -574,7 +574,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  onClick={() => setSheetOpen(true)}
  aria-haspopup="dialog"
  aria-expanded={sheetOpen}
- className="surface-quiet surface-hover tap-44 w-full flex items-center gap-3 px-4 rounded-2xl text-left cursor-pointer transition-colors"
+ className="surface-quiet surface-hover tap-44 w-full flex items-center gap-3 px-4 rounded-lg text-left cursor-pointer transition-colors"
  >
  <SlidersHorizontal className="w-4 h-4 flex-shrink-0 text-[var(--accent-terracotta)]" strokeWidth={1.75} aria-hidden="true" />
  <span className="text-sm font-medium text-[var(--charcoal)]">

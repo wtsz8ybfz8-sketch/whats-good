@@ -536,7 +536,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="restaurant-result surface surface-hover rounded-2xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[var(--accent-terracotta)]"
+ className="restaurant-result surface surface-hover rounded-xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[var(--accent-terracotta)]"
  >
  {/* Open / closing soon / closed — overlaid on the photo, prominent by design.
      `false` ("Closed") is a real answer, so this checks presence with
@@ -590,7 +590,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  the hardcoded fallback list gets the generated initials card, which is why
  photos only appear once the API is reachable. Aspect-locked so a slow or
  missing image never shifts the layout. */}
- <div className="-mx-5 -mt-5 sm:-mx-6 sm:-mt-6 mb-4 rounded-t-2xl overflow-hidden bg-[var(--rule)] h-[168px] sm:h-[180px]">
+ <div className="-mx-5 -mt-5 sm:-mx-6 sm:-mt-6 mb-4 rounded-t-xl overflow-hidden bg-[var(--rule)] h-[168px] sm:h-[180px]">
  <img
  src={r.image}
  alt={rawEatery.name}
@@ -699,7 +699,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="recipe-result surface surface-hover rounded-2xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
+ className="recipe-result surface surface-hover rounded-xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
  >
  {/* Image banner */}
  <div className="recipe-photo w-full aspect-[4/3] sm:aspect-[16/10] bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
@@ -714,7 +714,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent opacity-60 mix-blend-multiply pointer-events-none transition-opacity duration-300 group-hover:opacity-40" />
  
  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
- <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-full text-[var(--accent-terracotta)]">
+ <span className="inline-flex items-center gap-1.5 bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-md text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md text-[var(--accent-terracotta)]">
  {React.createElement(cuisineIcon(r.category), {
 'aria-hidden':'true',
  strokeWidth: 2,
@@ -730,7 +730,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  e.stopPropagation();
  onToggleSave(r);
  }}
- className={`tap-44 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm border transition-all ${
+ className={`tap-44 w-8 h-8 rounded-md flex items-center justify-center backdrop-blur-md shadow-sm border transition-all ${
  savedIds.includes(r.id)
  ?'bg-[#7C2D12] text-white border-[#7C2D12] hover:bg-[#5E220E]'
  :'bg-white/80 dark:bg-black/50 backdrop-blur-md text-[var(--accent-terracotta)] border-white/40 dark:border-white/20 hover:scale-110'
