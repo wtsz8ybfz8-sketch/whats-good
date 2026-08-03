@@ -216,6 +216,44 @@ export const EateryView: React.FC<EateryViewProps> = ({
       className="page-grid bleed w-full"
     >
 
+      {/* Desktop toolbar (macOS pattern): on a Mac the window's controls live in a
+          real toolbar, never floating on the content. Below lg the on-image controls
+          are the right call for a full-bleed cover; at lg the hero pulls into the
+          content column and these take over — off the image, aligned to the body's
+          left rhythm, square edges (a rounded pill here reads as a phone control),
+          and ~8px between the two capsule actions per Apple's toolbar spacing. */}
+      <div className="hidden lg:flex items-center justify-between px-5 sm:px-10 mb-5">
+        <button
+          onClick={() => onSelectRecipe(null)}
+          className="group inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--charcoal)] transition-colors cursor-pointer"
+        >
+          <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+          {isSavedTab ? `Back to saved (${recipes.length})` : `Back to results (${recipes.length})`}
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onShare?.(r)}
+            aria-label={`Share ${rawEatery.name}`}
+            className="inline-flex items-center gap-2 border border-[var(--rule)] px-3.5 py-2 text-xs font-mono uppercase tracking-wider text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:text-[var(--accent-terracotta)] transition-colors cursor-pointer"
+          >
+            <ExternalLink className="w-3.5 h-3.5" /> Share
+          </button>
+          <button
+            onClick={() => onToggleSave(r)}
+            aria-label={isSaved ? `Remove ${rawEatery.name} from saved` : `Save ${rawEatery.name}`}
+            aria-pressed={isSaved}
+            className={`inline-flex items-center gap-2 border px-3.5 py-2 text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer ${
+              isSaved
+                ? 'border-[var(--accent-terracotta)] bg-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
+                : 'border-[var(--rule)] text-[var(--charcoal)] hover:border-[var(--accent-terracotta)] hover:text-[var(--accent-terracotta)]'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} /> {isSaved ? 'Saved' : 'Save'}
+          </button>
+        </div>
+      </div>
+
       {/* Colours here sit over a photo, not a theme surface — they stay mode-independent. */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -227,7 +265,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         // negative margins to keep in sync with an ancestor's padding, and no w-screen
         // (which mis-centres against a scrollbar). The -mt cancels <main>'s top padding
         // so the photo also runs up under the header.
-        className="bleed relative -mt-6 sm:-mt-10 lg:-mt-16 h-[46dvh] sm:h-[56dvh] md:h-[60dvh] overflow-hidden group"
+        className="bleed hero-contain-lg relative -mt-6 sm:-mt-10 lg:mt-0 h-[46dvh] sm:h-[56dvh] md:h-[60dvh] lg:h-[440px] overflow-hidden group"
       >
         <motion.img
           src={r.image}
@@ -243,7 +281,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         {/* Back — top left */}
         <button
           onClick={() => onSelectRecipe(null)}
-          className="tap-44 absolute top-5 left-5 flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
+          className="lg:hidden tap-44 absolute top-5 left-5 flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
         >
           <ChevronLeft className="w-3 h-3" />
           {isSavedTab ? `Saved (${recipes.length})` : `Results (${recipes.length})`}
@@ -253,7 +291,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           type="button"
           onClick={() => onShare?.(r)}
           aria-label={`Share ${rawEatery.name}`}
-          className="tap-44 absolute top-5 right-20 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md bg-black/20 text-white hover:bg-black/35 transition-all cursor-pointer px-3.5"
+          className="lg:hidden tap-44 absolute top-5 right-20 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md bg-black/20 text-white hover:bg-black/35 transition-all cursor-pointer px-3.5"
         >
           <ExternalLink className="w-4 h-4" />
           <span className="hidden sm:inline font-mono text-xs uppercase tracking-wider">Share</span>
@@ -269,7 +307,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           onClick={() => onToggleSave(r)}
           aria-label={isSaved ? `Remove ${rawEatery.name} from saved` : `Save ${rawEatery.name}`}
           aria-pressed={isSaved}
-          className={`tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md transition-all cursor-pointer ${
+          className={`lg:hidden tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md transition-all cursor-pointer ${
             isSaved
               ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] px-3.5'
               : 'bg-black/20 text-white hover:bg-black/35'

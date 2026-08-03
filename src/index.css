@@ -947,3 +947,16 @@ html.dark .shimmer::after {
   grid-column: full;
   width: 100%;
 }
+
+/* Desktop pulls a full-bleed hero back into the readable content column, so the
+   restaurant page reads as a web feature with air around it — not a phone screen
+   stretched edge-to-edge. Phones and tablets keep the immersive full-bleed cover;
+   this only engages at the desktop breakpoint (matches Tailwind `lg`). Square
+   corners on purpose: a rounded photo card reads as a widget, an aligned
+   rectilinear plate reads as print. */
+@media (min-width: 1024px) {
+  .page-grid > .bleed.hero-contain-lg {
+    grid-column: content;
+    width: 100%;
+  }
+}
