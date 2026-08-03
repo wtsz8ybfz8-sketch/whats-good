@@ -152,6 +152,15 @@ function staticChecks() {
   );
 
   check(
+    'Happy Hour has no fixed city dataset dependency',
+    !/CAPE_TOWN|HAPPY_HOUR_CITY|hasHappyHourData/.test(
+      readFileSync(resolve(ROOT, 'src/components/HappyHourView.tsx'), 'utf8') +
+      readFileSync(resolve(ROOT, 'src/App.tsx'), 'utf8'),
+    ),
+    'the tab must query the selected city, not silently fall back to Cape Town',
+  );
+
+  check(
     'landscape insets consumed (safe-area-inset-left/right)',
     /safe-area-inset-left/.test(css) && /safe-area-inset-right/.test(css),
     'landscape notch is ~59px; unconsumed puts content under it',

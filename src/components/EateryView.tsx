@@ -9,9 +9,7 @@ import { ParsedRecipe } from '../types';
 import { ChevronLeft, Heart, Star, MapPin, Phone, Navigation, Clock, ExternalLink, Info, Sparkles, Wallet, MessageSquare } from 'lucide-react';
 // getVenueExtras is deliberately no longer called — it synthesised menus, prices and
 // "specials" from a hash of the venue id. See the "What to expect" block below.
-import { getHappyHourStatus, formatDays } from '../venueExtras';
 import { cuisineIcon } from '../cuisineIcon';
-import { findCuratedHappyHour } from '../happyHourData';
 import { formatPriceTier, priceTierLabel } from '../placesService';
 import { formatQuantity } from '../locale';
 
@@ -157,11 +155,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
   const distanceLabel = r.tags[1];
   const hasRealDistance = typeof distanceLabel === 'string' && distanceLabel.includes('km');
   const hasRealWait = rawEatery.estimatedWait && rawEatery.estimatedWait !== 'Check with venue';
-
-  // Happy hour is REAL data (happyHourData.ts) matched by venue name — only shown when
-  // we genuinely have a confirmed window for this place, never fabricated per-venue.
-  const realHH = findCuratedHappyHour(rawEatery.name);
-  const hhStatus = realHH ? getHappyHourStatus(realHH) : null;
 
   const fitReasons = buildFitReasons(rawEatery, intent, hasRealDistance ? (distanceLabel as string) : null);
   const terms = matchedTerms(intent);
@@ -456,48 +449,6 @@ export const EateryView: React.FC<EateryViewProps> = ({
       {/* Rule */}
       <div className="mx-5 sm:mx-10 my-7 h-px bg-[var(--rule)]" />
 
-      {/* Happy Hour — only surfaces when there is one; live state leads because it's the
-          only part of this page that expires. */}
-      {realHH && hhStatus && (
-        <div className="px-5 sm:px-10 mb-8">
-          <div
-            className={`rounded-2xl px-5 py-4 border ${
-              hhStatus.state === 'live'
-                ? 'border-[var(--accent-terracotta)] bg-[var(--accent-tint)]'
-                : 'border-[var(--rule)]'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3 mb-2.5">
-              <span className="flex items-center gap-2">
-                {hhStatus.state === 'live' && (
-                  <span className="relative flex w-1.5 h-1.5">
-                    <span className="absolute inline-flex w-full h-full rounded-full bg-[var(--accent-terracotta)] opacity-60 motion-safe:animate-ping" />
-                    <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
-                  </span>
-                )}
-                <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
-                  {realHH.headline}
-                </span>
-              </span>
-              <span className={`font-mono text-xs tabular-nums ${hhStatus.state === 'live' ? 'text-[var(--accent-terracotta)] font-bold' : 'text-[var(--text-muted)]'}`}>
-                {hhStatus.label}
-              </span>
-            </div>
-            <ul className="flex flex-col gap-1 mb-2">
-              {realHH.deals.map((d) => (
-                <li key={d} className="font-mono text-xs text-[var(--charcoal)] flex items-center gap-2">
-                  <span className="w-0.5 h-0.5 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0" />
-                  {d}
-                </li>
-              ))}
-            </ul>
-            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)]">
-              {formatDays(realHH.days)} · via {realHH.sourceLabel}
-            </p>
-          </div>
-        </div>
-      )}
-
       </aside>
 
       {/* MAIN column (left on desktop, FIRST on mobile) — the reasons to consider this
@@ -517,7 +468,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
        *
        * What used to be here: a full priced menu (Starters / Mains / Desserts, leader
        * dots, "R185") and a specials list stamped "Today", both synthesised in
-       * venueExtras.ts from a hash of the venue id, with a small grey disclaimer at the
+       * a hash of the venue id, with a small grey disclaimer at the
        * bottom saying none of it was real.
        *
        * That is indefensible for this product regardless of the disclaimer. Someone
@@ -530,8 +481,8 @@ export const EateryView: React.FC<EateryViewProps> = ({
        * What replaced it is only fields that are actually true: the venue's real
        * signature dish, the price BAND that Google publishes (a band is honest — it's
        * what Places actually knows), and a direct route to the venue's own menu. Less
-       * content on screen, all of it load-bearing. Real happy-hour data still renders
-       * in the sidebar; that comes from happyHourData.ts and is human-confirmed. */}
+       * content on screen, all of it load-bearing. Promotional deals belong in the
+       * dedicated Happy Hour search, where the current city is queried live. */}
       <div className="px-5 sm:px-10 mb-8">
 
         {/* ── WHY THIS ONE ─────────────────────────────────────────────────────────

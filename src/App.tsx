@@ -11,9 +11,7 @@ import { Sidebar } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
-import { HappyHourView, hasHappyHourData } from'./components/HappyHourView';
-import { getHappyHourStatus } from'./venueExtras';
-import { CAPE_TOWN_HAPPY_HOURS } from'./happyHourData';
+import { HappyHourView } from'./components/HappyHourView';
 import { Sparkles, Dices, Heart, Trash2, Search, MapPin, MapPinOff, ChevronRight, Sun, Moon, X } from'lucide-react';
 import type { Venue } from'./venue';
 import { fetchVenues, detectCityFromCoords, formatPriceTier, isPlacesConfigured, type VenueSearchFailure } from'./placesService';
@@ -1346,20 +1344,6 @@ export default function App() {
  const nearbyCuisines = availableCuisines;
 
  const tabOrder: ActiveTab[] = ['mood','happy-hour','random','saved-recipes','saved-eateries'];
-
- // Live happy-hour count drives the pulse dot on the tab — the whole point of the
- // feature is time-sensitivity, so it has to be visible without opening the tab.
- // Counts REAL curated happy hours (see happyHourData.ts), not the search results.
- const liveHappyHourCount = useMemo(() => {
- // Only pulse when the detected city actually has human-confirmed windows. A dot
- // promising live deals in a city we hold no data for is a lie told in one pixel.
- if (!hasHappyHourData(city)) return 0;
- return CAPE_TOWN_HAPPY_HOURS.filter(
- (hh) => getHappyHourStatus(hh).state ==='live',
- ).length;
- // Re-evaluated on tab/recipe churn; a minute-level refresh isn't needed for a dot.
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [activeTab, recipes, city]);
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
  // featuredEatery/featuredResult removed with the "Best fit" card — they pinned
  // SOUTH_AFRICAN_EATERIES[0] as everyone's recommendation. See StatusStates.tsx.
@@ -1546,12 +1530,6 @@ export default function App() {
  :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
- {liveHappyHourCount > 0 && activeTab !=='happy-hour' && (
- <span className="relative flex w-1.5 h-1.5">
- <span className="absolute inline-flex w-full h-full rounded-full bg-[var(--accent-terracotta)] opacity-60 motion-safe:animate-ping" />
- <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
- </span>
- )}
  <span>Happy Hour</span>
  </button>
  <button
@@ -1579,10 +1557,10 @@ export default function App() {
  <ul className="flex items-stretch">
  {([
  { tab:'mood' as ActiveTab, label:'Find', Icon: Search },
- { tab:'happy-hour' as ActiveTab, label:'Happy Hour', Icon: Sparkles, dot: liveHappyHourCount > 0 },
+ { tab:'happy-hour' as ActiveTab, label:'Happy Hour', Icon: Sparkles },
  { tab:'random' as ActiveTab, label:'Stay In', Icon: Dices },
  { tab:'saved-recipes' as ActiveTab, label:'Saved', Icon: Heart },
- ]).map(({ tab, label, Icon, dot }) => {
+ ]).map(({ tab, label, Icon }) => {
  const active = activeTab === tab;
  return (
  <li key={tab} className="flex-1">
@@ -1599,9 +1577,6 @@ export default function App() {
  className={`w-[18px] h-[18px] transition-colors ${active ?'text-[var(--accent-terracotta)]' :'text-[var(--text-subtle)]'}`}
  strokeWidth={active ? 2.2 : 1.8}
  />
- {dot && !active && (
- <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)]" />
- )}
  </span>
  <span
  className={`text-xs leading-none tracking-[-0.005em] ${
@@ -1831,8 +1806,6 @@ export default function App() {
  <LoadingState count={4} />
 ) : (
  <HappyHourView
- recipes={recipes}
- onSelectRecipe={(r) => setSelectedRecipe(r)}
  city={city}
  />
 )

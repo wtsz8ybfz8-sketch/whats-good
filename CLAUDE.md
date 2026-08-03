@@ -480,8 +480,10 @@ it is absent — never a placeholder.
 **Never invent a restaurant fact and never add decorative filler.** Menus, prices and
 "specials" were once synthesised from a hash of the venue id and rendered under a small
 grey disclaimer. The disclaimer protected us, not the user — a fake price sends someone
-across town for something that doesn't exist. `happyHourData.ts` (human-confirmed) is the
-standard: **if it isn't confirmed, don't render it.**
+across town for something that doesn't exist. Happy Hour now searches the selected city
+through Google Places for real bars and their published opening status. Places does not
+publish promotional windows, so the tab must never call opening hours a deal or imply a
+promotion without a separately verified source. **If it isn't confirmed, don't render it.**
 
 **The primary content never depends on an animation.** The venue name shipped stranded at
 `opacity: 0` on a delayed entrance — a venue page with no venue name. Decoration may

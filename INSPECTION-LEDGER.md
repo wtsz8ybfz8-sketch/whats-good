@@ -22,8 +22,8 @@ inspecting, update the row with the date, the method, and — critically — wha
 
 | Surface | Last inspected | Method | Verdict |
 |---|---|---|---|
-| `happyHourData.ts` | 2026-08-01 | Browser + sabotage test | **FIXED** — `{}` row killed the whole tab; validator added |
-| `HappyHourView.tsx` | 2026-08-01 | Browser, 4 viewports, light+dark | **FIXED** — one-city dead end; live bars added; CT demoted |
+| `HappyHourView.tsx` | 2026-08-03 | Chromium regression suite + source/data trace | **INSPECTED** — 59/59 checks; city-neutral live bar search; no fixed-city dataset; promotional limitation is explicit. **NOT checked: real Google response, screen reader, or on-device iOS.**
+| `happyHourData.ts` / `venueExtras.ts` | 2026-08-03 | Source audit | **REMOVED** — the Cape Town-only curated dataset and Happy Hour-specific status helpers are no longer part of the app. Any future promotion source must be independently verified and multi-city.
 | `placesService.ts` — cost & keys | 2026-08-01 | Source trace + intercepted requests | **5 findings, 3 fixed** — see `HANDOVER.md` audit table |
 | Photo loading / `<img>` | 2026-08-01 | Source + computed | **FIXED** — paid images eager, free ones lazy; `no-referrer` disabled key restriction |
 | Input focus zoom (iOS) | 2026-08-01 | **Computed** font-size, 390px | **FIXED** — rule was in the wrong cascade layer and never applied. Guard added to `checks.mjs` |
@@ -42,7 +42,7 @@ inspecting, update the row with the date, the method, and — critically — wha
 | `api/log.ts` | 2026-08-01 | Source only — **outside tsconfig, no gate covers it** | Body parsing hardened for all four runtime shapes. **NEVER EXERCISED IN PRODUCTION** |
 | `main.tsx` | 2026-08-01 | Browser boot | Telemetry installs before render; app boots clean |
 | `ErrorBoundary.tsx` | 2026-08-01 | Source + reasoning | Raw exception moved behind a disclosure; reports to telemetry. **Not re-opened in a browser after the copy change** |
-| `locale.ts` / `cuisineRail.ts` / `cuisineIcon.ts` / `venue.ts` / `types.ts` / `useSavedRecipes.ts` / `venueExtras.ts` / `StatusStates.tsx` | **NEVER INSPECTED** | — | Declared so the gate passes. None has been opened in a browser on its own terms. |
+| `locale.ts` / `cuisineRail.ts` / `cuisineIcon.ts` / `venue.ts` / `types.ts` / `useSavedRecipes.ts` / `StatusStates.tsx` | **NEVER INSPECTED** | — | Declared so the gate passes. None has been opened in a browser on its own terms. |
 | **Real-device iOS** | Partial, 2026-07-27 | `ci/ios-shots` screenshots | At-rest only. Never interacted with. |
 
 ---

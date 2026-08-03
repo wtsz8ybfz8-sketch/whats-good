@@ -48,8 +48,8 @@ lucide-react · motion v12. Deploys to Vercel. No test runner, no backend.
 ```
 src/
   App.tsx            main.tsx         index.css
-  placesService.ts   campusData.ts    happyHourData.ts
-  recipeUtils.ts     cuisineRail.ts   useSavedRecipes.ts   types.ts
+  placesService.ts   campusData.ts    types.ts
+  recipeUtils.ts     cuisineRail.ts   useSavedRecipes.ts
   components/
     EateryView.tsx   RecipeView.tsx   HappyHourView.tsx
     Sidebar.tsx      StatusStates.tsx
