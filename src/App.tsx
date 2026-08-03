@@ -1500,13 +1500,13 @@ export default function App() {
 
  {/* Desktop nav. On mobile this is replaced by the bottom tab bar below — five
  tabs in a horizontally-scrolling 50vw strip was unusable and hid Saved entirely. */}
- <nav className="hidden md:flex surface-quiet p-1 rounded-full gap-0.5 whitespace-nowrap">
+ <nav className="desktop-nav hidden md:flex items-center gap-5 whitespace-nowrap" aria-label="Primary">
  <button
  onClick={() => handleTabSwitch('mood')}
- className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='mood'
- ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
+ ?'text-[var(--charcoal)]'
+ :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
  Find a Place
@@ -1516,19 +1516,19 @@ export default function App() {
  setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
  handleTabSwitch('random');
  }}
- className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer ${
+ className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
  activeTab ==='random'
- ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
+ ?'text-[var(--charcoal)]'
+ :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
  Stay In
  </button>
  <button
  onClick={() => handleTabSwitch('happy-hour')}
- className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='happy-hour'
- ?'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] shadow-sm'
+ ?'text-[var(--charcoal)]'
  :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
@@ -1536,13 +1536,13 @@ export default function App() {
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
- className={`hit-44 px-3 sm:px-[18px] py-2.5 rounded-full font-sans text-xs font-bold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab ==='saved-recipes'
- ?'bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white shadow-sm'
- :'text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-[#f5f5f5]'
+ ?'text-[var(--charcoal)]'
+ :'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
- <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-white fill-current' :'text-[var(--accent-terracotta)]'}`} />
+ <Heart className={`w-3 h-3 ${activeTab ==='saved-recipes' ?'text-[var(--accent-terracotta)] fill-current' :'text-[var(--accent-terracotta)]'}`} />
  <span>Saved{savedRecipes.length > 0 ? ` (${savedRecipes.length})` : ''}</span>
  </button>
  </nav>
@@ -1612,7 +1612,7 @@ export default function App() {
  carries no padding of its own; the Sidebar owns only its inner rhythm. The old
  wrapper px-4 + card p-2 + aside px-6 stack put content 48px in on a 390px
  device and starved the Cuisine rail. */}
- <div className="surface rounded-2xl overflow-hidden mb-10 lg:mb-14">
+ <div className="surface filter-panel overflow-hidden mb-10 lg:mb-14">
  <Sidebar
  dimensions={dimensions}
  nearbyCuisines={nearbyCuisines}
@@ -1633,7 +1633,7 @@ export default function App() {
  // the touch target, the pill is the ink — they are not the same rectangle.
  className="w-full min-h-[44px] flex items-center justify-center -mt-4 z-40 relative group cursor-pointer"
  >
- <div className="surface-quiet rounded-full px-4 py-1.5 flex items-center gap-2 transition-all transform group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
+ <div className="surface-quiet filter-toggle px-4 py-1.5 flex items-center gap-2 transition-all transform group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--text-muted)] group-hover:text-[var(--accent-terracotta)]">
  {filtersOpen ? 'Hide filters' : 'Adjust filters'}
  </span>

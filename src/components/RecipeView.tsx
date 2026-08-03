@@ -536,7 +536,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="surface surface-hover rounded-2xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[#fca5a5]"
+ className="restaurant-result surface surface-hover rounded-2xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[var(--accent-terracotta)]"
  >
  {/* Open / closing soon / closed — overlaid on the photo, prominent by design.
      `false` ("Closed") is a real answer, so this checks presence with
@@ -699,10 +699,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="surface surface-hover rounded-2xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
+ className="recipe-result surface surface-hover rounded-2xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
  >
  {/* Image banner */}
- <div className="w-full aspect-[4/3] sm:aspect-[16/10] bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+ <div className="recipe-photo w-full aspect-[4/3] sm:aspect-[16/10] bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
  <img
  src={r.image}
  alt={r.name}
