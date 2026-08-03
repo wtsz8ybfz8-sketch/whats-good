@@ -1,7 +1,7 @@
 # Handover
 
 ## Status
-**Pending commit on `main` worktree; push follows after the release gate.**
+**`main` is at `124f050`, pushed.**
 
 ## Objective
 Keep the Happy Hour tab while removing its Cape Town-only truth source. Make the tab city-neutral: every selected or searched city uses the live Google Places bar search, and the UI distinguishes venue opening status from promotional deals.
