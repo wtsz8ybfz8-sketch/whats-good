@@ -1,7 +1,7 @@
 # Handover
 
 ## Status
-**`claude/pin-sizes-padding-fixes-59sze8` is at `<unstamped>`, pushed. `main` == this branch (fast-forwarded each step).**
+**`claude/pin-sizes-padding-fixes-59sze8` is at `8d5dac3`, pushed. `main` == this branch (fast-forwarded each step).**
 
 Local `main` was a stale, unrelated history (`ded4827`); it has been repointed at `origin/main`. There is now one main.
 
