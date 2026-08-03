@@ -1405,14 +1405,14 @@ export default function App() {
  />
  </svg>
  </span>
- <span className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
+ <span className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none whitespace-nowrap">
  <span>What's</span> <span className="text-[var(--accent-terracotta)] italic font-normal">Good</span>
  </span>
  </button>
 
  <div className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
  {/* City badge doubles as a destination picker — search a city you're not in. */}
- <span className="relative ml-1" onClick={(e) => e.stopPropagation()}>
+ <span className="relative ml-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
  <button
  type="button"
  onClick={() => setCityMenuOpen((o) => !o)}
@@ -1425,7 +1425,7 @@ export default function App() {
  // whole Find journey depends on, and it was the smallest target on screen.
  // `.hit-44` buys the reach without drawing a 44px slab beside the wordmark,
  // which is the thing that note was right to refuse.
- className="hit-44 flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity"
+ className="hit-44 flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity whitespace-nowrap"
  >
  {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
  <span>{city || 'Set location'}</span>
@@ -1463,7 +1463,7 @@ export default function App() {
  </div>
 
  {/* Header Right Segment with GPS Sorting & Tab Selector */}
- <div className="flex items-center gap-3">
+ <div className="flex items-center gap-1">
  <button
  id="location-header-toggle"
  onClick={() => requestUserLocation(true)}

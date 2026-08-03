@@ -1,7 +1,7 @@
 import React from'react';
 import { createPortal } from'react-dom';
 import { Dimensions } from'../types';
-import { Search, SlidersHorizontal, X, ChevronRight, type LucideIcon } from'lucide-react';
+import { Search, SlidersHorizontal, X, type LucideIcon } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
 
 interface SidebarProps {
@@ -41,7 +41,7 @@ const Chip: React.FC<{
   * app's vocabulary based on one query. But a chip that will definitely produce
   * results is marked, so "what can I find here?" is answerable by looking rather than
   * by tapping and being disappointed. Never inferred: it is derived from the venues
-  * already in hand (see `availableKeys`), so it costs no request and can never claim
+  * already in hand (see `availableValues`), so it costs no request and can never claim
   * a category the data does not support.
   */
  available?: boolean;
@@ -64,6 +64,15 @@ const Chip: React.FC<{
  />
  )}
  {label}
+ {available && !selected && (
+ // The result-backed cue the count ("N available here") refers to, restored:
+ // this venue category is actually in the current results. aria-hidden — the
+ // count already names how many, and a per-chip announcement would be noise.
+ <span
+ aria-hidden="true"
+ className="w-1.5 h-1.5 rounded-full bg-[var(--accent-terracotta)] flex-shrink-0"
+ />
+ )}
  </button>
 );
 
@@ -98,9 +107,8 @@ const FilterGroup: React.FC<{
   * metadata this product refuses to render.
   */
  note?: string;
- action?: React.ReactNode;
  children: React.ReactNode;
-}> = ({ title, optional, scroll, note, action, children }) => {
+}> = ({ title, optional, scroll, note, children }) => {
  return (
  <div className="flex flex-col gap-3">
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
@@ -110,7 +118,6 @@ const FilterGroup: React.FC<{
  <span className="font-normal text-[var(--accent-terracotta)]"> · {note}</span>
  )}
  </span>
- {action}
  {scroll ? (
  // Scroll on phones only. At 1440 the rail still scrolled inside a fixed-width
  // card, so the last chip was sliced mid-word ("Burger…") against the card edge
@@ -123,7 +130,12 @@ const FilterGroup: React.FC<{
  // background-agnostic, so it is right on this card in both colour schemes.
  // py-1.5 replaces pb-1 because overflow-x:auto computes overflow-y to auto
  // too, and 4px clipped the focus ring off the top and bottom of every chip.
- <div className="flex flex-wrap gap-2">{children}</div>
+ // Below lg this is a single horizontal rail (Apple Maps pattern) instead of the
+ // ragged multi-row wrap it used to render as; at lg the card is wide enough to
+ // wrap with nothing hidden, so it wraps and index.css drops the fade there.
+ <div className="chip-rail flex flex-wrap gap-2 overflow-visible">
+ {children}
+ </div>
  ) : (
  <div className="flex flex-wrap gap-2">{children}</div>
  )}
@@ -347,6 +359,56 @@ const tidyCuisine = (raw: string) =>
  .replace(/\s+/g, ' ')
  .trim();
 
+/**
+ * Google's category data mixes real cuisines with generic venue types
+ * ("Fast food", "Meal takeaway", "Bar") and near-synonyms of our own labels —
+ * "Hamburger" is Burgers. Rendered raw, that put a "Hamburger" chip on the rail
+ * directly beside "Burgers", the exact nonsense reported on the live app. These
+ * three tables resolve a raw string to ONE curated chip: junk is dropped,
+ * synonyms fold onto the matching baseline, and a genuine new cuisine (Ramen,
+ * Turkish) passes through with a clean label. Nothing raw becomes a chip of its
+ * own — the vocabulary on screen stays one we own (CLAUDE.md §7, §8).
+ */
+const CUISINE_JUNK = new Set([
+ '', 'food', 'fast food', 'meal takeaway', 'meal delivery', 'meal', 'takeaway',
+ 'delivery', 'store', 'grocery', 'grocery store', 'supermarket', 'market',
+ 'convenience store', 'bakery', 'cafe', 'café', 'coffee shop', 'coffee', 'tea house',
+ 'bar', 'pub', 'night club', 'deli', 'delicatessen', 'diner', 'buffet', 'canteen',
+ 'american', 'point of interest', 'establishment', 'lodging', 'hotel',
+]);
+
+// key (lowercased, 'restaurant' already stripped) -> the baseline VALUE it folds into
+const CUISINE_SYNONYM: Record<string, string> = {
+ 'hamburger':'Burger', 'burger':'Burger',
+ 'pizza':'Italian', 'pizzeria':'Italian', 'trattoria':'Italian',
+ 'steak house':'Grill', 'steakhouse':'Grill', 'steak':'Grill', 'barbecue':'Grill',
+ 'bbq':'Grill', 'churrascaria':'Grill', 'bar and grill':'Grill',
+ 'fish':'Seafood', 'fish and chips':'Seafood', 'oyster bar':'Seafood', 'oyster':'Seafood',
+ 'indian':'Curry',
+ 'wine bar':'Cocktail bar', 'wine':'Cocktail bar', 'cocktail':'Cocktail bar',
+ 'breakfast':'Brunch',
+};
+
+const BASELINE_BY_KEY = new Map<string, { label: string; value: string }>();
+for (const c of BASELINE_CUISINES) {
+ BASELINE_BY_KEY.set(c.value.toLowerCase(), c);
+ BASELINE_BY_KEY.set(c.label.toLowerCase(), c);
+}
+
+/** Resolve a raw Places cuisine string to a curated chip, or null to drop it. */
+const resolveCuisine = (raw: string): { label: string; value: string } | null => {
+ const tidy = tidyCuisine(raw || '');
+ if (!tidy || tidy.length > 22) return null;
+ const key = tidy.toLowerCase();
+ if (CUISINE_JUNK.has(key)) return null;
+ const syn = CUISINE_SYNONYM[key];
+ if (syn) return BASELINE_BY_KEY.get(syn.toLowerCase()) ?? null;
+ const base = BASELINE_BY_KEY.get(key);
+ if (base) return base;
+ const label = tidy.replace(/\b\w/g, (ch) => ch.toUpperCase());
+ return { label, value: label };
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCuisines = [] }) => {
  const moods = [
  { label:'Cosy', value:'tired & cosy' },
@@ -366,13 +428,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  const seen = new Set(BASELINE_CUISINES.map((c) => c.value.toLowerCase()));
  const extras: { label: string; value: string }[] = [];
  for (const raw of nearbyCuisines) {
- const label = tidyCuisine(raw || '');
- if (!label || label.length > 22) continue;
- const key = label.toLowerCase();
- if (seen.has(key)) continue;
+ const c = resolveCuisine(raw);
+ if (!c) continue; // junk / generic venue type — never a chip
+ const key = c.value.toLowerCase();
+ if (seen.has(key)) continue; // already a baseline chip; only its availability changes
  seen.add(key);
- extras.push({ label, value: label });
- if (extras.length >= 8) break;
+ extras.push(c);
+ if (extras.length >= 6) break;
  }
  return [...BASELINE_CUISINES, ...extras];
  }, [nearbyCuisines]);
@@ -385,19 +447,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
   * difference between a rail that lists a catalogue and a rail that answers "what can
   * I find HERE?" — the Discovery stage of the customer journey.
   */
- const availableKeys = React.useMemo(() => {
+ const availableValues = React.useMemo(() => {
  const set = new Set<string>();
  for (const raw of nearbyCuisines) {
- const label = tidyCuisine(raw || '');
- if (label) set.add(label.toLowerCase());
+ const c = resolveCuisine(raw);
+ if (c) set.add(c.value.toLowerCase());
  }
  return set;
  }, [nearbyCuisines]);
 
  const isAvailable = React.useCallback(
- (c: { label: string; value: string }) =>
- availableKeys.has(c.label.toLowerCase()) || availableKeys.has(c.value.toLowerCase()),
- [availableKeys],
+ (c: { label: string; value: string }) => availableValues.has(c.value.toLowerCase()),
+ [availableValues],
  );
 
  /* Order is deliberately NOT changed by availability, and that is a fix rather than an
@@ -488,17 +549,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  <FilterGroup
  title="Cuisine"
  optional
+ scroll
  note={availableCount > 0 ? `${availableCount} available here` : undefined}
- action={cuisines.length > 0 ? (
- <button
- type="button"
- onClick={() => setSheetOpen(true)}
- className="tap-44 inline-flex items-center gap-1 self-start text-[12px] font-semibold text-[var(--accent-terracotta)] hover:opacity-70 transition-opacity cursor-pointer"
- >
- See all {cuisines.length}
- <ChevronRight className="w-3 h-3" aria-hidden="true" />
- </button>
- ) : null}
  >
  {cuisines.map((c) => (
  <Chip
