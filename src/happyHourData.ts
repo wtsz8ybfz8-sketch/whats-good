@@ -26,7 +26,18 @@ export interface CuratedHappyHour extends HappyHour {
   /** Where the listing came from, shown to the user so the claim is checkable. */
   source: string;
   sourceLabel: string;
+  /**
+   * `YYYY-MM` — the month this window was last checked against its source. Per-entry,
+   * not a global string, so re-confirming one venue does not imply every other was.
+   * Required (see `isUsable`): a new row cannot enter without stating its own freshness,
+   * and `STALE_AFTER_MONTHS` turns an ageing date into a visible "confirm again" flag
+   * instead of a silent, rotting claim.
+   */
+  verifiedOn: string;
 }
+
+/** A window last confirmed longer ago than this is shown with a staleness caveat. */
+export const STALE_AFTER_MONTHS = 6;
 
 const DAILY = [0, 1, 2, 3, 4, 5, 6];
 const MON_FRI = [1, 2, 3, 4, 5];
@@ -58,6 +69,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['R70 for two Born Slippy draughts', 'R35 a single draught'],
     source: CTM,
     sourceLabel: CTM_LABEL,
+    verifiedOn: '2026-07',
   },
   {
     venue: 'Down South Food Bar',
@@ -69,6 +81,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['R15 shots', 'R32 Black Label draught', 'Cocktails from R40'],
     source: CTM,
     sourceLabel: CTM_LABEL,
+    verifiedOn: '2026-07',
   },
   {
     venue: 'Café Extrablatt',
@@ -80,6 +93,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['R45 cocktails', 'R33 mocktails', 'Wine & beer specials'],
     source: CTM,
     sourceLabel: CTM_LABEL,
+    verifiedOn: '2026-07',
   },
   {
     venue: 'Gusto Urban Italian',
@@ -91,6 +105,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['2-for-1 beer & wine (Mon–Thu)', '2-for-1 cocktails (Fri)'],
     source: CTM,
     sourceLabel: CTM_LABEL,
+    verifiedOn: '2026-07',
   },
   {
     venue: 'SurfaRosa',
@@ -102,6 +117,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['Rotating daily drink specials'],
     source: CTM,
     sourceLabel: CTM_LABEL,
+    verifiedOn: '2026-07',
   },
   {
     venue: 'The Slug & Lettuce',
@@ -113,6 +129,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['R27 draughts', 'R20 bottled beer', 'R15 tequila', 'R25 wine'],
     source: 'https://secretcapetown.co.za/happy-hour-specials-in-cape-town/',
     sourceLabel: 'Secret Cape Town',
+    verifiedOn: '2026-07',
   },
   {
     venue: 'Bossa',
@@ -124,6 +141,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['R59 cocktails & jars'],
     source: 'https://www.food-blog.co.za/tag/happy-hour-specials-cape-town/',
     sourceLabel: 'Food Blog SA',
+    verifiedOn: '2026-07',
   },
   {
     venue: 'Time Out Market Cape Town',
@@ -135,6 +153,7 @@ const CURATED: CuratedHappyHour[] = [
     deals: ['30% off house beer, wine & selected cocktails'],
     source: 'https://www.timeout.com/time-out-market-cape-town/things-to-do/happy-hour',
     sourceLabel: 'Time Out Market',
+    verifiedOn: '2026-07',
   },
 ];
 
@@ -158,7 +177,7 @@ const CURATED: CuratedHappyHour[] = [
  * rest still render. Losing one venue is a bad afternoon. Losing the tab is what this
  * prevents.
  */
-const REQUIRED_TEXT = ['venue', 'area', 'headline', 'source', 'sourceLabel'] as const;
+const REQUIRED_TEXT = ['venue', 'area', 'headline', 'source', 'sourceLabel', 'verifiedOn'] as const;
 
 function isUsable(h: Partial<CuratedHappyHour>, i: number): h is CuratedHappyHour {
   const missing: string[] = [];
@@ -185,6 +204,32 @@ function isUsable(h: Partial<CuratedHappyHour>, i: number): h is CuratedHappyHou
 }
 
 export const CAPE_TOWN_HAPPY_HOURS: CuratedHappyHour[] = CURATED.filter(isUsable);
+
+/**
+ * Months between a `YYYY-MM` verified date and now. Used to decide whether a window is
+ * shown with a "confirm again" caveat. A malformed date returns Infinity — treated as
+ * stale, never as fresh, because the safe failure here is to under-trust our own claim.
+ */
+export function monthsSinceVerified(verifiedOn: string, now: Date = new Date()): number {
+  const m = /^(\d{4})-(\d{2})$/.exec(verifiedOn);
+  if (!m) return Infinity;
+  const then = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+  if (Number.isNaN(then.getTime())) return Infinity;
+  return (now.getFullYear() - then.getFullYear()) * 12 + (now.getMonth() - then.getMonth());
+}
+
+/** True when a window is old enough that the user should re-check before travelling. */
+export function isStale(h: CuratedHappyHour, now: Date = new Date()): boolean {
+  return monthsSinceVerified(h.verifiedOn, now) >= STALE_AFTER_MONTHS;
+}
+
+/** Human month label for a `YYYY-MM` string, localised, e.g. "Jul 2026". Empty on junk. */
+export function formatVerified(verifiedOn: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(verifiedOn);
+  if (!m) return '';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+  return new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' }).format(d);
+}
 
 /** Google Maps directions link for a venue — a real, useful action from each row. */
 export function mapsUrl(venue: string, area: string): string {

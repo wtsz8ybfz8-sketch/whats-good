@@ -6,7 +6,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { ParsedRecipe } from '../types';
 import { getHappyHourStatus, compareHappyHour, formatDays, type HappyHourStatus } from '../venueExtras';
-import { CAPE_TOWN_HAPPY_HOURS, HAPPY_HOUR_CITY, mapsUrl, type CuratedHappyHour } from '../happyHourData';
+import { CAPE_TOWN_HAPPY_HOURS, HAPPY_HOUR_CITY, mapsUrl, formatVerified, isStale, type CuratedHappyHour } from '../happyHourData';
 import { fetchVenues, formatPriceTier, isPlacesConfigured } from '../placesService';
 import type { Venue } from '../venue';
 import { LoadingState, ErrorState } from './StatusStates';
@@ -588,6 +588,18 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
                       <Navigation className="w-3 h-3" /> Directions
                     </span>
                   </div>
+
+                  {/* Per-venue provenance — the Trust stage (§5). Each window carries WHEN
+                      it was last confirmed and against WHICH source, so the claim is
+                      checkable at the venue, not only in an aggregate footer. Past
+                      STALE_AFTER_MONTHS it says so in the accent colour instead of
+                      presenting an ageing time as freshly true. */}
+                  <p className="font-mono text-[11px] text-[var(--text-subtle)] mt-2">
+                    Confirmed {formatVerified(hh.verifiedOn)} · {hh.sourceLabel}
+                    {isStale(hh) && (
+                      <span className="text-[var(--accent-terracotta)]"> · re-confirm before you go</span>
+                    )}
+                  </p>
                 </div>
               </a>
             </li>
@@ -613,7 +625,8 @@ export const HappyHourView: React.FC<HappyHourViewProps> = ({ city }) => {
       )}
 
       <p className="font-mono text-xs text-[var(--text-subtle)] mt-6 leading-relaxed">
-        Real venues and windows, collected from local happy-hour guides and confirmed July 2026.
+        Real venues and windows, collected from local happy-hour guides — each shows when it
+        was last confirmed and against which source.
         Happy-hour times change without notice — tap a venue for directions and confirm before you travel.
         Sources: {' '}
         {[...new Map(CAPE_TOWN_HAPPY_HOURS.map((h) => [h.sourceLabel, h.source])).entries()].map(
