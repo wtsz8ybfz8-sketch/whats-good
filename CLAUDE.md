@@ -52,6 +52,67 @@ One task = **one diagnosis, one focused implementation, one proportionate valida
 
 ---
 
+## 2A. THE BENCHMARK LAW — no work on thin research, EVER. Read this every session.
+
+**This is the highest-priority rule in this file after the safety rules (§3, §4). It was
+added because a session shipped a "desktop-native" redesign it called "grounded in macOS
+research" when the research was two shallow searches, sources cited but never opened
+(including a 2007 Leopard-era HIG), and ZERO market research. That must never happen
+again.**
+
+**It does NOT conflict with FAST MODE (§2) — the two are orthogonal and you must obey both.
+FAST MODE governs how CHEAPLY YOU VALIDATE a change (the §6 ladder). This law governs how
+you DECIDE what to build. Cheapest check to VERIFY; primary, current sources to DECIDE.
+FAST MODE is never a licence to skip research — validation economy and design grounding
+are different axes.**
+
+**The law:** every UI, UX, interaction, layout, copy or functionality decision MUST be
+grounded in a **named, current, primary industry benchmark that you actually read this
+session**, and that benchmark MUST be cited with its source in your response. Memory,
+"standard practice", pattern-matching, a blog's summary, or a source you did not open is
+**not** grounding. If you cannot cite a current primary source for a decision, you have not
+earned the decision — say so out loud and go get it before writing code.
+
+**What counts as real grounding (primary, current, cited):**
+
+- **Apple HIG** — the LIVE guidelines at `developer.apple.com/design/human-interface-guidelines`.
+  Name the exact component/page you used (e.g. Split Views, Sidebars, Layout, Materials,
+  Typography). Never a dated mirror, never a third party's summary standing in for it. If
+  the HIG SPA will not render for your fetch tool, say **"reached snippets only"** — never
+  dress a search snippet as the primary document.
+- **Accessibility** — WCAG 2.2 AA. Contrast, focus order and hit targets are **measured**,
+  never eyeballed (ties to §11.7).
+- **Performance** — Core Web Vitals, as numbers you measured: **LCP < 2.5s, CLS < 0.1,
+  INP < 200ms.** "Feels fast" is not a measurement.
+- **Market benchmark** — for anything touching the discovery or venue surfaces, tear down
+  how the category leaders build it *right now*: **Google Maps, The Infatuation, Resy,
+  OpenTable, Eater.** State explicitly what you steal and what you reject against §7. The
+  product is positioned as an elevated alternative to Google Maps (§1); you cannot beat a
+  benchmark you have not looked at.
+
+**The pre-work gate — before the first line of any UI/UX/functionality change, state in the
+response, in this order:**
+
+1. the primary benchmark(s) consulted, each with its exact page/source;
+2. what they prescribe for THIS specific decision;
+3. where the current app deviates from that;
+4. anything you could only reach as a snippet, marked as such.
+
+**No gate, no code.** A change that skips the gate is not "fast", it is unfounded, and it is
+the exact failure this section exists to stop.
+
+**Worked example — the session that made this a law (2026-08-03).** A "desktop-native"
+restaurant redesign was shipped as macOS-grounded. In truth: sources were cited but never
+opened (a 2007 Leopard HIG among them), no market research was done at all, and the actual
+Mac-native browse→detail pattern — a **split view** (a persistent list beside the detail,
+per Apple HIG *Split Views*) — was never even considered, so the "fix" reproduced the iOS
+push-navigation model on a 1440px screen and still felt like a phone. It was verified only
+over a fixture's flat gradient, never a real photo; contrast was eyeballed; the mandatory
+gates (`qa-gate`/`judge`/`perceive`) were skipped; LCP/CLS were never measured. Every one of
+those is now, explicitly, a violation of this section.
+
+---
+
 ## 3. HARD STOP — stop and hand over
 
 **Stop immediately, at the first occurrence of any of these:**
