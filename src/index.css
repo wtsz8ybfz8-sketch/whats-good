@@ -1012,3 +1012,10 @@ html.dark .shimmer::after {
     width: 100%;
   }
 }
+
+/* Desktop content measure: editorial surfaces stay readable instead of stretching to the viewport. */
+@media (min-width: 1024px) {
+  .page-grid {
+    padding-inline: clamp(32px, 5vw, 96px);
+  }
+}

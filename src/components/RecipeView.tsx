@@ -699,10 +699,10 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="surface surface-hover rounded-3xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
+ className="surface surface-hover rounded-2xl overflow-hidden hover:shadow-[0_20px_48px_rgba(0,0,0,0.18)] dark:hover:shadow-[0_20px_48px_rgba(0,0,0,0.55)] hover:-translate-y-1 cursor-pointer group flex flex-col h-full transition-all duration-300 ease-out relative focus-visible:outline-2 focus-visible:outline-[var(--accent-terracotta)] focus-visible:outline-offset-2"
  >
  {/* Image banner */}
- <div className="w-full h-52 sm:h-60 bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+ <div className="w-full aspect-[4/3] sm:aspect-[16/10] bg-[#F2F1EE] dark:bg-[#222222] overflow-hidden relative shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
  <img
  src={r.image}
  alt={r.name}

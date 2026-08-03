@@ -1612,7 +1612,7 @@ export default function App() {
  carries no padding of its own; the Sidebar owns only its inner rhythm. The old
  wrapper px-4 + card p-2 + aside px-6 stack put content 48px in on a 390px
  device and starved the Cuisine rail. */}
- <div className="surface rounded-3xl overflow-hidden mb-8 lg:mb-10">
+ <div className="surface rounded-2xl overflow-hidden mb-10 lg:mb-14">
  <Sidebar
  dimensions={dimensions}
  nearbyCuisines={nearbyCuisines}
@@ -1648,7 +1648,7 @@ export default function App() {
  viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
  overhang (that's what ate the Back button), and a grid cannot overflow
  horizontally, so it has nothing left to guard. */}
- <main className="page-grid py-6 sm:py-10 lg:py-14 min-h-[calc(100dvh-72px)] w-full relative">
+ <main className="page-grid py-8 sm:py-12 lg:py-16 min-h-[calc(100dvh-72px)] w-full relative">
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
@@ -1821,8 +1821,8 @@ export default function App() {
  // empty pitch, gambled, and got one dish with no way to browse. Now the tab loads
  // real recipes immediately and filters live; "Surprise me" is demoted to what it
  // actually is — a shortcut, not the product.
- <div className="w-full max-w-[1000px] mx-auto">
- <div className="sm:px-4 mb-8">
+ <div className="w-full max-w-[1120px] mx-auto">
+ <div className="mb-10 lg:mb-12">
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold tracking-tight text-[var(--heading-color)]">
  Cooking tonight
  </h2>
