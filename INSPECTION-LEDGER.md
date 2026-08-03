@@ -30,14 +30,14 @@ inspecting, update the row with the date, the method, and — critically — wha
 | `recipeUtils.ts` | 2026-08-01 | Source trace of every field | **FINDING, PARTIALLY FIXED** — see below |
 | Google attribution (ToS) | 2026-08-01 | Grep — absent everywhere | **FIXED** — "Place data powered by Google" added to footer |
 | **`RecipeView.tsx` rendering** | **NEVER INSPECTED** | — | Only the timings block was touched. Never opened in a browser. |
-| **`EateryView.tsx`** | **NEVER INSPECTED** | — | 39KB. The §8 first-class surface. Never audited against its own six requirements. |
-| **`Sidebar.tsx`** | **NEVER INSPECTED** | — | 24KB. Contains two of the three inputs in the app. |
+| **`EateryView.tsx`** | 2026-08-03 (partial) | Browser 1440 light+dark + 390, over FIXTURE gradient | **PARTIALLY INSPECTED** — desktop redesign (toolbar off image, contained hero) looked at. **NOT checked: real photograph (only flat gradient), landscape, 1024–1199 band, measured contrast of the new Share/Save toolbar. Still NOT a full §8 six-requirement audit.** |
+| **`Sidebar.tsx`** | 2026-08-03 (partial) | Browser 1440 + 390, light+dark | **PARTIALLY INSPECTED** — swapped wholesale to the curated cuisine-rail + availability-dot version; verified chips WRAP on mobile (no hidden-scroll), dots render, no "Hamburger"/"Burgers" dupe. **NOT checked: FilterSheet ("Mood, diet & budget") interaction, screen-reader pass, the availability-dot's discoverability (see perceive MINOR).** |
 | **Accessibility** | **NEVER INSPECTED** | — | Beyond hit targets. No contrast audit, focus order, landmarks, screen-reader pass. Real legal exposure. |
 | **Saved tab / `useSavedRecipes`** | **NEVER INSPECTED** | — | localStorage. Never tested for quota failure or corrupt data. |
 | **The recipe search / TheMealDB path** | **NEVER INSPECTED** | — | Unreachable from this container; needs fixtures. |
 | **Privacy / legal / data flow** | **NEVER INSPECTED** | — | No privacy policy, no terms. IP + location go to Google. GDPR/CCPA. |
 | **Error handling / observability** | **NEVER INSPECTED** | — | No telemetry of any kind. Console is the only record. |
-| **`App.tsx`** | **NEVER INSPECTED AS A WHOLE** | Individual lines only | 80KB, the core of the app: routing, city detection, search, the venue list, the footer. Only ever touched line-by-line for specific bugs. Caught by `ledger-check.mjs` on its first run — it had never been declared. |
+| **`App.tsx`** | **NEVER INSPECTED AS A WHOLE** | Individual lines only | 80KB, the core of the app: routing, city detection, search, the venue list, the footer. Only ever touched line-by-line for specific bugs. 2026-08-03: edited the header (un-crush), removed the `md:` filter-panel force-open (fixed the detail/tab bleed on desktop), and made the mood CTA `md:hidden` (killed the stray desktop button) — all browser-verified at 1440+390, but the file as a whole remains un-audited. **Neither the filter-bleed nor the stray-CTA fix has a regression check in `checks.mjs` — judge CONCERN, must be added.** |
 | `telemetry.ts` | 2026-08-01 | Browser, sendBeacon spy | **VERIFIED CLIENT-SIDE** — cap, dedupe and scrubbing measured. Server half see below |
 | `api/log.ts` | 2026-08-01 | Source only — **outside tsconfig, no gate covers it** | Body parsing hardened for all four runtime shapes. **NEVER EXERCISED IN PRODUCTION** |
 | `main.tsx` | 2026-08-01 | Browser boot | Telemetry installs before render; app boots clean |
