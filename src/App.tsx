@@ -1551,7 +1551,8 @@ export default function App() {
  forehead. Safe-area padding keeps it clear of the iOS home indicator. */}
  <nav
  className={`tabbar md:hidden safe-x fixed bottom-0 left-0 right-0 z-50 min-h-[var(--tabbar-h)] bg-[var(--bg-warm)] border-t border-[var(--rule)]${chromeHidden ? ' is-hidden' : ''}`}
- style={{ paddingBottom:'env(safe-area-inset-bottom)' }}
+ style={{ paddingBottom:'env(safe-area-inset-bottom)', pointerEvents: filtersOpen ? 'none' : undefined }}
+ aria-hidden={filtersOpen}
  aria-label="Primary"
  >
  <ul className="flex items-stretch">
