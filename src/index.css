@@ -1162,3 +1162,48 @@ html.dark .shimmer::after {
     background: var(--accent-terracotta);
   }
 }
+
+@media (min-width: 1024px) {
+  .editorial-search-panel {
+    min-height: clamp(460px, 58vh, 640px);
+    padding: clamp(48px, 6vw, 96px) clamp(24px, 4vw, 72px) clamp(40px, 5vw, 80px);
+    justify-content: flex-end;
+    background: linear-gradient(125deg, color-mix(in srgb, var(--bg-warm) 96%, white), color-mix(in srgb, var(--bg-warm) 80%, transparent));
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .editorial-search-panel > div:first-child {
+    max-width: 760px;
+  }
+
+  .editorial-search-panel h1 {
+    font-size: clamp(4rem, 8vw, 8.5rem);
+    line-height: .86;
+    letter-spacing: -.065em;
+  }
+
+  .editorial-search-panel > div:nth-of-type(2) {
+    width: min(100%, 760px);
+  }
+
+  .editorial-search-panel .editorial-eyebrow {
+    margin-bottom: 1.5rem;
+  }
+
+  .editorial-search-panel > .filter-group {
+    max-width: 900px;
+  }
+}
+
+@media (min-width: 768px) {
+  .restaurant-result,
+  .recipe-result {
+    border-radius: 0 !important;
+  }
+
+  .restaurant-result:hover,
+  .recipe-result:hover {
+    transform: translateY(-3px);
+  }
+}
