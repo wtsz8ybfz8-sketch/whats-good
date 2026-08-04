@@ -1439,7 +1439,7 @@ export default function App() {
  <MapPin className="w-3 h-3 flex-shrink-0" /> Reset to my location
  </button>
  ) : (
- <p className="mt-1.5 px-2 text-xs leading-snug text-[var(--text-muted)]">Showing results near you. Type a city to explore somewhere else.</p>
+ <p className="mt-1.5 px-2 text-xs leading-snug text-[var(--text-muted)]">Choose a city to see places near you, or search another destination.</p>
  )}
  </div>
  </>
@@ -1510,7 +1510,7 @@ export default function App() {
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
- Find a Place
+ Find
  </button>
  <button
  onClick={() => {
@@ -1535,7 +1535,7 @@ export default function App() {
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
- <span>Happy Hour</span>
+ <span>Out</span>
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
@@ -1563,7 +1563,7 @@ export default function App() {
  <ul className="flex items-stretch">
  {([
  { tab:'mood' as ActiveTab, label:'Find', Icon: Search },
- { tab:'happy-hour' as ActiveTab, label:'Happy Hour', Icon: Sparkles },
+ { tab:'happy-hour' as ActiveTab, label:'Out', Icon: Sparkles },
  { tab:'random' as ActiveTab, label:'Stay In', Icon: Dices },
  { tab:'saved-recipes' as ActiveTab, label:'Saved', Icon: Heart },
  ]).map(({ tab, label, Icon }) => {

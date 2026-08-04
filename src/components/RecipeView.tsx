@@ -503,7 +503,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </span>
  <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-[var(--charcoal)]">
  {recipes.some((r) => r.id.startsWith('eat'))
- ? `We found ${recipes.length} ${recipes.length === 1 ?'eatery' :'eateries'} near ${city}`
+ ? `We found ${recipes.length} ${recipes.length === 1 ?'eatery' :'eateries'}${city ? ` in ${city}` : ''}`
  : `We found ${recipes.length} ${recipes.length === 1 ?'recipe' :'recipes'} for you`}
  </h2>
  <p className="text-[var(--text-muted)] font-sans text-sm sm:text-base max-w-[600px] mt-2 leading-relaxed">
@@ -536,7 +536,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  onSelectRecipe(r);
  }
  }}
- className="restaurant-result surface surface-hover rounded-xl p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[var(--accent-terracotta)]"
+ className="restaurant-result surface surface-hover rounded-[4px] p-5 sm:p-6 hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.5)] hover:-translate-y-0.5 cursor-pointer group flex flex-col h-full transition-all duration-200 ease-out relative focus-visible:outline-2 focus-visible:outline-[#7C2D12] dark:focus-visible:outline-[var(--accent-terracotta)]"
  >
  {/* Open / closing soon / closed — overlaid on the photo, prominent by design.
      `false` ("Closed") is a real answer, so this checks presence with
@@ -590,7 +590,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  the hardcoded fallback list gets the generated initials card, which is why
  photos only appear once the API is reachable. Aspect-locked so a slow or
  missing image never shifts the layout. */}
- <div className="-mx-5 -mt-5 sm:-mx-6 sm:-mt-6 mb-4 rounded-t-xl overflow-hidden bg-[var(--rule)] h-[168px] sm:h-[180px]">
+ <div className="-mx-5 -mt-5 sm:-mx-6 sm:-mt-6 mb-4 rounded-t-[4px] overflow-hidden bg-[var(--rule)] h-[168px] sm:h-[180px]">
  <img
  src={r.image}
  alt={rawEatery.name}
