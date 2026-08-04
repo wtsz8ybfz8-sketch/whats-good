@@ -1074,3 +1074,29 @@ html.dark .shimmer::after {
     border-left: 1px solid var(--rule);
   }
 }
+
+@media (min-width: 1024px) {
+  .page-grid {
+    grid-template-columns: [full-start] minmax(24px, 1fr) [content-start] minmax(0, 1120px) [content-end] minmax(24px, 1fr) [full-end];
+  }
+
+  .page-grid > .results-shell {
+    max-width: 1120px;
+    margin-inline: auto;
+  }
+
+  .desktop-editorial-panel {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .desktop-editorial-panel > * {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .filter-toggle {
+    background: transparent;
+    border-color: var(--rule);
+  }
+}
