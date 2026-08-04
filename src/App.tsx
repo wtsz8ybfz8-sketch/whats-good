@@ -1603,12 +1603,12 @@ export default function App() {
  /* Content clearance for the fixed tab bar, from --tabbar-h + the home-indicator
     inset. A hardcoded 76px was a guess against 57px of chrome; when it ran short the
     last list row sat under the bar, unreachable. */
- className="flex-1 flex flex-col relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0"
+ className="flex-1 flex flex-col relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0 desktop-shell"
  style={{ paddingTop:'calc(72px + env(safe-area-inset-top))' }}
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
- className={`transition-all duration-500 overflow-hidden w-full max-w-7xl mx-auto px-5 lg:px-8 ${
+ className={`transition-all duration-500 overflow-hidden w-full max-w-7xl mx-auto px-5 lg:px-8 desktop-filter-region ${
  activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
  }`}
  >

@@ -1100,3 +1100,27 @@ html.dark .shimmer::after {
     border-color: var(--rule);
   }
 }
+
+@media (min-width: 1024px) {
+  .desktop-shell {
+    align-items: stretch;
+  }
+
+  .desktop-filter-region {
+    max-width: 1280px;
+    padding-inline: clamp(32px, 4vw, 72px);
+  }
+
+  .desktop-filter-region .filter-panel {
+    background: color-mix(in srgb, var(--bg-warm) 88%, white);
+  }
+
+  .desktop-shell > .page-grid {
+    width: 100%;
+    max-width: 1440px;
+  }
+
+  .desktop-shell > .page-grid > .results-shell {
+    width: 100%;
+  }
+}
