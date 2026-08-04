@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { fetchVenues, formatPriceTier, isPlacesConfigured } from '../placesService';
 import type { Venue } from '../venue';
 import { ErrorState, LoadingState } from './StatusStates';
-import { MapPin, Martini, Navigation, Star } from 'lucide-react';
+import { ExternalLink, MapPin, Martini, Navigation, Star } from 'lucide-react';
+import { HAPPY_HOUR_SOURCES } from '../happyHourSources';
 
 interface HappyHourViewProps {
   city?: string;
@@ -21,9 +22,37 @@ const BarList: React.FC<{ bars: Venue[]; city: string }> = ({ bars, city }) => {
       <div className="mt-8 py-12 text-center">
         <Martini className="mx-auto mb-4 h-8 w-8 text-[var(--text-subtle)]" strokeWidth={1.5} />
         <h2 className="font-serif text-2xl">No bars found in {city}</h2>
-        <p className="mt-2 text-sm text-[var(--text-muted)]">
+        <p className="mx-auto mt-2 max-w-[520px] text-sm leading-relaxed text-[var(--text-muted)]">
           Google returned no bar or pub listings for this search. Try another nearby city or area.
         </p>
+        <div className="mx-auto mt-8 max-w-[760px] border-t border-[var(--row-border)] pt-6 text-left">
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-subtle)]">
+            Find local drinks guides
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+            These publishers maintain city-specific food and nightlife coverage. We link out rather than pretend a generic place search is a verified promotion.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {HAPPY_HOUR_SOURCES.map((source) => (
+              <a
+                key={source.name}
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group border border-[var(--row-border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent-terracotta)] hover:bg-[var(--accent-tint)]"
+              >
+                <span className="flex items-center justify-between gap-3 font-serif text-lg group-hover:text-[var(--accent-terracotta)]">
+                  {source.name}
+                  <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                </span>
+                <span className="mt-2 block font-mono text-[11px] uppercase leading-relaxed tracking-wide text-[var(--text-subtle)]">
+                  {source.coverage}
+                </span>
+                <span className="mt-2 block text-xs leading-relaxed text-[var(--text-muted)]">{source.note}</span>
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
