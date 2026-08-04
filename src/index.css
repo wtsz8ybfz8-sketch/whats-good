@@ -1139,3 +1139,26 @@ html.dark .shimmer::after {
     padding-inline: 0;
   }
 }
+
+@media (min-width: 1024px) {
+  .editorial-search-panel {
+    min-height: 430px;
+    justify-content: center;
+    background: linear-gradient(115deg, color-mix(in srgb, var(--bg-warm) 92%, white), transparent 70%);
+  }
+
+  .editorial-search-panel .editorial-eyebrow {
+    position: relative;
+    padding-left: 2.75rem;
+  }
+
+  .editorial-search-panel .editorial-eyebrow::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 2rem;
+    height: 1px;
+    background: var(--accent-terracotta);
+  }
+}

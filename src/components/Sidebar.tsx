@@ -498,15 +498,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  .join(' · ');
 
  return (
- <aside className="bg-transparent px-5 py-5 lg:p-8 flex flex-col gap-7 overflow-y-visible">
- <div>
- <h1 className="font-serif text-3xl lg:text-[38px] font-semibold leading-[1.12] text-[var(--heading-color)] tracking-tight">
+ <aside className="editorial-search-panel bg-transparent px-5 py-6 lg:px-12 lg:py-14 flex flex-col gap-8 lg:gap-10 overflow-y-visible">
+ <div className="max-w-3xl">
+ <p className="editorial-eyebrow mb-5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--accent-terracotta)]">
+ A considered guide to eating well
+ </p>
+ <h1 className="font-serif text-[clamp(2.5rem,5vw,5.75rem)] font-semibold leading-[0.94] text-[var(--heading-color)] tracking-[-0.045em]">
  Where are we<br />
  <span className="italic font-normal text-[var(--accent-terracotta)]">eating?</span>
  </h1>
- <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)] max-w-[420px]">
- Real places near you — matched to your mood and budget, sorted by what's{' '}
- <span className="text-[var(--charcoal)] font-medium">open right now</span>.
+ <p className="mt-6 max-w-[46ch] text-[15px] leading-[1.65] text-[var(--text-muted)]">
+ Places worth leaving the house for — chosen around your mood, your appetite and your budget, then sorted by what is <span className="text-[var(--charcoal)] font-medium">open now</span>.
  </p>
  </div>
 
@@ -523,7 +525,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  value={dimensions.searchQuery}
  onChange={(e) => onChange({ ...dimensions, searchQuery: e.target.value })}
  placeholder="A place, a dish, or an area…"
- className="w-full bg-white/70 dark:bg-white/[0.06] border border-black/10 dark:border-white/10 rounded-lg py-3 pl-10 pr-14 text-sm text-[var(--charcoal)] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-1 focus:ring-[var(--accent-terracotta)] placeholder:text-[var(--text-subtle)] transition-all"
+ className="w-full bg-transparent border-0 border-b border-[var(--charcoal)]/25 dark:border-white/20 rounded-none py-4 pl-9 pr-14 text-[16px] text-[var(--charcoal)] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-0 placeholder:text-[var(--text-subtle)] transition-all"
  />
  <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[var(--text-muted)]" />
  {dimensions.searchQuery && (
@@ -537,10 +539,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  </div>
  </div>
 
- <div className="flex items-center gap-4 text-[12px] font-medium text-[var(--text-muted)] select-none">
- <span className="h-px flex-1 bg-[var(--rule)]" />
- <span>or narrow it down</span>
- <span className="h-px flex-1 bg-[var(--rule)]" />
+ <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)] select-none">
+ <span className="h-px w-10 bg-[var(--accent-terracotta)]" />
+ <span>Or refine the feeling</span>
  </div>
 
  {/* THE one horizontal rail on this screen. Cuisine is the primary axis — it is
@@ -574,7 +575,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  onClick={() => setSheetOpen(true)}
  aria-haspopup="dialog"
  aria-expanded={sheetOpen}
- className="surface-quiet surface-hover tap-44 w-full flex items-center gap-3 px-4 rounded-lg text-left cursor-pointer transition-colors"
+ className="surface-quiet surface-hover tap-44 w-full flex items-center gap-3 px-4 rounded-none border-x-0 border-y border-[var(--rule)] text-left cursor-pointer transition-colors"
  >
  <SlidersHorizontal className="w-4 h-4 flex-shrink-0 text-[var(--accent-terracotta)]" strokeWidth={1.75} aria-hidden="true" />
  <span className="text-sm font-medium text-[var(--charcoal)]">
