@@ -381,7 +381,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           act — the page asked you to call before it told you why. Desktop is unaffected
           because both children are placed explicitly by column and row, which ignores
           source order; `order-*` is what the flex column below lg honours. */}
-      <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-8 lg:items-start">
+      <div className="detail-content flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-12 lg:items-start">
 
       {/* SIDEBAR (right on desktop, BELOW the reasons on mobile) */}
       {/* `self-start` is LG-ONLY. It exists for the sticky desktop column, and while the
@@ -398,7 +398,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
       <div className="mx-5 sm:mx-10 mt-2 mb-7 h-px bg-[var(--rule)] lg:hidden" />
 
       {/* Contact — minimalist icon pillars */}
-      <div className="px-5 sm:px-10 flex items-start">
+      <div className="detail-actions px-5 sm:px-10 flex items-start">
         <a
           href={directionsUrl}
           target="_blank"
@@ -457,7 +457,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
       {/* Address — moved out of the action column. It is identity, not an action: where
           the place is belongs beside the reasons to go, not stacked on the buttons. */}
-      <div className="px-5 sm:px-10 pt-5 pb-6">
+      <div className="detail-address px-5 sm:px-10 pt-5 pb-6">
         <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs font-mono">
           <MapPin className="w-3 h-3 flex-shrink-0" />
           <span>{rawEatery.address}</span>

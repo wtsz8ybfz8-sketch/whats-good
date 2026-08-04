@@ -1124,3 +1124,18 @@ html.dark .shimmer::after {
     width: 100%;
   }
 }
+
+@media (min-width: 1024px) {
+  .detail-content {
+    max-width: 1180px;
+    margin-inline: auto;
+  }
+
+  .detail-content .detail-address {
+    padding-inline: 0;
+  }
+
+  .detail-content .detail-actions {
+    padding-inline: 0;
+  }
+}
