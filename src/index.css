@@ -298,6 +298,31 @@
   background: color-mix(in srgb, var(--bg-warm) 96%, var(--accent-terracotta));
   box-shadow: 0 -10px 28px rgba(26, 15, 10, 0.07);
 }
+/* The tab bar's fill extends DOWNWARD, past the bottom of the layout viewport.
+   This is the exact mirror of .chrome-bar::before, and its absence is why a gap kept
+   appearing at the BOTTOM edge on iOS Safari.
+
+   On iOS 15+ the URL/search bar sits at the BOTTOM of the screen. `position: fixed`
+   anchors to the LAYOUT viewport, so when Safari collapses that bar on scroll the VISUAL
+   viewport grows downward and the strip that opens between the two is painted by the
+   page — whatever is scrolling underneath shows through, below the tab bar. Same defect
+   as the top edge, opposite end, and only the top end was ever fixed.
+
+   Must use the TAB BAR's own background, not --bg-warm: .tabbar is a color-mix, so
+   filling with the raw canvas colour would leave a visible seam at the bar's edge.
+   A fixed pixel height because §6 bans viewport-height units and checks.mjs greps for
+   them; 240px comfortably exceeds any collapsed toolbar plus home indicator. */
+.tabbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 240px;
+  background: color-mix(in srgb, var(--bg-warm) 96%, var(--accent-terracotta));
+  pointer-events: none;
+}
+
 .tabbar button {
   position: relative;
 }
@@ -621,6 +646,27 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 1000;
+}
+
+/* The status-bar / Dynamic Island strip, painted UNCONDITIONALLY.
+   .chrome-bar::before paints this today, but it is part of the header — so the moment
+   the header retracts on a downward scroll it travels up with it, and the strip beside
+   the Island is left unpainted with the page scrolling under it. That is the "see-through
+   gap on the island": not a transparency bug, a fill that leaves when the bar leaves.
+   This one never moves. Sits under the header (z-50) so the visible header still covers
+   it, and above page content so nothing scrolls through.
+   Height is the inset itself, which is 0 on any device without a notch and in Safari's
+   portrait toolbar mode — inert exactly where it is not needed, and never a dead band. */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  background: var(--bg-warm);
+  pointer-events: none;
+  z-index: 40;
 }
 
 /* ─── Content Surfaces ───────────────────────────────────
