@@ -325,13 +325,40 @@ async function main() {
     await page.evaluate(() => window.scrollTo(0, 400));
     await page.waitForTimeout(300);
     const before = await page.evaluate(() => Math.round(window.scrollY));
-    const c2 = page.locator('[role="button"][aria-label^="View "]:visible').first();
-    const box = await c2.boundingBox();
+    /*
+     * THIS CHECK COULD NOT PASS, AND THAT IS WHY A REAL BUG HID BEHIND IT.
+     *
+     * It used to take `:visible` .first() and click its box centre. Playwright's
+     * `:visible` means "has a non-empty box", NOT "inside the viewport" — so after
+     * scrolling to 400 the first card is above the fold with a NEGATIVE y, and the
+     * click landed on the fixed header instead. No detail ever opened, no history
+     * entry was pushed, so `goBack()` left the app entirely and read scrollY on
+     * about:blank. The reported "returned to 0px" was measuring a blank page.
+     *
+     * Pick a card actually inside the safe band, and assert the detail opened — a
+     * check that silently measures the wrong page is worse than no check.
+     */
+    const cards = page.locator('[role="button"][aria-label^="View "]:visible');
+    const vh = page.viewportSize()?.height ?? 844;
+    let box = null;
+    for (let i = 0; i < (await cards.count()); i++) {
+      const bb = await cards.nth(i).boundingBox();
+      if (bb && bb.y > 96 && bb.y + 60 < vh - 140) { box = bb; break; }
+    }
     if (box) {
-      await page.mouse.click(box.x + box.width / 2, box.y + Math.min(box.height / 2, 120));
+      await page.mouse.click(box.x + box.width / 2, box.y + Math.min(box.height / 2, 60));
       await page.waitForTimeout(900);
+      const opened = await page.evaluate(() => !!document.querySelector('.venue-title'));
+      if (!opened) {
+        console.error(
+          '\nThe venue card click did not open a detail view, so back-restores-scroll\n' +
+          'cannot be measured. Previously this fell through to goBack() on the list\n' +
+          'entry and reported the resulting 0px as an app failure.\n',
+        );
+        process.exit(3);
+      }
       await page.goBack().catch(() => {});
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(1400);
       const after = await page.evaluate(() => Math.round(window.scrollY));
       restored = { before, after, ok: Math.abs(after - before) <= 24 };
     }

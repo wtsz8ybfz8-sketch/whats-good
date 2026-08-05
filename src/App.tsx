@@ -502,7 +502,22 @@ export default function App() {
 
  const selectRecipeFromList = (recipe: ParsedRecipe | null) => {
    if (recipe && !selectedRecipe) {
-     listScrollY.current = Math.max(listScrollY.current, lastListScrollY.current, window.scrollY);
+     /* Capture the offset HERE, synchronously, while the list is still mounted at its
+        full height. This is the only moment the true position is knowable.
+
+        It used to be `Math.max(listScrollY.current, lastListScrollY.current, scrollY)`,
+        which broke twice over. Including the STALE `listScrollY.current` made the restore
+        point monotonically increasing — once you had been deep in a list you could never
+        return to a shallower position again (measured: saved 400, restored 548). And
+        leaning on `lastListScrollY` alone is unreliable because the scroll listener is
+        rAF-throttled, so scrolling and tapping inside one frame leaves it at 0 (measured:
+        saved 400, restored 0 — the failing regression check).
+
+        Writing both refs keeps the throttled listener from later overwriting this with a
+        clamped value. */
+     const y = Math.max(0, window.scrollY);
+     listScrollY.current = y;
+     lastListScrollY.current = y;
    }
    setSelectedRecipe(recipe);
  };
@@ -619,7 +634,13 @@ export default function App() {
  // `window.scrollY` here is already clamped down by up to a viewport — reading it
  // loses the true list offset. `chromeLastY` is the position the scroll listener
  // tracked while the list was still mounted, so it is the exact place to return to.
- listScrollY.current = Math.max(lastListScrollY.current, window.scrollY);
+ // NOT max'd with window.scrollY: by the time this effect runs the detail has
+ // committed and the document has shrunk, so scrollY is already clamped and is a
+ // SMALLER, wrong number. selectRecipeFromList has normally captured the real value
+ // synchronously at click time; this covers the paths that bypass it (deep link,
+ // history forward, single-result auto-select), where the last tracked list offset
+ // is the best available answer.
+ listScrollY.current = lastListScrollY.current;
  window.scrollTo({ top: 0, behavior:'instant' as ScrollBehavior });
  } else if (id && prev) {
  // Detail to a different detail; still a forward move.
@@ -627,17 +648,41 @@ export default function App() {
  } else if (!id && prev !== null) {
  // Back to the list. Two frames: the first lets the list re-mount, the second runs
  // after layout, so the target offset actually exists to scroll to.
- const y = listScrollY.current;
- requestAnimationFrame(() =>
- requestAnimationFrame(() => {
- const target = Math.max(0, y);
+ const target = Math.max(0, listScrollY.current);
+ const root = document.documentElement;
+ const prevAnchor = root.style.overflowAnchor;
+ /* SCROLL ANCHORING FIGHTS THE RESTORE, and that is the whole bug.
+
+    Landing on the right offset was never the hard part — traced with a scroll log, the
+    restore hit 400 on the first frame and was then dragged to 888 over the next ~500ms
+    while `scrollHeight` grew 2771 -> 3558. The re-mounted list's images carry no
+    reserved height, so the document keeps growing after paint, and the browser slides
+    scrollY to keep the anchored element still. A one-shot scrollTo — or a retry that
+    stops the moment it "lands", which is what the first version of this fix did — exits
+    right before the drift starts and reports success.
+
+    So: disable anchoring for the restore window only, and keep re-asserting the target
+    until the document height has held steady for a few frames. Bounded at 700ms so a
+    genuinely shorter list (an item was unsaved while we were away) can never spin. */
+ root.style.overflowAnchor = 'none';
+ const deadline = performance.now() + 700;
+ let lastHeight = -1;
+ let stableFrames = 0;
+ const settle = () => {
+ const h = root.scrollHeight;
+ if (h !== lastHeight) { lastHeight = h; stableFrames = 0; } else { stableFrames += 1; }
  window.scrollTo({ top: target, behavior:'instant' as ScrollBehavior });
- if (Math.abs(window.scrollY - target) > 24) window.scrollTo(0, target);
+ const landed = Math.abs(window.scrollY - target) <= 2;
+ if ((!landed || stableFrames < 3) && performance.now() < deadline) {
+ requestAnimationFrame(settle);
+ return;
+ }
+ root.style.overflowAnchor = prevAnchor;
  // Re-seat the chrome to this restored position so the jump is not read as a
  // downward gesture and the header/tab bar are not retracted on return (#8).
- syncChromeBaseline(y);
- }),
-);
+ syncChromeBaseline(window.scrollY);
+ };
+ requestAnimationFrame(() => requestAnimationFrame(settle));
  }
  }, [selectedRecipe?.id]);
 
