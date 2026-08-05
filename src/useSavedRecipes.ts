@@ -22,8 +22,16 @@ export function useSavedRecipes() {
   const [savedRecipes, setSavedRecipes] = useState<ParsedRecipe[]>(load);
 
   const persist = (next: ParsedRecipe[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    // Update state first, then write. A blocked or over-quota localStorage (Safari
+    // private mode) throws on setItem — and this runs inside a click handler, whose
+    // throws React does NOT route to the ErrorBoundary. Swallowing keeps the save
+    // working for the session instead of leaving the button silently dead.
     setSavedRecipes(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      /* storage unavailable — the in-memory list is still correct for this session */
+    }
   };
 
   const saveRecipe = (recipe: ParsedRecipe) => {
@@ -47,9 +55,13 @@ export function useSavedRecipes() {
   };
 
   const clearSavedRecipes = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
     setSavedRecipes([]);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {
+      /* see persist: a blocked write must never throw out of the handler */
+    }
   };
 
   return {

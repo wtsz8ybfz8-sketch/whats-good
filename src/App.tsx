@@ -747,7 +747,9 @@ export default function App() {
  }, [activeTab, city]);
 
  useEffect(() => {
- localStorage.setItem('whats_good_city', city);
+ // Guarded like every other localStorage write in this file — Safari private mode
+ // throws on setItem, and an uncaught throw here surfaces the ErrorBoundary on load.
+ try { localStorage.setItem('whats_good_city', city); } catch {}
  }, [city]);
 
  // Detect the user's real city automatically on first load — no manual picker.
@@ -1021,10 +1023,14 @@ export default function App() {
  const directSearchText = customQuery !== undefined ? customQuery : dimensions.searchQuery.trim();
 
  if (directSearchText) {
+ // Signal threaded so a superseded search is aborted (and lands in the isCurrent()
+ // guard) rather than running to completion; res.ok guarded so an HTML/error body
+ // is an empty result, not a JSON parse throw.
  const res = await fetch(
- `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(directSearchText)}`
+ `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(directSearchText)}`,
+ { signal: abortController.signal }
 );
- const data = await res.json();
+ const data = res.ok ? await res.json() : { meals: [] };
  finalMeals = data.meals || [];
  } else {
  const terms = mapCoordinatesToQueries(dimensions.vibe, dimensions.regional);
@@ -1033,8 +1039,10 @@ export default function App() {
  const fetchPromises = terms.slice(0, 8).map(async (term) => {
  try {
  const res = await fetch(
- `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(term)}`
+ `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(term)}`,
+ { signal: abortController.signal }
 );
+ if (!res.ok) return [];
  const data = await res.json();
  return (data.meals as Meal[]) || [];
  } catch {
@@ -1053,17 +1061,15 @@ export default function App() {
  });
 
  if (dimensions.capacity) {
- finalMeals.sort((a, b) => {
- const aIngCount = Object.keys(a).filter(k => k.startsWith('strIngredient') && a[k]?.trim()).length;
- const bIngCount = Object.keys(b).filter(k => k.startsWith('strIngredient') && b[k]?.trim()).length;
- 
- if (dimensions.capacity?.includes('low')) {
- return aIngCount - bIngCount;
- } else if (dimensions.capacity?.includes('high')) {
- return bIngCount - aIngCount;
+ // Count ingredients ONCE per meal. The comparator used to run Object.keys()+filter
+ // over both operands on every comparison — O(n log n) recomputes of the same counts.
+ const ingCount = (m: Meal) =>
+ Object.keys(m).filter((k) => k.startsWith('strIngredient') && m[k]?.trim()).length;
+ const counts = new Map<Meal, number>(finalMeals.map((m) => [m, ingCount(m)] as const));
+ const dir = dimensions.capacity.includes('low') ? 1 : dimensions.capacity.includes('high') ? -1 : 0;
+ if (dir !== 0) {
+ finalMeals.sort((a, b) => dir * ((counts.get(a) ?? 0) - (counts.get(b) ?? 0)));
  }
- return 0;
- });
  } else {
  // No effort sort — shuffle so the same few meals don't lead every search
  for (let i = finalMeals.length - 1; i > 0; i--) {
