@@ -424,6 +424,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
 
  // Baseline, then whatever is genuinely nearby that the baseline doesn't already
  // cover. A German in London gets Italian AND the Lebanese place down the road.
+ /* Ten cuisines wrapped to five rows and swallowed the phone screen before the user
+    had scrolled once. Five is the preview; the rest are one tap away. NOT a horizontal
+    scroll rail — a row that scrolls sideways hides its own contents (§11.4). */
+ const CUISINE_PREVIEW = 5;
+ const [showAllCuisines, setShowAllCuisines] = React.useState(false);
+
  const cuisines = React.useMemo(() => {
  const seen = new Set(BASELINE_CUISINES.map((c) => c.value.toLowerCase()));
  const extras: { label: string; value: string }[] = [];
@@ -475,6 +481,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  () => cuisines.reduce((n, c) => (isAvailable(c) ? n + 1 : n), 0),
  [cuisines, isAvailable],
  );
+
+ /* A cuisine selected from the expanded set has to survive collapsing, or the active
+    filter vanishes from the canvas while still filtering the results — the user would
+    see a narrowed list with no visible cause and no way to clear it. */
+ const visibleCuisines = React.useMemo(() => {
+ if (showAllCuisines) return cuisines;
+ const head = cuisines.slice(0, CUISINE_PREVIEW);
+ if (dimensions.regional && !head.some((c) => c.value === dimensions.regional)) {
+ const selected = cuisines.find((c) => c.value === dimensions.regional);
+ if (selected) return [...head, selected];
+ }
+ return head;
+ }, [cuisines, showAllCuisines, dimensions.regional]);
 
  const [sheetOpen, setSheetOpen] = React.useState(false);
 
@@ -553,7 +572,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  scroll
  note={availableCount > 0 ? `${availableCount} available here` : undefined}
  >
- {cuisines.map((c) => (
+ {visibleCuisines.map((c) => (
  <Chip
  key={c.value}
  label={c.label}
@@ -563,6 +582,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  available={isAvailable(c)}
  />
  ))}
+ {cuisines.length > CUISINE_PREVIEW && (
+ /* Dashed and muted so it reads as a disclosure control, not another cuisine to
+    filter by. Its own line of text says how many are behind it — "more" alone
+    doesn't tell you whether it is worth the tap. */
+ <button
+ type="button"
+ onClick={() => setShowAllCuisines((v) => !v)}
+ aria-expanded={showAllCuisines}
+ className="hit-44 inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--rule)] px-3.5 py-2 text-[13px] font-medium text-[var(--text-muted)] hover:border-[var(--accent-terracotta)] hover:text-[var(--accent-terracotta)] transition-colors cursor-pointer"
+ >
+ {showAllCuisines ? 'Show fewer' : `+${cuisines.length - CUISINE_PREVIEW} more`}
+ </button>
+ )}
  </FilterGroup>
 
  {/* ONE affordance for everything granular. Mood, Diet and Budget are secondary:
