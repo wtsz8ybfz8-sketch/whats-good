@@ -1104,7 +1104,54 @@ html.dark .shimmer::after {
 @media (min-width: 1024px) {
   .desktop-shell {
     align-items: stretch;
+    /* The rail's own px-5 is zeroed below so it can fill its 320px track, so the page
+       gutter has to live here or the rail sits at x=0 against the bezel (§11.5).
+       box-sizing is border-box, so this insets within the lg:max-w-[1440px]. */
+    padding-inline: clamp(24px, 3vw, 56px);
   }
+
+  /* The filter panel is now a 320px grid track, not a centred full-width band.
+     These two declarations are UNLAYERED, so a Tailwind `lg:px-0` / `lg:max-w-none`
+     on the element would LOSE to them (unlayered beats @layer utilities — the same
+     cascade fact documented for .safe-x above). They have to be overridden here, by
+     a higher-specificity selector, or the rail eats up to 144px of its own width. */
+  .desktop-shell > .desktop-filter-region {
+    max-width: none;
+    padding-inline: 0;
+    position: sticky;
+    top: calc(88px + env(safe-area-inset-top));
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* The content column supplies its own gutter via the rail gap; .page-grid's own
+     clamp(32px,5vw,96px) inset would double it inside a 1fr track. */
+  .desktop-shell.lg\:grid > .page-grid { padding-inline: 0; }
+
+  /* RAIL TYPOGRAPHY. The hero was sized for a full-width band — clamp(4rem,8vw,8.5rem)
+     resolves to ~115px at 1440 — and inside a 320px track it overflowed and was clipped
+     mid-word ("Wher…", "eating…"). The panel's own 6vw padding and 58vh min-height were
+     sized for that band too. Rail proportions: compact editorial, not a shrunk billboard. */
+  .desktop-shell > .desktop-filter-region .editorial-search-panel {
+    min-height: 0;
+    padding: 0 0 1.5rem;
+    background: none;
+    border: 0;
+    display: block;
+  }
+  .desktop-shell > .desktop-filter-region .editorial-search-panel h1 {
+    font-size: clamp(1.9rem, 2.3vw, 2.5rem);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+  }
+  .desktop-shell > .desktop-filter-region .editorial-search-panel > div:first-child,
+  .desktop-shell > .desktop-filter-region .editorial-search-panel > div:nth-of-type(2),
+  .desktop-shell > .desktop-filter-region .editorial-search-panel > .filter-group {
+    max-width: none;
+    width: 100%;
+  }
+  .desktop-shell > .desktop-filter-region .editorial-search-panel p { max-width: 34ch; }
 
   .desktop-filter-region {
     max-width: 1280px;

@@ -1353,6 +1353,10 @@ export default function App() {
 
  const tabOrder: ActiveTab[] = ['mood','happy-hour','random','saved-recipes','saved-eateries'];
  const isSlideRight = tabOrder.indexOf(activeTab) >= tabOrder.indexOf(prevTab);
+ /* At lg+ the filter panel stops being a collapsing accordion and becomes a persistent
+    left rail. When there is no rail to show, <main> spans BOTH grid columns — otherwise
+    it would be placed into the 320px track and the results would render 320px wide. */
+ const showRail = activeTab === 'mood' && !selectedRecipe;
  // featuredEatery/featuredResult removed with the "Best fit" card — they pinned
  // SOUTH_AFRICAN_EATERIES[0] as everyone's recommendation. See StatusStates.tsx.
 
@@ -1609,14 +1613,17 @@ export default function App() {
  /* Content clearance for the fixed tab bar, from --tabbar-h + the home-indicator
     inset. A hardcoded 76px was a guess against 57px of chrome; when it ran short the
     last list row sat under the bar, unreachable. */
- className="flex-1 flex flex-col relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0 desktop-shell"
+ className="flex-1 flex flex-col lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:max-w-[1440px] lg:mx-auto relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0 desktop-shell"
  style={{ paddingTop:'calc(72px + env(safe-area-inset-top))' }}
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
+ /* Mobile keeps the accordion (max-h collapse). At lg+ the accordion is switched OFF
+    — a rail that animates to max-h-0 would leave a dead 320px column — so the panel
+    is pinned open and sticky, or removed from the grid entirely on other tabs. */
  className={`transition-all duration-500 overflow-hidden w-full max-w-7xl mx-auto px-5 lg:px-8 desktop-filter-region ${
  activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
- }`}
+ } ${showRail ?'lg:max-h-none lg:opacity-100 lg:pointer-events-auto lg:overflow-visible lg:mt-6' :'lg:hidden'}`}
  >
  {/* Single owner of the horizontal margin is the px-5 wrapper above. This card
  carries no padding of its own; the Sidebar owns only its inner rhythm. The old
@@ -1641,7 +1648,9 @@ export default function App() {
  aria-expanded={filtersOpen}
  // Full-width, 44pt tall hit area; the pill inside stays small. The button is
  // the touch target, the pill is the ink — they are not the same rectangle.
- className="w-full min-h-[44px] flex items-center justify-center -mt-4 z-40 relative group cursor-pointer"
+ // lg:hidden — the rail is persistent on desktop, so a show/hide toggle has nothing
+ // to do there, and as a third grid child it would consume a cell and displace <main>.
+ className="w-full min-h-[44px] flex items-center justify-center -mt-4 z-40 relative group cursor-pointer lg:hidden"
  >
  <div className="surface-quiet filter-toggle px-4 py-1.5 flex items-center gap-2 transition-all transform group-hover:border-[#F5D1C9] dark:group-hover:border-[#7C2D12]/40">
  <span className="text-xs font-semibold tracking-[-0.005em] text-[var(--text-muted)] group-hover:text-[var(--accent-terracotta)]">
@@ -1658,7 +1667,7 @@ export default function App() {
  viewport edge. `overflow-x-hidden` goes with it: it was silently clipping left
  overhang (that's what ate the Back button), and a grid cannot overflow
  horizontally, so it has nothing left to guard. */}
- <main className="page-grid py-8 sm:py-12 lg:py-16 min-h-[calc(100dvh-72px)] w-full relative">
+ <main className={`page-grid py-8 sm:py-12 lg:py-16 min-h-[calc(100dvh-72px)] w-full relative${showRail ?'' :' lg:col-span-2'}`}>
 
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
