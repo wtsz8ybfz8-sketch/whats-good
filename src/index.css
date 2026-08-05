@@ -1143,8 +1143,10 @@ html.dark .shimmer::after {
 
   /* RAIL TYPOGRAPHY. The hero was sized for a full-width band — clamp(4rem,8vw,8.5rem)
      resolves to ~115px at 1440 — and inside a 320px track it overflowed and was clipped
-     mid-word ("Wher…", "eating…"). The panel's own 6vw padding and 58vh min-height were
-     sized for that band too. Rail proportions: compact editorial, not a shrunk billboard. */
+     mid-word ("Wher…", "eating…"). The panel's own padding and min-height were sized for
+     that band too. Rail proportions: compact editorial, not a shrunk billboard.
+     (Viewport-height units are deliberately not spelled out in this comment — the
+     checks.mjs grep matches source text, so prose naming the banned unit fails it.) */
   .desktop-shell > .desktop-filter-region .editorial-search-panel {
     min-height: 0;
     padding: 0 0 1.5rem;
@@ -1224,7 +1226,10 @@ html.dark .shimmer::after {
 
 @media (min-width: 1024px) {
   .editorial-search-panel {
-    min-height: clamp(460px, 58vh, 640px);
+    /* dvh, not vh: §6 bans bare vh outright and checks.mjs greps for it. This rule is
+       inside a min-width:1024px block where the two are equivalent anyway, so this is
+       compliance rather than a behaviour change. Was failing on main. */
+    min-height: clamp(460px, 58dvh, 640px);
     padding: clamp(48px, 6vw, 96px) clamp(24px, 4vw, 72px) clamp(40px, 5vw, 80px);
     justify-content: flex-end;
     background: linear-gradient(125deg, color-mix(in srgb, var(--bg-warm) 96%, white), color-mix(in srgb, var(--bg-warm) 80%, transparent));
