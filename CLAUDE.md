@@ -312,6 +312,37 @@ on a notched iPhone in landscape and 0 everywhere else. `.page-grid` absorbs it,
 full-bleed fixed chrome uses `.safe-x` so the FILL stays edge-to-edge while the CONTENT
 clears the notch. The bug that made this visible was only ever reproducible in landscape.
 
+**A PHONE IN LANDSCAPE IS ≥768px WIDE. It takes every `sm:` and `md:` rule you wrote for
+a tablet, while having LESS vertical room than the portrait layout those rules replaced.**
+This is the single most productive source of "it looks fine here and broken on my phone"
+in this project, because every local portrait render passes and the desktop render passes
+too. Three consequences, all of which shipped and were found by the user on a real device:
+
+1. **An offset derived from mobile-only chrome must be zeroed where that chrome is gone.**
+   `--tabbar-h` was a flat `64px` at every width while `.tabbar` is `md:hidden`. On a
+   rotated phone the tab bar does not exist and every bar docking above it still reserved
+   64px, so EateryView's Directions bar floated mid-screen across the photo and the
+   address. Fixed at the token — `@media (min-width: 768px) { :root { --tabbar-h: 0px } }`
+   — which corrects EateryView and both RecipeView bars at once. Never patch one call site.
+2. **A `dvh` height tuned in portrait is absurd in landscape.** `md:h-[60dvh]` is a
+   considered 60% of an 844px screen and 60% of a 430px one. Height-based sizing needs a
+   short-landscape cap: `@media (orientation: landscape) and (max-height: 560px)`. Key it
+   on HEIGHT as well as orientation so a real tablet keeps the full treatment.
+3. **A `md:` type step lands on a rotated phone.** `md:text-[5.5rem]` put an 88px venue
+   name on a 430px-tall viewport; it wrapped to two lines, overflowed the photo and ran
+   through the translucent Back/Share chips — which is what a user reports as "see-through
+   elements", not a transparency bug.
+
+**Bottom-anchored overlays grow UPWARD.** Shortening a hero moves its `absolute bottom-0`
+caption INTO whatever is pinned at `top-*` of the same box. Any change to a hero's height
+must re-check the overlay against the controls above it.
+
+**`checks.mjs` renders 844×390 landscape but did not catch any of the above**, because the
+landscape pass never opened a venue detail — it measured the list surfaces only. A viewport
+that is measured on the wrong SCREEN is not covered. When adding a landscape check, open
+the detail view too, and assert a docked bar's bottom edge is flush with the viewport
+floor, not merely that it exists.
+
 **The browser's own chrome is part of your app.** `theme-color` tints the bar iOS Safari
 draws around the page. It was one hardcoded terracotta, so a dark app sat inside brown
 browser chrome — another band of the wrong colour welded to the screen edge. Two tags with

@@ -474,6 +474,18 @@
      exactly what it looked like. Any hardcoded offset drifts the moment either bar's
      content changes, so both now derive from this one value and cannot disagree. */
   --tabbar-h: 64px;
+}
+
+/* THE TAB BAR DOES NOT EXIST AT md+ — SO NEITHER MAY ITS OFFSET.
+   The bar is `md:hidden`, but --tabbar-h stayed 64px at every width, so every element
+   that docks above it reserved 64px for a bar that was not on screen. A PHONE IN
+   LANDSCAPE IS ≥768px WIDE, which is why this only ever showed up on rotation: the
+   venue page's Directions bar floated 64px off the bottom, mid-screen on a 430px-tall
+   viewport, straight across the photo and the address. Reported from a real device.
+   Zeroing the token here fixes the action bar in EateryView AND both bars in
+   RecipeView at once — the "one token, all sites" rule doing its job. */
+@media (min-width: 768px) {
+  :root { --tabbar-h: 0px; }
 
   /* Glassmorphism tokens.
      Was blur(22px)/180% over 0.70 white — a heavy frost that read as plastic.
@@ -1240,6 +1252,46 @@ html.dark .shimmer::after {
 
   .editorial-search-panel > .filter-group {
     max-width: 900px;
+  }
+}
+
+/* ─── SHORT LANDSCAPE — a phone on its side is not a small desktop ──────────────
+   A rotated phone is ≥768px WIDE and ~390-430px TALL, so it takes every `md:` and
+   `sm:` rule written for a tablet while having less vertical room than the portrait
+   layout those rules replaced. The venue hero is the clearest case: `md:h-[60dvh]`
+   is a considered 60% of a tall screen and an absurd 60% of a 430px one, so the photo
+   and its title filled the viewport and the facts below were pushed off-screen.
+   Keyed on height, not just orientation, so a genuine tablet in landscape (≥560px
+   tall) keeps the full-height treatment. Unlayered, so it beats the Tailwind h-*
+   utilities without !important. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .hero-contain-lg {
+    height: clamp(150px, 42dvh, 208px);
+  }
+
+  /* The name block is anchored to the BOTTOM of the hero, so it grows UPWARD as it
+     gets taller. Shorten the hero and the eyebrow climbs into the Back / Share row
+     that is absolutely positioned at top-5 — two translucent chips and a line of
+     text occupying the same pixels. Tightening the stack drops it clear. */
+  .venue-hero-overlay {
+    padding-bottom: 0.6rem;
+  }
+  .venue-hero-overlay > span:first-child {
+    margin-bottom: 0.15rem;
+  }
+  /* 88px of type (md:text-[5.5rem]) on a 430px-tall screen: the venue name wrapped to
+     two lines, overflowed the photo and ran straight through the Back and Share chips.
+     That collision is what reads as the "see-through" overlap on a real device. */
+  .venue-title {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    line-height: 1.05;
+    margin-bottom: 0.75rem;
+  }
+  /* The docked bar is a bigger share of a short screen, so give it less height and
+     keep the content clearance in step with it. */
+  .action-bar {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
   }
 }
 

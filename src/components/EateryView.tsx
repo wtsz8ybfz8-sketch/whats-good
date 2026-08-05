@@ -274,7 +274,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
         {/* Back — top left */}
         <button
           onClick={() => onSelectRecipe(null)}
-          className="lg:hidden tap-44 absolute top-5 left-5 flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/20 hover:bg-black/35 rounded-full px-3.5 py-2"
+          className="lg:hidden tap-44 absolute top-5 left-5 flex items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-wider text-white/70 hover:text-white transition-colors cursor-pointer backdrop-blur-md bg-black/45 hover:bg-black/60 rounded-full px-3.5 py-2"
         >
           <ChevronLeft className="w-3 h-3" />
           {isSavedTab ? `Saved (${recipes.length})` : `Results (${recipes.length})`}
@@ -284,7 +284,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           type="button"
           onClick={() => onShare?.(r)}
           aria-label={`Share ${rawEatery.name}`}
-          className="lg:hidden tap-44 absolute top-5 right-20 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md bg-black/20 text-white hover:bg-black/35 transition-all cursor-pointer px-3.5"
+          className="lg:hidden tap-44 absolute top-5 right-20 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md bg-black/45 text-white hover:bg-black/60 transition-all cursor-pointer px-3.5"
         >
           <ExternalLink className="w-4 h-4" />
           <span className="hidden sm:inline font-mono text-xs uppercase tracking-wider">Share</span>
@@ -303,7 +303,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
           className={`lg:hidden tap-44 absolute top-5 right-5 rounded-full flex items-center justify-center gap-1.5 backdrop-blur-md transition-all cursor-pointer ${
             isSaved
               ? 'bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] px-3.5'
-              : 'bg-black/20 text-white hover:bg-black/35'
+              : 'bg-black/45 text-white hover:bg-black/60'
           }`}
         >
           <Heart className={`w-4 h-4 transition-transform ${isSaved ? 'fill-current scale-110' : ''}`} />
@@ -320,7 +320,7 @@ export const EateryView: React.FC<EateryViewProps> = ({
             page with no venue name on it. An entrance animation may never be the thing
             that decides whether the primary content exists. Everything decorative around
             it can animate; this cannot. */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 sm:px-10 pb-8 sm:pb-12">
+        <div className="venue-hero-overlay absolute bottom-0 left-0 right-0 px-5 sm:px-10 pb-8 sm:pb-12">
           {/* Was text-white/45, which over a bright photo (a yellow wall, a sunlit
               terrace) disappeared completely — the kitchen label was invisible on the
               venue this was tested against. Contrast is not optional; at /85 with a
@@ -335,7 +335,10 @@ export const EateryView: React.FC<EateryViewProps> = ({
               {rawEatery.cuisine}
             </span>
           )}
-          <h2 className="font-serif text-5xl sm:text-6xl md:text-[5.5rem] text-white leading-[0.9] tracking-tight mb-5">
+          {/* venue-title is a styling hook, not decoration: the short-landscape rule in
+              index.css has to reach this element, and md:text-[5.5rem] resolves to 88px
+              on a rotated phone (which is >=768px wide) where the viewport is ~430px tall. */}
+          <h2 className="venue-title font-serif text-5xl sm:text-6xl md:text-[5.5rem] text-white leading-[0.9] tracking-tight mb-5">
             {rawEatery.name}
           </h2>
           {/* Same fix the cuisine label above already got, which this row was left out of:
