@@ -43,7 +43,20 @@ export interface Dimensions {
   vibe: string | null;
   /** Single-select diet filter. Deliberately one row of 4 — see Sidebar. */
   diet: string | null;
+  /**
+   * Stay In (gourmet) kitchen/area, single-select. Feeds the recipe search terms
+   * (mapCoordinatesToQueries) and the Stay In cuisine chips. Kept separate from the
+   * Find tab's `cuisines` so a browse-mode choice on one tab can't silently filter the
+   * other — the two were conflated on a single field, which is why selecting a Find
+   * cuisine had to fight the recipe search.
+   */
   regional: string | null;
+  /**
+   * Find (dine-out) cuisine filter, MULTI-select. A venue must match ANY of these to
+   * stay in the list. Empty means "no cuisine filter". This drives both the Places
+   * query seed and the client-side narrowing of the result list (see App.tsx).
+   */
+  cuisines: string[];
   capacity: string | null;
   searchQuery: string;
   locationMode: LocationMode;

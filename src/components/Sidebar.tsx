@@ -395,8 +395,10 @@ for (const c of BASELINE_CUISINES) {
  BASELINE_BY_KEY.set(c.label.toLowerCase(), c);
 }
 
-/** Resolve a raw Places cuisine string to a curated chip, or null to drop it. */
-const resolveCuisine = (raw: string): { label: string; value: string } | null => {
+/** Resolve a raw Places cuisine string to a curated chip, or null to drop it.
+ *  Exported so the result list can narrow by the SAME folding the chips use — a venue
+ *  Places typed "Pizza restaurant" matches the Italian chip, not just a literal string. */
+export const resolveCuisine = (raw: string): { label: string; value: string } | null => {
  const tidy = tidyCuisine(raw || '');
  if (!tidy || tidy.length > 22) return null;
  const key = tidy.toLowerCase();
@@ -409,7 +411,7 @@ const resolveCuisine = (raw: string): { label: string; value: string } | null =>
  return { label, value: label };
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCuisines = [] }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTriggerMatch, nearbyCuisines = [] }) => {
  const moods = [
  { label:'Cosy', value:'tired & cosy' },
  { label:'Comfort food', value:'need comfort food' },
@@ -488,23 +490,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  const visibleCuisines = React.useMemo(() => {
  if (showAllCuisines) return cuisines;
  const head = cuisines.slice(0, CUISINE_PREVIEW);
- if (dimensions.regional && !head.some((c) => c.value === dimensions.regional)) {
- const selected = cuisines.find((c) => c.value === dimensions.regional);
- if (selected) return [...head, selected];
- }
- return head;
- }, [cuisines, showAllCuisines, dimensions.regional]);
+ // Any SELECTED cuisine sitting past the preview is pinned on so collapsing never
+ // hides a filter that is still narrowing the list (multi-select — there can be
+ // several). The list would otherwise shrink with no visible, clearable cause.
+ const selectedExtras = cuisines.filter(
+ (c) => dimensions.cuisines.includes(c.value) && !head.some((h) => h.value === c.value),
+ );
+ return [...head, ...selectedExtras];
+ }, [cuisines, showAllCuisines, dimensions.cuisines]);
 
  const [sheetOpen, setSheetOpen] = React.useState(false);
 
- // Every chip toggles: tapping the active one clears it. No "Any" option needed.
- const toggle = (key: 'vibe' | 'regional' | 'diet', val: string) =>
+ // Mood and Diet are single-select: tapping the active one clears it.
+ const toggle = (key: 'vibe' | 'diet', val: string) =>
  onChange({ ...dimensions, [key]: dimensions[key] === val ? null : val });
 
- const clearAll = () =>
- onChange({ ...dimensions, vibe: null, regional: null, diet: null, capacity: null });
+ // Cuisine is MULTI-select: a tap adds or removes, so "Italian AND Sushi" is one gesture.
+ const toggleCuisine = (val: string) =>
+ onChange({
+ ...dimensions,
+ cuisines: dimensions.cuisines.includes(val)
+ ? dimensions.cuisines.filter((v) => v !== val)
+ : [...dimensions.cuisines, val],
+ });
 
- const activeCount = [dimensions.vibe, dimensions.regional, dimensions.diet, dimensions.capacity].filter(Boolean).length;
+ const clearAll = () =>
+ onChange({ ...dimensions, vibe: null, cuisines: [], diet: null, capacity: null });
+
+ const activeCount =
+ dimensions.cuisines.length +
+ [dimensions.vibe, dimensions.diet, dimensions.capacity].filter(Boolean).length;
  // Only what the sheet actually owns. A badge counting a Cuisine chip the user can
  // see on the canvas makes the button look wrong the moment they tap it.
  const sheetCount = [dimensions.vibe, dimensions.diet, dimensions.capacity].filter(Boolean).length;
@@ -537,25 +552,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  <label htmlFor="place-search" className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
  Search
  </label>
- <div className="relative">
+ {/* A real form: pressing Enter (or the phone keyboard's "Search" key) submits and
+ re-queries Places for the typed term, rather than doing nothing. The list also
+ filters live as you type — see App's displayedRecipes — so the box narrows the
+ results whether or not you ever hit Enter. */}
+ <form
+ onSubmit={(e) => { e.preventDefault(); onTriggerMatch(); }}
+ role="search"
+ className="relative"
+ >
  <input
  id="place-search"
- type="text"
+ type="search"
+ enterKeyHint="search"
+ autoComplete="off"
  value={dimensions.searchQuery}
  onChange={(e) => onChange({ ...dimensions, searchQuery: e.target.value })}
  placeholder="A place, a dish, or an area…"
- className="w-full bg-transparent border-0 border-b border-[var(--charcoal)]/25 dark:border-white/20 rounded-none py-4 pl-9 pr-14 text-[16px] text-[var(--charcoal)] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-0 placeholder:text-[var(--text-subtle)] transition-all"
+ className="w-full bg-transparent border-0 border-b border-[var(--charcoal)]/25 dark:border-white/20 rounded-none py-4 pl-9 pr-14 text-[16px] text-[var(--charcoal)] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-0 placeholder:text-[var(--text-subtle)] transition-all [&::-webkit-search-cancel-button]:appearance-none"
  />
  <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[var(--text-muted)]" />
  {dimensions.searchQuery && (
  <button
+ type="button"
  onClick={() => onChange({ ...dimensions, searchQuery:'' })}
  className="absolute right-3 top-2.5 px-2 py-1 text-[12px] text-[var(--accent-terracotta)] font-semibold hover:underline transition-colors cursor-pointer"
  >
  Clear
  </button>
 )}
- </div>
+ </form>
  </div>
 
  <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)] select-none">
@@ -576,8 +602,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, nearbyCu
  <Chip
  key={c.value}
  label={c.label}
- selected={dimensions.regional === c.value}
- onClick={() => toggle('regional', c.value)}
+ selected={dimensions.cuisines.includes(c.value)}
+ onClick={() => toggleCuisine(c.value)}
  icon={cuisineIcon(c.label)}
  available={isAvailable(c)}
  />

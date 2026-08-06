@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo, useRef } from'react';
 import { type Dimensions, ActiveTab, ParsedRecipe, Meal, type City } from'./types';
 import { mapCoordinatesToQueries, parseMealToRecipe } from'./recipeUtils';
 import { FALLBACK_AREAS, fetchAreas, orderAreasForCountry } from'./cuisineRail';
-import { Sidebar } from'./components/Sidebar';
+import { Sidebar, resolveCuisine } from'./components/Sidebar';
 import { RecipeView } from'./components/RecipeView';
 import { EateryView } from'./components/EateryView';
 import { LoadingState, ErrorState, EmptyState } from'./components/StatusStates';
@@ -109,6 +109,26 @@ function venueFailureNotice(
  * setting; if it needs tuning, tune it here.
  */
 const SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * Whether a venue's Places cuisine string satisfies a selected cuisine chip.
+ *
+ * Lenient on purpose, and it reuses the SAME folding the chips themselves use
+ * (resolveCuisine): "Pizza restaurant" resolves to the Italian chip, "Hamburger" to
+ * Burgers. A direct substring match ("Italian restaurant" contains "italian") covers
+ * the common case; the resolver catches the synonyms. A venue Places gave no type is
+ * dropped when a cuisine filter is on — that's the honest behaviour the user asked for
+ * ("Italian filters, or a real empty state"), and the cuisine term also seeds the Places
+ * query so most returned venues do carry a matching type.
+ */
+function venueMatchesCuisine(rawCuisine: string, target: string): boolean {
+ const vc = (rawCuisine || '').toLowerCase();
+ const t = target.toLowerCase();
+ if (!vc || !t) return false;
+ if (vc.includes(t)) return true;
+ const resolved = resolveCuisine(rawCuisine);
+ return resolved ? resolved.value.toLowerCase() === t : false;
+}
 
 // Mood values are conversational ("tired & cosy") — map them to terms Google
 // Places actually understands so the vibe widens the search instead of muddying it.
@@ -252,6 +272,7 @@ export default function App() {
  vibe: null,
  diet: null,
  regional: null,
+ cuisines: [],
  capacity: null,
  searchQuery:'',
  locationMode: initialSharedMeal ? 'gourmet' : 'dineout',
@@ -287,8 +308,8 @@ export default function App() {
  dimensions.searchQuery.trim()
  ? { key:'q', label:'Search', value: dimensions.searchQuery.trim(), clear: set({ searchQuery:'' }) }
  : null,
- dimensions.regional
- ? { key:'cuisine', label:'Cuisine', value: dimensions.regional, clear: set({ regional: null }) }
+ dimensions.cuisines.length > 0
+ ? { key:'cuisine', label:'Cuisine', value: dimensions.cuisines.join(', '), clear: set({ cuisines: [] }) }
  : null,
  dimensions.vibe
  ? { key:'vibe', label:'Mood', value: dimensions.vibe, clear: set({ vibe: null }) }
@@ -305,7 +326,37 @@ export default function App() {
  }
  : null,
  ].filter(Boolean) as { key: string; label: string; value: string; clear: () => void }[];
- }, [dimensions.searchQuery, dimensions.regional, dimensions.vibe, dimensions.diet, dimensions.capacity]);
+ }, [dimensions.searchQuery, dimensions.cuisines, dimensions.vibe, dimensions.diet, dimensions.capacity]);
+
+ /**
+  * The result list actually shown, narrowed live from the fetched pool by the free-text
+  * search and the selected cuisine(s). This is deliberately a CLIENT-SIDE filter on top
+  * of whatever Places returned, not a re-query: the promise is that typing "sushi" shows
+  * sushi or an honest empty state — never the untouched list — and that a cuisine chip
+  * visibly removes what doesn't match, the instant it's tapped, with no billed round trip.
+  * Google's text search only loosely scopes results, so relying on it alone (the previous
+  * behaviour) is exactly why the list didn't move. Recipes (Stay In) carry no rawEatery
+  * and pass through untouched — these two controls belong to the Find tab.
+  */
+ const displayedRecipes = useMemo(() => {
+ const q = dimensions.searchQuery.trim().toLowerCase();
+ const cuisines = dimensions.cuisines;
+ if (!q && cuisines.length === 0) return recipes;
+ return recipes.filter((r) => {
+ const raw = (r as ParsedRecipe & { rawEatery?: Venue }).rawEatery;
+ if (!raw) return true;
+ if (q) {
+ // Name, area (address) and cuisine — the three fields a person types into a
+ // "a place, a dish, or an area" box actually means.
+ const haystack = `${raw.name} ${raw.address} ${raw.cuisine}`.toLowerCase();
+ if (!haystack.includes(q)) return false;
+ }
+ if (cuisines.length > 0 && !cuisines.some((c) => venueMatchesCuisine(raw.cuisine, c))) {
+ return false;
+ }
+ return true;
+ });
+ }, [recipes, dimensions.searchQuery, dimensions.cuisines]);
 
  /**
   * Search lifecycle. `searchRunIdRef` is the generation counter that decides which
@@ -854,6 +905,7 @@ export default function App() {
  locationMode: 'gourmet',
  searchQuery: '',
  regional: null,
+ cuisines: [],
  capacity: prev.capacity?.includes('effort') ? prev.capacity : DEFAULT_EFFORT,
  }));
  } else if (tab === 'mood') {
@@ -861,6 +913,7 @@ export default function App() {
  ...prev,
  locationMode: 'dineout',
  regional: null,
+ cuisines: [],
  capacity: prev.capacity?.includes('effort') ? null : prev.capacity,
  }));
  }
@@ -873,6 +926,7 @@ export default function App() {
  vibe: null,
  diet: null,
  regional: null,
+ cuisines: [],
  capacity: null,
  searchQuery:'',
  locationMode:'dineout',
@@ -912,7 +966,7 @@ export default function App() {
  if (activeTab !=='mood' && activeTab !=='random') return;
  const timer = setTimeout(() => { handleTriggerMatch(); }, SEARCH_DEBOUNCE_MS);
  return () => clearTimeout(timer);
- }, [activeTab, dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.capacity, userCoords, city, hasSharedDetail]);
+ }, [activeTab, dimensions.locationMode, dimensions.vibe, dimensions.diet, dimensions.regional, dimensions.cuisines, dimensions.capacity, userCoords, city, hasSharedDetail]);
 
  // Perform fetching from TheMealDB or local structures
  const handleTriggerMatch = async (customQuery?: string, customMode?:'dineout' |'gourmet') => {
@@ -959,7 +1013,6 @@ export default function App() {
  setIsLoading(false);
  return;
  }
- const searchQuery = (customQuery !== undefined ? customQuery : dimensions.searchQuery).trim().toLowerCase();
  // `capacity` carries the price band here and a cook-effort string on Stay In, so it
  // is parsed rather than trusted: anything non-numeric is "no price filter", never a
  // NaN handed to the API. Until React types were installed this string was passed
@@ -976,7 +1029,7 @@ export default function App() {
  // Places filters it server-side (keeps all 20 result slots useful).
  const placesSearchTerms = [
  customQuery !== undefined ? customQuery : dimensions.searchQuery.trim(),
- customQuery === undefined ? dimensions.regional : null,
+ customQuery === undefined && dimensions.cuisines.length > 0 ? dimensions.cuisines.join(' ') : null,
  customQuery === undefined && dimensions.vibe ? VIBE_PLACE_TERMS[dimensions.vibe] : null,
  customQuery === undefined ? dimensions.diet : null,
  ].filter(Boolean).join(' ');
@@ -1011,7 +1064,7 @@ export default function App() {
  return;
  }
 
- if (!dimensions.regional && customQuery === undefined) {
+ if (dimensions.cuisines.length === 0 && customQuery === undefined) {
  const nextCuisines = Array.from(new Set(
  eateryList.map((eatery) => eatery.cuisine.trim()).filter(Boolean),
  ));
@@ -1024,22 +1077,16 @@ export default function App() {
  // were already filtered server-side via priceLevels.
  if (!usingPlacesApi && priceFilter && eatery.priceTier !== priceFilter) return;
 
- // Cuisine, vibe, and text filters only apply to hardcoded list
- // (Places API already scoped the results via the search query)
+ // Vibe filter only applies to the (now non-existent) hardcoded list — Places
+ // results are scoped server-side by the query and narrowed client-side for display
+ // by `displayedRecipes`. Cuisine and free-text live there now, not here, so both
+ // tabs filter from the same single source of truth instead of two that can disagree.
  if (!usingPlacesApi) {
- const cuisineFilter = customQuery ? null : dimensions.regional;
- if (cuisineFilter && eatery.cuisine.toLowerCase().indexOf(cuisineFilter.toLowerCase()) === -1) return;
+ const cuisineFilters = customQuery ? [] : dimensions.cuisines;
+ if (cuisineFilters.length > 0 && !cuisineFilters.some((c) => eatery.cuisine.toLowerCase().includes(c.toLowerCase()))) return;
 
  const vibeFilter = customQuery ? null : dimensions.vibe;
  if (vibeFilter && eatery.vibeMatch !== vibeFilter) return;
-
- if (searchQuery) {
- const nameMatch = eatery.name.toLowerCase().includes(searchQuery);
- const addrMatch = eatery.address.toLowerCase().includes(searchQuery);
- const signatureMatch = eatery.signatureOrder.toLowerCase().includes(searchQuery);
- const cuisineMatch = eatery.cuisine.toLowerCase().includes(searchQuery);
- if (!nameMatch && !addrMatch && !signatureMatch && !cuisineMatch) return;
- }
  }
 
  tempRecipes.push(createEateryResult(eatery, city, userCoords));
@@ -1226,6 +1273,7 @@ export default function App() {
  locationMode:'dineout',
  vibe: null,
  regional: null,
+ cuisines: [],
  capacity: null,
  searchQuery: matchedQuery,
  };
@@ -1717,7 +1765,7 @@ export default function App() {
  {selectedRecipe ? (
  selectedRecipe.id.startsWith('eat-') ? (
  <EateryView
- recipes={recipes.length > 0 ? recipes : savedRecipes}
+ recipes={displayedRecipes.length > 0 ? displayedRecipes : savedRecipes}
  selectedRecipe={selectedRecipe}
  onSelectRecipe={selectRecipeFromList}
  onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
@@ -1733,7 +1781,7 @@ export default function App() {
  ? undefined
  : {
  vibe: dimensions.vibe,
- cuisine: dimensions.regional,
+ cuisine: dimensions.cuisines.length === 1 ? dimensions.cuisines[0] : null,
  diet: dimensions.diet,
  priceTier: Number.isInteger(Number(dimensions.capacity))
  ? Number(dimensions.capacity)
@@ -1744,7 +1792,7 @@ export default function App() {
  />
 ) : (
  <RecipeView
- recipes={recipes.length > 0 ? recipes : savedRecipes}
+ recipes={displayedRecipes.length > 0 ? displayedRecipes : savedRecipes}
  selectedRecipe={selectedRecipe}
  onSelectRecipe={selectRecipeFromList}
  onRegenerate={activeTab ==='random' ? handleRandomWildcard : () => handleTriggerMatch()}
@@ -1780,9 +1828,9 @@ export default function App() {
  />
 ) : error ? (
  <ErrorState title="Something went wrong" message={error} onRetry={() => handleTriggerMatch()} />
-) : recipes.length > 0 ? (
+) : displayedRecipes.length > 0 ? (
  <RecipeView
- recipes={recipes}
+ recipes={displayedRecipes}
  selectedRecipe={selectedRecipe}
  onSelectRecipe={selectRecipeFromList}
  onRegenerate={() => handleTriggerMatch()}
@@ -1795,7 +1843,7 @@ export default function App() {
  // branch only renders under the mood tab, never the saved tabs.
  intent={{
  vibe: dimensions.vibe,
- cuisine: dimensions.regional,
+ cuisine: dimensions.cuisines.length === 1 ? dimensions.cuisines[0] : null,
  diet: dimensions.diet,
  priceTier: Number.isInteger(Number(dimensions.capacity))
  ? Number(dimensions.capacity)
@@ -1848,6 +1896,7 @@ export default function App() {
  vibe: null,
  diet: null,
  regional: null,
+ cuisines: [],
  capacity: null,
  searchQuery:'',
  }))}
