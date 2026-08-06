@@ -1441,3 +1441,43 @@ html.dark .shimmer::after {
     border-radius: 2px !important;
   }
 }
+
+@media (min-width: 1024px) {
+  .desktop-shell {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+    gap: clamp(40px, 5vw, 72px);
+    width: min(100%, 1480px);
+    padding-inline: clamp(32px, 5vw, 88px);
+  }
+
+  .desktop-shell > .desktop-filter-region {
+    padding-right: 28px;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel {
+    display: block;
+    padding-top: 0;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel h1 {
+    font-size: clamp(2rem, 2.6vw, 2.75rem);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+  }
+
+  .desktop-shell > .page-grid > .results-shell {
+    max-width: 1180px;
+    margin-inline: auto;
+  }
+
+  .desktop-shell > .page-grid .grid.grid-cols-1 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .desktop-shell > .page-grid .restaurant-result,
+  .desktop-shell > .page-grid .recipe-result {
+    min-width: 0;
+    border-radius: 12px !important;
+  }
+}
