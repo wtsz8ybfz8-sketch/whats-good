@@ -43,6 +43,40 @@ function vibePills(intent: SearchIntent | undefined): string[] {
  .slice(0, 3);
 }
 
+/**
+ * An eatery card photo with a skeleton and a fade-in.
+ *
+ * Places photos arrive over the network well after the card's text, so the eager <img>
+ * showed a bare grey box until it decoded — the "blank-grey cards on load" report. The
+ * grey box now pulses as an intentional skeleton, the photo fades in once decoded, and a
+ * failed load falls back to the generated initials card. `loading="lazy"` keeps a long
+ * list from fetching (and billing) every photo up front. `complete` is checked on mount
+ * so an image already in cache never gets stranded at opacity 0 waiting for an onLoad
+ * that already fired.
+ */
+const EateryCardImage: React.FC<{ src: string; name: string }> = ({ src, name }) => {
+ const [loaded, setLoaded] = useState(false);
+ const ref = React.useRef<HTMLImageElement>(null);
+ useEffect(() => { if (ref.current?.complete) setLoaded(true); }, []);
+ return (
+ <div className="-mx-5 -mt-5 sm:-mx-6 sm:-mt-6 mb-4 rounded-t-[4px] overflow-hidden bg-[var(--rule)] h-[168px] sm:h-[180px] relative">
+ {!loaded && (
+ <div aria-hidden="true" className="absolute inset-0 animate-pulse bg-[var(--rule)] motion-reduce:animate-none" />
+ )}
+ <img
+ ref={ref}
+ src={src}
+ alt={name}
+ loading="lazy"
+ decoding="async"
+ onLoad={() => setLoaded(true)}
+ onError={(e) => { (e.currentTarget as HTMLImageElement).src = eateryPlaceholderImage(name); setLoaded(true); }}
+ className={`w-full h-full object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] ${loaded ? 'opacity-100' : 'opacity-0'}`}
+ />
+ </div>
+ );
+};
+
 export const RecipeView: React.FC<RecipeViewProps> = ({
  recipes,
  selectedRecipe,
@@ -497,7 +531,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  // Showcase grid if multiple matches are returned and none are explicitly active
  return (
  <div className="max-w-[1200px] mx-auto w-full px-5 sm:px-8 lg:px-10 py-4 animate-[revealUp_0.6s_cubic-bezier(0.15,1,0.3,1)_forwards]">
- <div className="flex flex-col gap-2 mb-8 sm:mb-12">
+ <div className="flex flex-col gap-2 mb-6 sm:mb-9">
  <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold">
  Here's what we found
  </span>
@@ -513,7 +547,7 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  </p>
  </div>
 
- <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
+ <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-5">
  {recipes.map((r) => {
  const isRestaurant = r.id.startsWith('eat');
  const rawEatery = (r as any).rawEatery;
@@ -589,17 +623,9 @@ export const RecipeView: React.FC<RecipeViewProps> = ({
  {/* Thumbnail — bleeds to the card edge. Places results carry a real photoUrl;
  the hardcoded fallback list gets the generated initials card, which is why
  photos only appear once the API is reachable. Aspect-locked so a slow or
- missing image never shifts the layout. */}
- <div className="-mx-5 -mt-5 sm:-mx-6 sm:-mt-6 mb-4 rounded-t-[4px] overflow-hidden bg-[var(--rule)] h-[168px] sm:h-[180px]">
- <img
- src={r.image}
- alt={rawEatery.name}
- loading="lazy"
- decoding="async"
- onError={(e) => { (e.currentTarget as HTMLImageElement).src = eateryPlaceholderImage(rawEatery.name); }}
- className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
- />
- </div>
+ missing image never shifts the layout; the skeleton + fade live in the
+ component so a streaming photo never lands as a bare grey box. */}
+ <EateryCardImage src={r.image} name={rawEatery.name} />
 
  {/* Cuisine tag — the venue's own Places type, a verified fact, so it keeps
  the filled accent treatment. */}

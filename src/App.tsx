@@ -1829,6 +1829,31 @@ export default function App() {
 ) : error ? (
  <ErrorState title="Something went wrong" message={error} onRetry={() => handleTriggerMatch()} />
 ) : displayedRecipes.length > 0 ? (
+ <>
+ {/* Active-filters bar — always visible above the results, so what is narrowing the
+     list is never hidden and is removable in one tap even while the filter panel is
+     collapsed (the count itself lives in the grid header just below). Mirrors the
+     removable chips the empty-state recovery already uses. */}
+ {activeConstraints.length > 0 && (
+ <div className="max-w-[1200px] mx-auto w-full px-5 sm:px-8 lg:px-10 mb-5 flex flex-wrap items-center gap-2">
+ <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mr-0.5">
+ Filtering by
+ </span>
+ {activeConstraints.map((c) => (
+ <button
+ key={c.key}
+ onClick={c.clear}
+ aria-label={`Remove the ${c.label} filter, ${c.value}`}
+ className="hit-44 inline-flex items-center gap-1.5 rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] px-3 py-1.5 cursor-pointer transition-colors hover:border-[var(--accent-terracotta)]"
+ >
+ <span className="font-sans text-[13px] font-medium text-[var(--accent-terracotta)] max-w-[16ch] truncate">
+ {c.value}
+ </span>
+ <X className="w-3 h-3 flex-shrink-0 text-[var(--accent-terracotta)]" aria-hidden="true" />
+ </button>
+ ))}
+ </div>
+ )}
  <RecipeView
  recipes={displayedRecipes}
  selectedRecipe={selectedRecipe}
@@ -1851,6 +1876,7 @@ export default function App() {
  query: dimensions.searchQuery.trim(),
  }}
  />
+ </>
 ) : activeConstraints.length > 0 ? (
  /* Contextual recovery (§5, the stage this app most often skipped). "Nothing matched
     that combination" is true and useless: it does not say WHICH part of the
