@@ -1572,3 +1572,72 @@ html.dark .shimmer::after {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+@media (min-width: 1024px) {
+  .desktop-shell {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    gap: clamp(36px, 4vw, 72px);
+    width: min(100%, 1560px);
+    padding: 40px clamp(28px, 4vw, 72px) 72px;
+  }
+
+  .desktop-shell > .desktop-filter-region {
+    position: sticky;
+    top: 104px;
+    max-height: calc(100dvh - 136px);
+    overflow-y: auto;
+    padding: 0 28px 24px 0;
+    border-right: 1px solid var(--rule);
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel {
+    display: block;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel h1 {
+    max-width: 10ch;
+    font-size: clamp(2.5rem, 3vw, 3.5rem);
+    line-height: .98;
+    letter-spacing: -.05em;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel p {
+    max-width: 30ch;
+    font-size: .95rem;
+    line-height: 1.55;
+  }
+
+  .desktop-shell > .page-grid {
+    padding: 0;
+    min-width: 0;
+  }
+
+  .desktop-shell > .page-grid > .results-shell {
+    max-width: none;
+    margin: 0;
+  }
+
+  .desktop-shell > .page-grid .grid.grid-cols-1 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .desktop-shell > .page-grid .restaurant-result,
+  .desktop-shell > .page-grid .recipe-result {
+    border-radius: 16px !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .desktop-shell {
+    grid-template-columns: 360px minmax(0, 1fr);
+    gap: 80px;
+    padding-inline: 72px;
+  }
+
+  .desktop-shell > .page-grid .grid.grid-cols-1 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
