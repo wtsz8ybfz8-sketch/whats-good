@@ -1481,3 +1481,94 @@ html.dark .shimmer::after {
     border-radius: 12px !important;
   }
 }
+
+@media (min-width: 1024px) {
+  .desktop-shell {
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+    gap: clamp(40px, 5vw, 88px);
+    width: min(100%, 1720px);
+    min-height: calc(100dvh - 72px);
+    margin-inline: auto;
+    padding: 48px clamp(40px, 6vw, 112px) 80px;
+    align-items: start;
+  }
+
+  .desktop-shell > .desktop-filter-region {
+    position: sticky;
+    top: 104px;
+    max-height: none;
+    overflow: visible;
+    padding: 0 32px 0 0;
+    border-right: 0;
+  }
+
+  .desktop-shell > .desktop-filter-region .surface,
+  .desktop-shell > .desktop-filter-region .filter-panel,
+  .desktop-shell > .desktop-filter-region .desktop-editorial-panel {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel h1 {
+    max-width: 8ch;
+    font-size: clamp(2.4rem, 3.1vw, 3.8rem);
+    line-height: .96;
+    letter-spacing: -.055em;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel p {
+    max-width: 29ch;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .desktop-shell > .desktop-filter-region .editorial-search-panel > div:nth-of-type(2) {
+    margin-top: 32px;
+  }
+
+  .desktop-shell > .page-grid {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .desktop-shell > .page-grid > .results-shell {
+    max-width: none;
+    margin: 0;
+  }
+
+  .desktop-shell > .page-grid .grid.grid-cols-1 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .desktop-shell > .page-grid .restaurant-result,
+  .desktop-shell > .page-grid .recipe-result {
+    border-radius: 18px !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .desktop-shell {
+    grid-template-columns: 380px minmax(0, 1fr);
+    gap: 96px;
+    padding-inline: 80px;
+  }
+
+  .desktop-shell > .page-grid .grid.grid-cols-1 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
