@@ -11,6 +11,36 @@
  * this file assumes a country, a currency or a hemisphere.
  */
 
+/**
+ * The meals a venue is confirmed to serve.
+ *
+ * Tri-state on purpose, and it must stay that way. Google publishes these as booleans
+ * that are ABSENT when unknown, so `false` ("does not serve breakfast") and `undefined`
+ * ("nobody has said") are different answers — the same distinction §8.3 already forces
+ * on `openNow`. Collapsing them with a truthiness check would quietly turn "unknown"
+ * into "no" across every venue that has never been surveyed, which is most of them.
+ * Render sites show the confirmed-true meals and say so; they never render a `false`
+ * as an absence or an `undefined` as a denial.
+ */
+export type MealKey =
+  | 'breakfast'
+  | 'brunch'
+  | 'lunch'
+  | 'dinner'
+  | 'dessert'
+  | 'coffee';
+
+/** Atmosphere/service attributes, same tri-state contract as MealKey above. */
+export type VenueAttributeKey =
+  | 'dineIn'
+  | 'takeout'
+  | 'delivery'
+  | 'outdoorSeating'
+  | 'reservable'
+  | 'servesVegetarianFood'
+  | 'goodForChildren'
+  | 'goodForGroups';
+
 export interface Venue {
   id: string;
   name: string;
@@ -18,6 +48,18 @@ export interface Venue {
   cuisine: string;
   vibeMatch: string;
   fallbackDistance: string; // shown when geolocation is denied
+  /**
+   * Google's own one-line description of the place (Places `editorialSummary`). Absent
+   * for most venues — the render site drops the "What Google says" module rather than
+   * substituting a generated sentence, which is the whole point of §8: no field, no
+   * module. Attributed out loud at the render site, because unattributed it would read
+   * as our recommendation thesis, which we have not earned.
+   */
+  editorialSummary?: string;
+  /** Confirmed meals, tri-state. See MealKey. Absent when Google published none. */
+  meals?: Partial<Record<MealKey, boolean>>;
+  /** Service/atmosphere attributes, tri-state. See VenueAttributeKey. */
+  attributes?: Partial<Record<VenueAttributeKey, boolean>>;
   /**
    * Optional on purpose. This was `rating: number` fed by `place.rating ?? 4.0`, so a
    * venue Google holds no rating for was handed a 4.0 and rendered it beside a star as

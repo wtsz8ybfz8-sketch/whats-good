@@ -140,6 +140,45 @@ export const EateryView: React.FC<EateryViewProps> = ({
 
   if (!rawEatery) return null;
 
+  /* ── Places profile fields ────────────────────────────────────────────────────────
+     Everything here is tri-state at the source: Google omits these keys entirely for
+     venues nobody has surveyed, so `false` means "confirmed no" and absent means "nobody
+     said". We surface only the confirmed YES values and label the block "Good to know" as
+     confirmed, so an absent meal reads as unknown rather than as a denial. Filtering on
+     `=== true` rather than truthiness is what keeps that distinction intact. */
+  const MEAL_LABELS: Record<string, string> = {
+    breakfast: 'Breakfast',
+    brunch: 'Brunch',
+    lunch: 'Lunch',
+    dinner: 'Dinner',
+    dessert: 'Dessert',
+    coffee: 'Coffee',
+  };
+  const MEAL_ORDER = ['breakfast', 'brunch', 'lunch', 'dinner', 'dessert', 'coffee'];
+  const servedMeals = MEAL_ORDER.filter((m) => rawEatery.meals?.[m] === true);
+
+  const ATTRIBUTE_LABELS: Record<string, string> = {
+    dineIn: 'Dine-in',
+    takeout: 'Takeaway',
+    delivery: 'Delivery',
+    outdoorSeating: 'Outdoor seating',
+    reservable: 'Takes bookings',
+    servesVegetarianFood: 'Vegetarian options',
+    goodForChildren: 'Good for kids',
+    goodForGroups: 'Good for groups',
+  };
+  const ATTRIBUTE_ORDER = [
+    'outdoorSeating',
+    'reservable',
+    'servesVegetarianFood',
+    'goodForGroups',
+    'goodForChildren',
+    'dineIn',
+    'takeout',
+    'delivery',
+  ];
+  const confirmedAttributes = ATTRIBUTE_ORDER.filter((a) => rawEatery.attributes?.[a] === true);
+
   const directionsUrl = `https://maps.google.com/?q=${encodeURIComponent(rawEatery.address)}`;
   const googleDetailsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${rawEatery.name}, ${rawEatery.address}`)}`;
   // Venues saved to localStorage before this field existed carry no flag, and defaulting
@@ -527,6 +566,25 @@ export const EateryView: React.FC<EateryViewProps> = ({
           </div>
         )}
 
+        {/* ── WHAT GOOGLE SAYS ─────────────────────────────────────────────────────
+            Google's editorialSummary — its own one-line description of the place. This is
+            the closest thing Places publishes to a point of view, and it is the "one
+            useful distinctive detail" §8.5 asks for on venues that have one. Attributed
+            out loud, because the whole product rests on the reader knowing who is speaking;
+            unattributed it would read as our recommendation thesis, which "Why this one"
+            above already owns. Absent for most venues, and then this module does not
+            render — no substitute sentence, no generated stand-in. */}
+        {rawEatery.editorialSummary && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              What Google says
+            </p>
+            <p className="font-sans text-[15px] leading-relaxed text-[var(--charcoal)] max-w-[62ch]">
+              {rawEatery.editorialSummary}
+            </p>
+          </div>
+        )}
+
         {/* ── VIBE & ATMOSPHERE MATCH ──────────────────────────────────────────────
             Answers "is this place right for how I feel", which is the question the whole
             app is built around. `vibeMatch` is an authored field on the venue record, not
@@ -610,6 +668,51 @@ export const EateryView: React.FC<EateryViewProps> = ({
                   ))}
                 </ul>
               </details>
+            )}
+          </div>
+        )}
+
+        {/* ── GOOD TO KNOW ─────────────────────────────────────────────────────────
+            Confirmed meals and service attributes from Places' profile fields. Only
+            `=== true` values render (see servedMeals/confirmedAttributes above). That is
+            the whole design: Google omits these keys for venues nobody surveyed, so absence
+            means unknown, not "no" — and the caption says "Confirmed" out loud so a missing
+            Breakfast chip cannot be read as a venue that does not serve breakfast. A
+            truthiness filter here would have been indistinguishable in the happy case and
+            wrong in every unsurveyed one. Both lists empty -> no heading, module gone. */}
+        {(servedMeals.length > 0 || confirmedAttributes.length > 0) && (
+          <div className="mb-8">
+            <p className="font-mono text-xs uppercase tracking-wider text-[var(--text-subtle)] mb-3">
+              Good to know
+            </p>
+
+            {servedMeals.length > 0 && (
+              <div className="mb-4">
+                <p className="font-mono text-xs text-[var(--text-muted)] mb-2">Confirmed meals</p>
+                <ul className="flex flex-wrap gap-2">
+                  {servedMeals.map((m) => (
+                    <li
+                      key={m}
+                      className="rounded-full border border-[var(--accent-tint-border)] bg-[var(--accent-tint)] px-3 py-1.5 font-sans text-[13px] font-semibold text-[var(--accent-terracotta)]"
+                    >
+                      {MEAL_LABELS[m]}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {confirmedAttributes.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {confirmedAttributes.map((a) => (
+                  <li
+                    key={a}
+                    className="rounded-full border border-[var(--rule)] px-3 py-1.5 font-sans text-[13px] text-[var(--charcoal)]"
+                  >
+                    {ATTRIBUTE_LABELS[a]}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}

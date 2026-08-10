@@ -61,6 +61,14 @@ function place(id, name, address, lat, lng, opts = {}) {
             ],
           },
         }),
+    // editorialSummary + the serving/atmosphere booleans are absent by default, exactly
+    // as they are for the many venues nobody has surveyed — so a fixture with neither
+    // (pl-6) exercises the "What Google says" / "Good to know" modules NOT rendering. A
+    // venue that wants them passes `editorial` (string) and/or `profile` (the raw Places
+    // boolean keys). `profile` may carry a `false` on purpose — a confirmed "no" that must
+    // NOT show as a chip, which is the tri-state the whole block is built to protect.
+    ...(opts.editorial ? { editorialSummary: { text: opts.editorial, languageCode: 'en' } } : {}),
+    ...(opts.profile ?? {}),
   };
 }
 
@@ -71,6 +79,20 @@ export const PLACES = [
     openNow: true,
     rating: 4.4,
     userRatingCount: 1284,
+    // The full profile: exercises "What Google says" AND "Good to know". `servesBreakfast:
+    // false` is deliberate — a confirmed "no" that must render NO chip, proving the block
+    // reads `=== true` and never turns an unknown (or a false) into a claim.
+    editorial: 'A snug Soho trattoria for handmade pasta and Barolo by the glass.',
+    profile: {
+      servesBreakfast: false,
+      servesLunch: true,
+      servesDinner: true,
+      servesDessert: true,
+      outdoorSeating: true,
+      reservable: true,
+      servesVegetarianFood: true,
+      goodForGroups: true,
+    },
   }),
   place('pl-2', 'Kaya Ramen Bar', '4 Newburgh Street, London W1F 7RF, UK', 51.5136, -0.1385, {
     cuisine: 'Ramen restaurant',
@@ -93,6 +115,10 @@ export const PLACES = [
     // not be collapsed into "Closed" by a truthy check.
     // rating deliberately absent for the same reason.
     phone: '01 43 57 12 90',
+    // Editorial summary present, but NO profile booleans — a venue Google describes in
+    // prose yet has surveyed no meals/attributes for. Proves "What Google says" and "Good
+    // to know" are independent: the first renders, the second stays gone.
+    editorial: 'A candlelit Oberkampf wine bar with a short, seasonal natural-wine list.',
   }),
   place('pl-4', 'Casa Lolita', 'Carrer de Blai 22, 08004 Barcelona, Spain', 41.3736, 2.1637, {
     cuisine: 'Tapas restaurant',

@@ -3,7 +3,7 @@
  * Falls back silently to hardcoded data on any failure.
  */
 
-import { Venue } from './venue';
+import { Venue, MealKey, VenueAttributeKey } from './venue';
 import { localiseHours, placesLanguageCode, stripDayPrefix, venueDayIndex } from './locale';
 
 const PLACES_BASE = 'https://places.googleapis.com/v1';
@@ -54,6 +54,24 @@ interface Place {
   websiteUri?: string;
   regularOpeningHours?: PlaceOpeningHours;
   utcOffsetMinutes?: number;
+  editorialSummary?: { text?: string; languageCode?: string };
+  /* All optional booleans below are ABSENT when Google has no answer — never coerced to
+     false. Keep them optional here so the tri-state survives into Venue; see venue.ts
+     MealKey. */
+  servesBreakfast?: boolean;
+  servesBrunch?: boolean;
+  servesLunch?: boolean;
+  servesDinner?: boolean;
+  servesDessert?: boolean;
+  servesCoffee?: boolean;
+  dineIn?: boolean;
+  takeout?: boolean;
+  delivery?: boolean;
+  outdoorSeating?: boolean;
+  reservable?: boolean;
+  servesVegetarianFood?: boolean;
+  goodForChildren?: boolean;
+  goodForGroups?: boolean;
 }
 
 interface PlacesSearchResponse {
@@ -273,6 +291,30 @@ export type VenueSearchResult = { status: 'ok'; venues: Venue[] } | VenueSearchF
 type PlacesFetch = { status: 'ok'; places: Place[] } | VenueSearchFailure;
 
 /**
+ * Collapse a list of `[key, boolean | undefined]` pairs into a tri-state record, keeping
+ * only the keys Google actually answered. Returns `undefined` when it answered none — the
+ * graceful fallback for the many venues nobody has surveyed, so the render site drops the
+ * whole module rather than showing an empty heading.
+ *
+ * The test is `typeof value === 'boolean'`, NOT truthiness: `false` is a real answer
+ * ("does not serve breakfast") and must survive. Folding it into absence is the exact §8
+ * mistake — turning "unknown" into "no" — that the tri-state exists to prevent.
+ */
+function definedBooleans<K extends string>(
+  entries: [K, boolean | undefined][],
+): Partial<Record<K, boolean>> | undefined {
+  const out: Partial<Record<K, boolean>> = {};
+  let answered = false;
+  for (const [key, value] of entries) {
+    if (typeof value === 'boolean') {
+      out[key] = value;
+      answered = true;
+    }
+  }
+  return answered ? out : undefined;
+}
+
+/**
  * Most-actionable failure wins when the two queries disagree. A user whose key is
  * rejected needs to hear that, not "network problem" from the other call timing out.
  */
@@ -318,6 +360,30 @@ async function searchTextOnce(
         'places.regularOpeningHours',
         // Lets us resolve "today" where the venue is rather than where the phone is.
         'places.utcOffsetMinutes',
+        /* BILLING NOTE — everything below this line is the Enterprise + Atmosphere SKU.
+           id/photos/location are Essentials; displayName/priceLevel/primaryType are Pro;
+           rating/websiteUri/phone/openingHours are Enterprise. The serving and atmosphere
+           booleans and editorialSummary sit in the highest tier, so adding them raises the
+           per-request cost of EVERY text search this app makes — and fetchVenues can fire
+           two searches per query. It buys the "What Google says" line and the "Good to
+           know" chips on the venue page (real, confirmed data — no invented facts). If the
+           bill ever matters more than the depth, this block is the thing to cut, and the
+           render sites already degrade cleanly to nothing when the fields are absent. */
+        'places.editorialSummary',
+        'places.servesBreakfast',
+        'places.servesBrunch',
+        'places.servesLunch',
+        'places.servesDinner',
+        'places.servesDessert',
+        'places.servesCoffee',
+        'places.dineIn',
+        'places.takeout',
+        'places.delivery',
+        'places.outdoorSeating',
+        'places.reservable',
+        'places.servesVegetarianFood',
+        'places.goodForChildren',
+        'places.goodForGroups',
       ].join(','),
     },
     body: JSON.stringify({
@@ -635,8 +701,33 @@ export async function fetchVenues(
         hoursToday,
         // Undefined when Google published no rating; the star render is guarded on it.
         userRatingCount: place.userRatingCount,
+        /* Google's own words, not ours. Absent for most venues — the render site drops the
+           "What Google says" module rather than substituting a generated sentence, which is
+           the whole point of §8: no field, no module. */
+        editorialSummary: place.editorialSummary?.text,
         // Built from the weekdayDescriptions already fetched for hoursToday — no new field.
         hoursWeekly: weeklyHours(place.regularOpeningHours, place.utcOffsetMinutes),
+        /* Tri-state, confirmed-only. `definedBooleans` keeps `false` distinct from absent
+           and drops the field entirely when Google answered none, so the "Good to know"
+           block renders confirmed meals/attributes and never reads an unknown as a "no". */
+        meals: definedBooleans<MealKey>([
+          ['breakfast', place.servesBreakfast],
+          ['brunch', place.servesBrunch],
+          ['lunch', place.servesLunch],
+          ['dinner', place.servesDinner],
+          ['dessert', place.servesDessert],
+          ['coffee', place.servesCoffee],
+        ]),
+        attributes: definedBooleans<VenueAttributeKey>([
+          ['dineIn', place.dineIn],
+          ['takeout', place.takeout],
+          ['delivery', place.delivery],
+          ['outdoorSeating', place.outdoorSeating],
+          ['reservable', place.reservable],
+          ['servesVegetarianFood', place.servesVegetarianFood],
+          ['goodForChildren', place.goodForChildren],
+          ['goodForGroups', place.goodForGroups],
+        ]),
       };
     });
 
