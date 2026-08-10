@@ -42,7 +42,7 @@ inspecting, update the row with the date, the method, and — critically — wha
 | `api/log.ts` | 2026-08-01 | Source only — **outside tsconfig, no gate covers it** | Body parsing hardened for all four runtime shapes. **NEVER EXERCISED IN PRODUCTION** |
 | `main.tsx` | 2026-08-01 | Browser boot | Telemetry installs before render; app boots clean |
 | `ErrorBoundary.tsx` | 2026-08-01 | Source + reasoning | Raw exception moved behind a disclosure; reports to telemetry. **Not re-opened in a browser after the copy change** |
-| `locale.ts` / `cuisineRail.ts` / `cuisineIcon.ts` / `venue.ts` / `types.ts` / `useSavedRecipes.ts` / `StatusStates.tsx` | **NEVER INSPECTED** | — | Declared so the gate passes. None has been opened in a browser on its own terms. |
+| `locale.ts` / `cuisineRail.ts` / `cuisineIcon.ts` / `venue.ts` / `types.ts` / `useSavedRecipes.ts` / `StatusStates.tsx` / `happyHourSources.ts` | **NEVER INSPECTED** | — | Declared so the gate passes. None has been opened in a browser on its own terms. (`happyHourSources.ts` was missing from this table entirely, which failed `ledger-check.mjs` — the whole gate — on `main` and every branch; added 2026-08-10.) |
 | **Real-device iOS** | Partial, 2026-07-27 | `ci/ios-shots` screenshots | At-rest only. Never interacted with. |
 
 ---
