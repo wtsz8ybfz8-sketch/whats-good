@@ -15,10 +15,16 @@ export const searchVenues = createServerFn({ method: "POST" })
     const { searchPlaces } = await import("./places.server");
     const { SAMPLE_VENUES } = await import("./sample-venues");
 
+    // This now runs inside a route loader, so an unhandled throw here is a 500
+    // on the whole page rather than one failed query. A network fault degrades
+    // to the same sample fallback as a missing key.
     const result = await searchPlaces({
       query: data.query,
       city: data.city || "near me",
       price: data.price,
+    }).catch((error: unknown) => {
+      console.error("places search threw", error);
+      return { venues: [] as Venue[], source: "sample" as const, notice: "provider-error" };
     });
 
     if (result.venues.length > 0) {

@@ -1,6 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 
@@ -32,27 +30,35 @@ export const Route = createFileRoute("/eat")({
       },
     ],
   }),
+  // Searched on the server so the places are in the HTML of the first paint.
+  // A shared link opens on someone else's phone showing real venues, not a
+  // "Looking…" placeholder waiting on a second round trip.
+  loaderDeps: ({ search }) => ({
+    q: search.q,
+    city: search.city,
+    price: search.price ?? null,
+  }),
+  loader: async ({ deps }) => {
+    if (!deps.q.trim()) return { result: null };
+    return {
+      result: await searchVenues({
+        data: { query: deps.q, city: deps.city, price: deps.price },
+      }),
+    };
+  },
   component: EatPage,
 });
 
 function EatPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/eat" });
-  const runSearch = useServerFn(searchVenues);
+  const { result } = Route.useLoaderData();
+  const isLoading = useRouterState({ select: (state) => state.isLoading });
 
   const [query, setQuery] = useState(search.q);
   const [city, setCity] = useState(search.city);
 
-  const results = useQuery({
-    queryKey: ["venues", search.q, search.city, search.price ?? null],
-    queryFn: () =>
-      runSearch({
-        data: { query: search.q, city: search.city, price: search.price ?? null },
-      }),
-    enabled: search.q.trim().length > 0,
-  });
-
-  const data = results.data;
+  const data = result;
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">
@@ -177,7 +183,7 @@ function EatPage() {
         </p>
       ) : null}
 
-      {results.isLoading ? (
+      {isLoading ? (
         <p className="mt-10 text-muted-foreground">Looking…</p>
       ) : !search.q.trim() ? (
         <p className="mt-10 text-muted-foreground">Tell us what you fancy to get started.</p>
