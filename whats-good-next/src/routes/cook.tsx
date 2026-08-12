@@ -1,5 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { z } from "zod";
@@ -26,21 +25,23 @@ export const Route = createFileRoute("/cook")({
       },
     ],
   }),
+  // Server-rendered like /eat, so a recipe search is in the HTML on first
+  // paint and a shared link opens with the food already on screen.
+  loaderDeps: ({ search }) => ({ q: search.q }),
+  loader: async ({ deps }) => {
+    if (!deps.q.trim()) return { result: null };
+    return { result: await searchRecipes({ data: { query: deps.q } }) };
+  },
   component: CookPage,
 });
 
 function CookPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/cook" });
-  const runSearch = useServerFn(searchRecipes);
   const surprise = useServerFn(surpriseRecipe);
   const [query, setQuery] = useState(search.q);
-
-  const results = useQuery({
-    queryKey: ["recipes", search.q],
-    queryFn: () => runSearch({ data: { query: search.q } }),
-    enabled: search.q.trim().length > 0,
-  });
+  const { result } = Route.useLoaderData();
+  const isLoading = useRouterState({ select: (state) => state.isLoading });
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">
@@ -78,15 +79,15 @@ function CookPage() {
         </button>
       </form>
 
-      {results.isLoading ? (
+      {isLoading ? (
         <p className="mt-10 text-muted-foreground">Looking…</p>
       ) : !search.q.trim() ? (
         <p className="mt-10 text-muted-foreground">Search an ingredient or a dish to begin.</p>
-      ) : results.data && results.data.items.length === 0 ? (
+      ) : result && result.items.length === 0 ? (
         <p className="mt-10 text-muted-foreground">No recipes matched that. Try one ingredient.</p>
       ) : (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {results.data?.items.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
+          {result?.items.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
         </div>
       )}
     </div>
