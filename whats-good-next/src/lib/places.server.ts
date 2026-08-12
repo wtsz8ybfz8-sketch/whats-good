@@ -82,8 +82,14 @@ function toVenue(place: RawPlace, key: string, width = 800): Venue {
   };
 }
 
+/**
+ * The key this app was built to read is GOOGLE_PLACES_KEY, but the project this
+ * deploys into already carries the browser app's VITE_GOOGLE_PLACES_KEY. Accept
+ * either so one key serves both, and read it lazily — Nitro populates
+ * process.env per request, not at module load.
+ */
 export function placesKey(): string | null {
-  return process.env["GOOGLE_PLACES_KEY"] ?? null;
+  return process.env["GOOGLE_PLACES_KEY"] ?? process.env["VITE_GOOGLE_PLACES_KEY"] ?? null;
 }
 
 export async function searchPlaces(args: {
