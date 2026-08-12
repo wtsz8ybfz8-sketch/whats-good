@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm install --prefix whats-good-next --no-audit --no-fund",
+  "installCommand": "rm -rf whats-good-next/node_modules && npm install --prefix whats-good-next --no-audit --no-fund",
   "buildCommand": "cd whats-good-next && NITRO_PRESET=vercel npm run build && cd .. && rm -rf .vercel/output && mkdir -p .vercel && cp -r whats-good-next/.vercel/output .vercel/output"
 }
