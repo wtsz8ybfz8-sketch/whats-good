@@ -1,42 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "headers": [
-    {
-      "source": "/sw.js",
-      "headers": [
-        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
-        { "key": "Cache-Control", "value": "no-store, max-age=0" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
-      ]
-    },
-    {
-      "source": "/registerSW.js",
-      "headers": [
-        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
-        { "key": "Cache-Control", "value": "no-store, max-age=0" }
-      ]
-    },
-    {
-      "source": "/",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
-    },
-    {
-      "source": "/index.html",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-    },
-    {
-      "source": "/fonts/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/((?!api/|sw\\.js|registerSW\\.js|manifest\\.webmanifest|assets/).*)",
-      "destination": "/"
-    }
-  ]
+  "framework": null,
+  "installCommand": "npm install --prefix whats-good-next --no-audit --no-fund",
+  "buildCommand": "cd whats-good-next && NITRO_PRESET=vercel npm run build && cd .. && rm -rf .vercel/output && mkdir -p .vercel && cp -r whats-good-next/.vercel/output .vercel/output"
 }

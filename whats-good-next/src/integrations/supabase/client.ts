@@ -33,14 +33,29 @@ function createSupabaseClient() {
   const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
 
+  // Missing config used to THROW here. That is fatal for the whole app, not just for
+  // the features that need a backend: __root.tsx subscribes to auth on mount, so an
+  // unset variable took down every page with the error boundary — including browsing
+  // venues and recipes, which need no account at all.
+  //
+  // Degrade instead. With placeholder credentials the client constructs fine, its
+  // network calls fail harmlessly, `getUser()` resolves to no user, and useSaved()
+  // takes the localStorage path it already has for signed-out visitors. Browsing and
+  // saving work; only cross-device sync and sign-in are unavailable, which is the
+  // honest consequence of having no backend configured.
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
       ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
       ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
+    console.warn(
+      `[Supabase] Missing environment variable(s): ${missing.join(', ')}. ` +
+        'Running without a backend: sign-in and cross-device sync are disabled, ' +
+        'saved items fall back to this device only.',
+    );
+    return createClient<Database>('https://placeholder.supabase.co', 'placeholder-anon-key', {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
