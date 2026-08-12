@@ -96,15 +96,28 @@ export async function searchPlaces(args: {
   query: string;
   city: string;
   price: PriceBand | null;
+  lat?: number | null;
+  lng?: number | null;
 }): Promise<{ venues: Venue[]; source: "live" | "cache" | "sample"; notice?: string }> {
   const key = placesKey();
   if (!key) return { venues: [], source: "sample", notice: "no-key" };
 
-  const textQuery = `${args.query} in ${args.city}`.trim();
+  // Never paste a location word into the query. This used to default the city
+  // to the literal string "near me", so an empty city sent Google
+  // "dessert in near me" — which it geocodes to a real place, in Texas. When we
+  // have coordinates we bias the search properly; when we have neither, we ask
+  // rather than guessing somewhere on the user's behalf.
+  const hasCoords = typeof args.lat === "number" && typeof args.lng === "number";
+  if (!args.city.trim() && !hasCoords) {
+    return { venues: [], source: "sample", notice: "no-location" };
+  }
+
+  const textQuery = (args.city.trim() ? `${args.query} in ${args.city}` : args.query).trim();
   const priceLevels = args.price
     ? [...(PRICE_LEVELS.find((p) => p.id === args.price)?.levels ?? [])]
     : undefined;
-  const cacheKey = `places:search:${textQuery.toLowerCase()}:${priceLevels?.join("|") ?? "any"}`;
+  const bias = hasCoords ? `${args.lat!.toFixed(3)},${args.lng!.toFixed(3)}` : "none";
+  const cacheKey = `places:search:${textQuery.toLowerCase()}:${priceLevels?.join("|") ?? "any"}:${bias}`;
 
   const cached = await readCache<RawPlace[]>(cacheKey);
   if (cached) return { venues: cached.map((p) => toVenue(p, key)), source: "cache" };
@@ -124,6 +137,17 @@ export async function searchPlaces(args: {
       textQuery,
       maxResultCount: 18,
       ...(priceLevels ? { priceLevels } : {}),
+      // 10km around the phone, so "dessert" with no city means dessert here.
+      ...(hasCoords
+        ? {
+            locationBias: {
+              circle: {
+                center: { latitude: args.lat, longitude: args.lng },
+                radius: 10000,
+              },
+            },
+          }
+        : {}),
     }),
   });
 
@@ -136,6 +160,55 @@ export async function searchPlaces(args: {
   const places = body.places ?? [];
   await writeCache(cacheKey, "places", places, SEARCH_TTL);
   return { venues: places.map((p) => toVenue(p, key)), source: "live" };
+}
+
+/**
+ * Turns coordinates into a place name to show the user. Uses the Geocoding API,
+ * which is a separate product from Places and may not be enabled on the key —
+ * so a failure here is expected and returns null. Callers say "Near you"
+ * instead; the search itself is biased by the coordinates either way and does
+ * not depend on this succeeding.
+ */
+export async function reverseCity(lat: number, lng: number): Promise<string | null> {
+  const key = placesKey();
+  if (!key) return null;
+
+  const cacheKey = `geocode:${lat.toFixed(2)},${lng.toFixed(2)}`;
+  const cached = await readCache<string>(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("latlng", `${lat},${lng}`);
+    url.searchParams.set("result_type", "locality|postal_town|administrative_area_level_2");
+    url.searchParams.set("key", key);
+
+    const response = await fetch(url);
+    if (!response.ok) return null;
+
+    const body = (await response.json()) as {
+      status?: string;
+      results?: { address_components?: { long_name?: string; types?: string[] }[] }[];
+    };
+    if (body.status !== "OK") {
+      console.error(`Geocode returned ${body.status ?? "no status"}`);
+      return null;
+    }
+
+    for (const type of ["locality", "postal_town", "administrative_area_level_2"]) {
+      for (const result of body.results ?? []) {
+        const hit = result.address_components?.find((c) => c.types?.includes(type));
+        if (hit?.long_name) {
+          await writeCache(cacheKey, "geocode", hit.long_name, DETAIL_TTL);
+          return hit.long_name;
+        }
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("reverse geocode failed", error);
+    return null;
+  }
 }
 
 export async function placeDetails(id: string): Promise<Venue | null> {

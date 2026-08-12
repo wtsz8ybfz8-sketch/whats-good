@@ -5,6 +5,7 @@ import { useState } from "react";
 import { z } from "zod";
 
 import { VenueCard } from "@/components/food-cards";
+import { NearMeButton, type Located } from "@/components/near-me";
 import { searchVenues } from "@/lib/discovery.functions";
 import {
   OUT_MOODS,
@@ -18,6 +19,8 @@ const searchSchema = z.object({
   q: z.string().catch(""),
   city: z.string().catch(""),
   price: z.enum(["cheap", "mid", "high"]).optional().catch(undefined),
+  lat: z.coerce.number().min(-90).max(90).optional().catch(undefined),
+  lng: z.coerce.number().min(-180).max(180).optional().catch(undefined),
 });
 
 type SearchParams = z.infer<typeof searchSchema>;
@@ -48,9 +51,17 @@ function OutPage() {
   const [city, setCity] = useState(search.city);
 
   const results = useQuery({
-    queryKey: ["out", search.q, search.city, search.price ?? null],
+    queryKey: ["out", search.q, search.city, search.price ?? null, search.lat ?? null],
     queryFn: () =>
-      runSearch({ data: { query: search.q, city: search.city, price: search.price ?? null } }),
+      runSearch({
+        data: {
+          query: search.q,
+          city: search.city,
+          price: search.price ?? null,
+          lat: search.lat ?? null,
+          lng: search.lng ?? null,
+        },
+      }),
     enabled: search.q.trim().length > 0,
   });
 
@@ -64,7 +75,13 @@ function OutPage() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          navigate({ search: (prev: SearchParams) => ({ ...prev, city }) });
+          navigate({
+            search: (prev: SearchParams) => ({
+              ...prev,
+              city,
+              ...(city !== search.city ? { lat: undefined, lng: undefined } : {}),
+            }),
+          });
         }}
         className="mt-6 flex flex-col gap-3 sm:flex-row"
       >
@@ -74,6 +91,20 @@ function OutPage() {
           placeholder="Town, city or neighbourhood"
           aria-label="Where"
           className="flex-1 rounded-xl border border-input bg-background px-4 py-3 outline-none focus:border-ring"
+        />
+        <NearMeButton
+          auto={!search.city && search.lat === undefined}
+          onLocated={(located: Located) => {
+            setCity(located.city);
+            navigate({
+              search: (prev: SearchParams) => ({
+                ...prev,
+                city: located.city,
+                lat: located.lat,
+                lng: located.lng,
+              }),
+            });
+          }}
         />
         <button
           type="submit"

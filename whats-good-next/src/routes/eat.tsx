@@ -3,6 +3,7 @@ import { useState } from "react";
 import { z } from "zod";
 
 import { VenueCard } from "@/components/food-cards";
+import { NearMeButton, type Located } from "@/components/near-me";
 import { searchVenues } from "@/lib/discovery.functions";
 import {
   CITIES,
@@ -18,6 +19,9 @@ const searchSchema = z.object({
   q: z.string().catch(""),
   city: z.string().catch(""),
   price: z.enum(["cheap", "mid", "high"]).optional().catch(undefined),
+  // Kept in the URL so a located search is shareable and survives a refresh.
+  lat: z.coerce.number().min(-90).max(90).optional().catch(undefined),
+  lng: z.coerce.number().min(-180).max(180).optional().catch(undefined),
 });
 
 type SearchParams = z.infer<typeof searchSchema>;
@@ -45,12 +49,20 @@ export const Route = createFileRoute("/eat")({
     q: search.q,
     city: search.city,
     price: search.price ?? null,
+    lat: search.lat ?? null,
+    lng: search.lng ?? null,
   }),
   loader: async ({ deps }) => {
     if (!deps.q.trim()) return { result: null };
     return {
       result: await searchVenues({
-        data: { query: deps.q, city: deps.city, price: deps.price },
+        data: {
+          query: deps.q,
+          city: deps.city,
+          price: deps.price,
+          lat: deps.lat,
+          lng: deps.lng,
+        },
       }),
     };
   },
@@ -81,7 +93,8 @@ function EatPage() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          go({ q: query, city });
+          // A typed city wins over a previous fix on the map.
+          go({ q: query, city, ...(city !== search.city ? { lat: undefined, lng: undefined } : {}) });
         }}
         className="mt-5 flex flex-col gap-3 sm:flex-row"
       >
@@ -139,6 +152,13 @@ function EatPage() {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        <NearMeButton
+          auto={!search.city && search.lat === undefined}
+          onLocated={(located: Located) => {
+            setCity(located.city);
+            go({ city: located.city, lat: located.lat, lng: located.lng });
+          }}
+        />
         <button
           type="button"
           aria-expanded={filtersOpen}
@@ -164,7 +184,7 @@ function EatPage() {
                   aria-pressed={search.city === name}
                   onClick={() => {
                     setCity(name);
-                    go({ city: name });
+                    go({ city: name, lat: undefined, lng: undefined });
                   }}
                   className={`min-h-[44px] rounded-full border px-4 text-sm transition-colors ${
                     search.city === name

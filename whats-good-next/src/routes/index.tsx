@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { useState } from "react";
 
+import { NearMeButton, type Located } from "@/components/near-me";
 import {
   CITIES,
   MOODS,
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const navigate = useNavigate();
   const [city, setCity] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [mood, setMood] = useState(MOODS[0]!.id);
   const [price, setPrice] = useState<PriceBand | null>(null);
   const [showAll, setShowAll] = useState(false);
@@ -87,7 +89,13 @@ function Index() {
               event.preventDefault();
               navigate({
                 to: "/eat",
-                search: { q: selected.placeTerms, city, price: price ?? undefined },
+                search: {
+                  q: selected.placeTerms,
+                  city,
+                  price: price ?? undefined,
+                  lat: coords?.lat,
+                  lng: coords?.lng,
+                },
               });
             }}
             className="space-y-6"
@@ -165,16 +173,30 @@ function Index() {
               <input
                 id="city"
                 value={city}
-                onChange={(event) => setCity(event.target.value)}
+                onChange={(event) => {
+                  setCity(event.target.value);
+                  setCoords(null);
+                }}
                 placeholder="Town, city or neighbourhood"
                 className="mt-3 w-full rounded-xl border border-input bg-background px-4 py-3 text-base outline-none transition-colors focus:border-ring"
+              />
+              <NearMeButton
+                className="mt-3"
+                auto={!city}
+                onLocated={(located: Located) => {
+                  setCity(located.city);
+                  setCoords({ lat: located.lat, lng: located.lng });
+                }}
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 {CITIES.slice(0, showAllCities ? CITIES.length : 6).map((name) => (
                   <button
                     key={name}
                     type="button"
-                    onClick={() => setCity(name)}
+                    onClick={() => {
+                      setCity(name);
+                      setCoords(null);
+                    }}
                     aria-pressed={city === name}
                     className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                       city === name

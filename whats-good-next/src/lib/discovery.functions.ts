@@ -7,6 +7,8 @@ const searchSchema = z.object({
   query: z.string().trim().min(1).max(80),
   city: z.string().trim().max(80).default(""),
   price: z.enum(["cheap", "mid", "high"]).nullable().default(null),
+  lat: z.number().min(-90).max(90).nullable().default(null),
+  lng: z.number().min(-180).max(180).nullable().default(null),
 });
 
 export const searchVenues = createServerFn({ method: "POST" })
@@ -20,8 +22,10 @@ export const searchVenues = createServerFn({ method: "POST" })
     // to the same sample fallback as a missing key.
     const result = await searchPlaces({
       query: data.query,
-      city: data.city || "near me",
+      city: data.city,
       price: data.price,
+      lat: data.lat,
+      lng: data.lng,
     }).catch((error: unknown) => {
       console.error("places search threw", error);
       return { venues: [] as Venue[], source: "sample" as const, notice: "provider-error" };
@@ -32,7 +36,9 @@ export const searchVenues = createServerFn({ method: "POST" })
     }
 
     const notice =
-      result.notice === "no-key"
+      result.notice === "no-location"
+        ? "Tell us where you are — tap Near me, or pick a city."
+      : result.notice === "no-key"
         ? "Live venue search is not connected yet — showing sample places."
         : result.notice === "budget"
           ? "Today's live search budget is used up — showing sample places."
@@ -40,8 +46,23 @@ export const searchVenues = createServerFn({ method: "POST" })
             ? "The venue service is not responding — showing sample places."
             : undefined;
 
+    // A missing location is answerable — ask for it. Filling the screen with
+    // sample venues would bury the one thing the user needs to do.
+    if (result.notice === "no-location") return { items: [], source: "sample", notice };
     if (notice) return { items: SAMPLE_VENUES, source: "sample", notice };
     return { items: [], source: result.source };
+  });
+
+/** Coordinates in, a place name out. Never the other way round. */
+export const cityFromCoords = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<{ city: string | null }> => {
+    const { reverseCity } = await import("./places.server");
+    return { city: await reverseCity(data.lat, data.lng) };
   });
 
 export const getVenue = createServerFn({ method: "GET" })
