@@ -182,11 +182,21 @@ async function capture(page, name, report) {
  * case-insensitive and substring-based, so "Find a Place" silently matched the big
  * "Find a place" CTA on the home screen and then found nothing at all on a detail
  * page, which read as "this view does not exist".
+ *
+ * BOTH traps were described in this comment and neither was actually implemented.
+ * `.first()` does not pick the VISIBLE nav — it picks the first in DOM order, which is
+ * the `hidden md:flex` desktop nav at App.tsx:1606. So at 390px every single tab click
+ * timed out and the driver reported `0 view(s) captured, 6 unreachable`, exit 2, with
+ * no screenshots at all. `:visible` is what the paragraph above always meant.
+ *
+ * The label table drifted too: the tab bar reads Find / Out / Stay In / Saved, and the
+ * second entry has been `Out` — not `Happy Hour` — since the tab was renamed. A comment
+ * warning about a trap is not a guard against it; only the selector is.
  */
-const TABS = { mood: 'Find', happyHour: 'Happy Hour', stayIn: 'Stay In', saved: 'Saved' };
+const TABS = { mood: 'Find', happyHour: 'Out', stayIn: 'Stay In', saved: 'Saved' };
 
 async function goTab(page, label) {
-  const btn = page.locator(`nav[aria-label="Primary"] button:has-text("${label}")`).first();
+  const btn = page.locator(`nav[aria-label="Primary"]:visible button:has-text("${label}")`).first();
   await btn.click({ timeout: 8000 });
   await page.waitForTimeout(900);
 }

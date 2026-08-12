@@ -44,7 +44,14 @@ src/lib/cache.server.ts      Supabase-backed cache + daily spend guard
 src/lib/saved.functions.ts   saved-items CRUD
 src/lib/sample-venues.ts     labelled fallback data
 package.json                 dependency manifest (not installed)
+tsconfig.json                their compiler settings — far stricter than ours
+vite.config.ts               thin wrapper over @lovable.dev/vite-tanstack-config
 ```
+
+`tsconfig.json` is worth reading on its own. Theirs runs `strict` plus
+`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`,
+`noPropertyAccessFromIndexSignature` and `noImplicitOverride`. Ours sets none of them —
+not even `strict`. That is a bigger real difference than any colour token here.
 
 ## What is deliberately NOT here
 
