@@ -246,7 +246,7 @@ function RootComponent() {
             <Outlet />
           </main>
           <footer className="border-t border-border/70 py-8 text-center text-xs text-muted-foreground">
-            Venue data from Google Places. Recipes from TheMealDB.
+            Venue data from Google Places. Recipes from spoonacular.
           </footer>
           {/* Clears the fixed tab bar so the last card is never trapped under it. */}
           <div

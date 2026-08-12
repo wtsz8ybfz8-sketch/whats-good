@@ -1,6 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 
 import { getRecipe } from "@/lib/discovery.functions";
 
@@ -13,16 +11,15 @@ export const Route = createFileRoute("/recipe/$id")({
       { property: "og:description", content: "Ingredients, method and video for tonight's cook." },
     ],
   }),
+  // Loaded on the server: a recipe link sent to someone opens as the recipe,
+  // not as "Loading…" followed by a round trip.
+  loader: async ({ params }) => ({ recipe: await getRecipe({ data: { id: params.id } }) }),
   component: RecipePage,
 });
 
 function RecipePage() {
-  const { id } = Route.useParams();
-  const fetchRecipe = useServerFn(getRecipe);
-  const { data: recipe, isLoading } = useQuery({
-    queryKey: ["recipe", id],
-    queryFn: () => fetchRecipe({ data: { id } }),
-  });
+  const { recipe } = Route.useLoaderData();
+  const isLoading = useRouterState({ select: (state) => state.isLoading });
 
   if (isLoading)
     return <p className="mx-auto max-w-3xl px-5 py-16 text-muted-foreground">Loading…</p>;
