@@ -176,7 +176,7 @@ function OutPage() {
         <p className="mt-10 text-muted-foreground">Looking…</p>
       ) : !search.q.trim() ? (
         <p className="mt-10 text-muted-foreground">Pick a vibe above to see what&apos;s open.</p>
-      ) : data && data.items.length === 0 ? (
+      ) : data && data.items.length === 0 && !data.notice ? (
         <p className="mt-10 text-muted-foreground">Nothing came back — try a wider area.</p>
       ) : (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

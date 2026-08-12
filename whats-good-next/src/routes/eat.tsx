@@ -264,7 +264,7 @@ function EatPage() {
         <p className="mt-10 text-muted-foreground">Looking…</p>
       ) : !search.q.trim() ? (
         <p className="mt-10 text-muted-foreground">Tell us what you fancy to get started.</p>
-      ) : data && data.items.length === 0 ? (
+      ) : data && data.items.length === 0 && !data.notice ? (
         <p className="mt-10 text-muted-foreground">
           Nothing came back for that. Try a broader search or a different area.
         </p>
