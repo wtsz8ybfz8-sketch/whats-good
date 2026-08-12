@@ -19,10 +19,21 @@ repo's `.gitignore`.
 
 To run this app you will need to recreate `.env` locally from the export.
 
-## What has NOT been verified
+## Build — verified, with one required setting
 
-`npm install` has not been run and this app has not been built or started. The file tree
-is complete; that it compiles is unconfirmed.
+`npm install` and `npm run build` both succeed here. Exit 0.
+
+**`NITRO_PRESET=vercel` is required.** `@lovable.dev/vite-tanstack-config` wires nitro with
+**Cloudflare** as its default target, so a plain `npm run build` produces a Cloudflare
+Worker that Vercel cannot serve. With the preset set, the build emits
+`.vercel/output/` — Vercel's Build Output API v3 — and deploys normally.
+
+So any Vercel project built from this directory needs `NITRO_PRESET=vercel` in its
+environment variables. Without it the build "succeeds" and the deployment does not work,
+which is the worst kind of failure to debug.
+
+Still unverified: the app has not been *run* — no page has been loaded from this build,
+here or anywhere. Building is not serving.
 
 ## Relationship to the app at the repo root
 
