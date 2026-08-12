@@ -2,7 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { useState } from "react";
 
-import { CITIES, MOODS, PRICE_LEVELS, type PriceBand } from "@/lib/food";
+import {
+  CITIES,
+  MOODS,
+  PRICE_LEVELS,
+  currencySymbol,
+  priceBandLabel,
+  type PriceBand,
+} from "@/lib/food";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -141,7 +148,7 @@ function Index() {
                         active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
                       }`}
                     >
-                      {band.label}
+                      {priceBandLabel(band.tier, band.word, currencySymbol(city))}
                     </button>
                   );
                 })}

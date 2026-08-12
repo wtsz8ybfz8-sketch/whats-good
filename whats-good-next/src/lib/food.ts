@@ -154,11 +154,56 @@ export const GUIDE_PICKS = [
 
 
 
+/**
+ * The currency belongs to the place, not to the reader's phone. Showing "£££"
+ * against a Tokyo izakaya is simply a false statement about what dinner costs,
+ * and it was hardcoded into every price band and every card.
+ */
+const CITY_CURRENCY: Record<string, string> = {
+  London: "GBP",
+  Paris: "EUR",
+  "New York": "USD",
+  Tokyo: "JPY",
+  Barcelona: "EUR",
+  Rome: "EUR",
+  Lisbon: "EUR",
+  Berlin: "EUR",
+  "Mexico City": "MXN",
+  Bangkok: "THB",
+  Istanbul: "TRY",
+  "Cape Town": "ZAR",
+};
+
+/**
+ * Null for anywhere we cannot name the currency honestly — a typed-in town we
+ * have no country for. Callers fall back to words rather than guessing a symbol.
+ */
+export function currencySymbol(city: string, locale?: string): string | null {
+  const currency = CITY_CURRENCY[city.trim()];
+  if (!currency) return null;
+  const parts = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).formatToParts(0);
+  return parts.find((part) => part.type === "currency")?.value ?? null;
+}
+
 export const PRICE_LEVELS = [
-  { id: "cheap", label: "£", levels: ["PRICE_LEVEL_INEXPENSIVE"] },
-  { id: "mid", label: "££", levels: ["PRICE_LEVEL_MODERATE"] },
-  { id: "high", label: "£££", levels: ["PRICE_LEVEL_EXPENSIVE", "PRICE_LEVEL_VERY_EXPENSIVE"] },
+  { id: "cheap", tier: 1, word: "Cheap eats", levels: ["PRICE_LEVEL_INEXPENSIVE"] },
+  { id: "mid", tier: 2, word: "Mid-range", levels: ["PRICE_LEVEL_MODERATE"] },
+  {
+    id: "high",
+    tier: 3,
+    word: "Big night",
+    levels: ["PRICE_LEVEL_EXPENSIVE", "PRICE_LEVEL_VERY_EXPENSIVE"],
+  },
 ] as const;
+
+/** The band's own label: repeated local currency symbol, or plain words. */
+export function priceBandLabel(tier: number, word: string, symbol: string | null): string {
+  return symbol ? symbol.repeat(tier) : word;
+}
 
 export type PriceBand = (typeof PRICE_LEVELS)[number]["id"];
 
@@ -202,19 +247,26 @@ export function moodById(id: string | undefined): Mood | undefined {
   return MOODS.find((m) => m.id === id);
 }
 
-export function priceLabel(price: string | null): string | null {
-  switch (price) {
-    case "PRICE_LEVEL_INEXPENSIVE":
-      return "£";
-    case "PRICE_LEVEL_MODERATE":
-      return "££";
-    case "PRICE_LEVEL_EXPENSIVE":
-      return "£££";
-    case "PRICE_LEVEL_VERY_EXPENSIVE":
-      return "££££";
-    default:
-      return null;
-  }
+const PRICE_TIERS: Record<string, { tier: number; word: string }> = {
+  PRICE_LEVEL_INEXPENSIVE: { tier: 1, word: "Cheap eats" },
+  PRICE_LEVEL_MODERATE: { tier: 2, word: "Mid-range" },
+  PRICE_LEVEL_EXPENSIVE: { tier: 3, word: "Big night" },
+  PRICE_LEVEL_VERY_EXPENSIVE: { tier: 4, word: "Blowout" },
+};
+
+export function priceLabel(price: string | null, symbol: string | null): string | null {
+  if (!price) return null;
+  const tier = PRICE_TIERS[price];
+  if (!tier) return null;
+  return priceBandLabel(tier.tier, tier.word, symbol);
+}
+
+/** Ratings are numbers and belong to Intl — "4.5" is "4,5" for most of the world. */
+export function formatRating(value: number, locale?: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 /** Deterministic warm placeholder so cards never collapse when a photo is missing. */

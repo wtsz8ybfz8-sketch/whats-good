@@ -52,7 +52,7 @@ function VenuePage() {
       <h1 className="mt-8 font-display text-4xl tracking-tight">{venue.name}</h1>
       <p className="mt-2 text-muted-foreground">
         {venue.cuisine}
-        {venue.price ? ` · ${priceLabel(venue.price)}` : ""}
+        {priceLabel(venue.price, null) ? ` \u00b7 ${priceLabel(venue.price, null)}` : ""}
         {venue.rating ? ` · ${venue.rating.toFixed(1)}` : ""}
         {venue.ratingCount ? ` (${venue.ratingCount} reviews)` : ""}
       </p>

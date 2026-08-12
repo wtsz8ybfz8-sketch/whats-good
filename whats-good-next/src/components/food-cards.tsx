@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Bookmark, BookmarkCheck, Star } from "lucide-react";
 
 import { useSaved } from "@/hooks/useSaved";
-import { priceLabel, type Recipe, type Venue } from "@/lib/food";
+import { formatRating, priceLabel, type Recipe, type Venue } from "@/lib/food";
 
 function SaveButton({
   kind,
@@ -36,7 +36,7 @@ function SaveButton({
   );
 }
 
-export function VenueCard({ venue }: { venue: Venue }) {
+export function VenueCard({ venue, currency }: { venue: Venue; currency?: string | null }) {
   return (
     <article className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:shadow-lg">
       <SaveButton
@@ -67,13 +67,15 @@ export function VenueCard({ venue }: { venue: Venue }) {
             {venue.rating ? (
               <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
                 <Star className="size-3.5 fill-current text-accent" />
-                {venue.rating.toFixed(1)}
+                {formatRating(venue.rating)}
               </span>
             ) : null}
           </div>
           <p className="text-sm text-muted-foreground">
             {venue.cuisine}
-            {venue.price ? ` · ${priceLabel(venue.price)}` : ""}
+            {priceLabel(venue.price, currency ?? null)
+              ? ` · ${priceLabel(venue.price, currency ?? null)}`
+              : ""}
           </p>
           <p className="line-clamp-1 text-xs text-muted-foreground">{venue.address}</p>
           {venue.openNow !== null ? (
