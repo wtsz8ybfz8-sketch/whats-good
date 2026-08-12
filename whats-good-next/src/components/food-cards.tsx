@@ -36,7 +36,7 @@ function SaveButton({
   );
 }
 
-export function VenueCard({ venue, currency }: { venue: Venue; currency?: string | null }) {
+export function VenueCard({ venue }: { venue: Venue }) {
   return (
     <article className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:shadow-lg">
       <SaveButton
@@ -73,9 +73,7 @@ export function VenueCard({ venue, currency }: { venue: Venue; currency?: string
           </div>
           <p className="text-sm text-muted-foreground">
             {venue.cuisine}
-            {priceLabel(venue.price, currency ?? null)
-              ? ` · ${priceLabel(venue.price, currency ?? null)}`
-              : ""}
+            {priceLabel(venue.price) ? ` · ${priceLabel(venue.price)}` : ""}
           </p>
           <p className="line-clamp-1 text-xs text-muted-foreground">{venue.address}</p>
           {venue.openNow !== null ? (

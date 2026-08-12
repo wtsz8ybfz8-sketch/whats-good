@@ -7,13 +7,7 @@ import { z } from "zod";
 import { VenueCard } from "@/components/food-cards";
 import { NearMeButton, type Located } from "@/components/near-me";
 import { searchVenues } from "@/lib/discovery.functions";
-import {
-  OUT_MOODS,
-  PRICE_LEVELS,
-  currencySymbol,
-  priceBandLabel,
-  type PriceBand,
-} from "@/lib/food";
+import { OUT_MOODS, PRICE_LEVELS, type PriceBand } from "@/lib/food";
 
 const searchSchema = z.object({
   q: z.string().catch(""),
@@ -160,7 +154,7 @@ function OutPage() {
                 active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
               }`}
             >
-              {priceBandLabel(band.tier, band.word, currencySymbol(search.city))}
+              {band.word}
             </button>
           );
         })}
@@ -181,7 +175,7 @@ function OutPage() {
       ) : (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {data?.items.map((venue) => (
-            <VenueCard key={venue.id} venue={venue} currency={currencySymbol(search.city)} />
+            <VenueCard key={venue.id} venue={venue} />
           ))}
         </div>
       )}

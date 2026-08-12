@@ -155,40 +155,16 @@ export const GUIDE_PICKS = [
 
 
 /**
- * The currency belongs to the place, not to the reader's phone. Showing "£££"
- * against a Tokyo izakaya is simply a false statement about what dinner costs,
- * and it was hardcoded into every price band and every card.
+ * Budget bands are WORDS, not repeated currency symbols.
+ *
+ * Two reasons, both found on a real phone in Cape Town. Intl returns a
+ * currency CODE rather than a symbol for plenty of currencies — ZAR, THB and
+ * TRY among them — so repeating it rendered the band buttons as "ZAR",
+ * "ZARZAR", "ZARZARZAR". And even where a symbol exists, "RRR" or "£££" is a
+ * convention a visitor has to decode; Google's price level is an abstract
+ * tier, not a real amount, so we cannot honestly print a price range instead.
+ * Plain words say the same thing to a local and a tourist.
  */
-const CITY_CURRENCY: Record<string, string> = {
-  London: "GBP",
-  Paris: "EUR",
-  "New York": "USD",
-  Tokyo: "JPY",
-  Barcelona: "EUR",
-  Rome: "EUR",
-  Lisbon: "EUR",
-  Berlin: "EUR",
-  "Mexico City": "MXN",
-  Bangkok: "THB",
-  Istanbul: "TRY",
-  "Cape Town": "ZAR",
-};
-
-/**
- * Null for anywhere we cannot name the currency honestly — a typed-in town we
- * have no country for. Callers fall back to words rather than guessing a symbol.
- */
-export function currencySymbol(city: string, locale?: string): string | null {
-  const currency = CITY_CURRENCY[city.trim()];
-  if (!currency) return null;
-  const parts = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).formatToParts(0);
-  return parts.find((part) => part.type === "currency")?.value ?? null;
-}
-
 export const PRICE_LEVELS = [
   { id: "cheap", tier: 1, word: "Cheap eats", levels: ["PRICE_LEVEL_INEXPENSIVE"] },
   { id: "mid", tier: 2, word: "Mid-range", levels: ["PRICE_LEVEL_MODERATE"] },
@@ -199,11 +175,6 @@ export const PRICE_LEVELS = [
     levels: ["PRICE_LEVEL_EXPENSIVE", "PRICE_LEVEL_VERY_EXPENSIVE"],
   },
 ] as const;
-
-/** The band's own label: repeated local currency symbol, or plain words. */
-export function priceBandLabel(tier: number, word: string, symbol: string | null): string {
-  return symbol ? symbol.repeat(tier) : word;
-}
 
 export type PriceBand = (typeof PRICE_LEVELS)[number]["id"];
 
@@ -247,18 +218,15 @@ export function moodById(id: string | undefined): Mood | undefined {
   return MOODS.find((m) => m.id === id);
 }
 
-const PRICE_TIERS: Record<string, { tier: number; word: string }> = {
-  PRICE_LEVEL_INEXPENSIVE: { tier: 1, word: "Cheap eats" },
-  PRICE_LEVEL_MODERATE: { tier: 2, word: "Mid-range" },
-  PRICE_LEVEL_EXPENSIVE: { tier: 3, word: "Big night" },
-  PRICE_LEVEL_VERY_EXPENSIVE: { tier: 4, word: "Blowout" },
+const PRICE_WORDS: Record<string, string> = {
+  PRICE_LEVEL_INEXPENSIVE: "Cheap eats",
+  PRICE_LEVEL_MODERATE: "Mid-range",
+  PRICE_LEVEL_EXPENSIVE: "Big night",
+  PRICE_LEVEL_VERY_EXPENSIVE: "Blowout",
 };
 
-export function priceLabel(price: string | null, symbol: string | null): string | null {
-  if (!price) return null;
-  const tier = PRICE_TIERS[price];
-  if (!tier) return null;
-  return priceBandLabel(tier.tier, tier.word, symbol);
+export function priceLabel(price: string | null): string | null {
+  return price ? (PRICE_WORDS[price] ?? null) : null;
 }
 
 /** Ratings are numbers and belong to Intl — "4.5" is "4,5" for most of the world. */

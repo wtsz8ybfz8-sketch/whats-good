@@ -5,15 +5,7 @@ import { z } from "zod";
 import { VenueCard } from "@/components/food-cards";
 import { NearMeButton, type Located } from "@/components/near-me";
 import { searchVenues } from "@/lib/discovery.functions";
-import {
-  CITIES,
-  GUIDE_PICKS,
-  MOODS,
-  PRICE_LEVELS,
-  currencySymbol,
-  priceBandLabel,
-  type PriceBand,
-} from "@/lib/food";
+import { CITIES, GUIDE_PICKS, MOODS, PRICE_LEVELS, type PriceBand } from "@/lib/food";
 
 const searchSchema = z.object({
   q: z.string().catch(""),
@@ -80,7 +72,6 @@ function EatPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const data = result;
-  const symbol = currencySymbol(search.city);
   const activeFilters = (search.city ? 1 : 0) + (search.price ? 1 : 0);
 
   const go = (next: Partial<SearchParams>) =>
@@ -213,7 +204,7 @@ function EatPage() {
                       active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
                     }`}
                   >
-                    {priceBandLabel(band.tier, band.word, symbol)}
+                    {band.word}
                   </button>
                 );
               })}
@@ -271,7 +262,7 @@ function EatPage() {
       ) : (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {data?.items.map((venue) => (
-            <VenueCard key={venue.id} venue={venue} currency={symbol} />
+            <VenueCard key={venue.id} venue={venue} />
           ))}
         </div>
       )}
