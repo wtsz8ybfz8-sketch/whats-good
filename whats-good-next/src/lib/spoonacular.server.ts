@@ -54,15 +54,37 @@ function plainText(html: string): string {
     .trim();
 }
 
+/**
+ * Spoonacular's own step data is not clean. Real example, recipe 715467:
+ * one "step" contains "...about 8 minutes.Step 2: Stir in 2/3 cup flour",
+ * so several instructions are welded into one paragraph, the sentence break
+ * has no space after the full stop, and the embedded "Step 2:" contradicts
+ * our own numbering beside it. Fixed here, at the boundary, rather than
+ * shipping the mess to the page.
+ */
+function tidy(text: string): string {
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/([a-z,;)])\.([A-Z])/g, "$1. $2")
+    .trim();
+}
+
+function splitSteps(text: string): string[] {
+  return tidy(text)
+    .split(/\s*Step\s*\d+\s*[:.]\s*/i)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 2);
+}
+
 function steps(raw: RawRecipe): string {
   const analyzed = raw.analyzedInstructions?.[0]?.steps ?? [];
-  if (analyzed.length > 0) {
-    return analyzed
-      .map((s, index) => `${s.number ?? index + 1}. ${(s.step ?? "").trim()}`)
-      .filter((line) => line.length > 3)
-      .join("\n\n");
-  }
-  return raw.instructions ? plainText(raw.instructions) : "";
+  const parts =
+    analyzed.length > 0
+      ? analyzed.flatMap((s) => splitSteps(s.step ?? ""))
+      : splitSteps(plainText(raw.instructions ?? ""));
+
+  // One numbering, ours, applied after the merged steps are separated.
+  return parts.map((part, index) => `${index + 1}. ${part}`).join("\n\n");
 }
 
 function toRecipe(raw: RawRecipe): Recipe {
@@ -73,18 +95,33 @@ function toRecipe(raw: RawRecipe): Recipe {
     area: raw.cuisines?.[0] ?? "",
     thumbnail: raw.image ?? null,
     instructions: steps(raw),
-    ingredients: (raw.extendedIngredients ?? [])
-      .map((ing) => ({
-        // "original" is the human line ("2 tbsp olive oil"). The UI shows the
-        // measure beside the item, so the readable line goes in the measure
-        // slot and the clean name identifies the ingredient.
-        item: ing.nameClean || ing.name || (ing.original ?? ""),
-        measure: ing.original ?? "",
-      }))
-      .filter((ing) => ing.item),
+    ingredients: dedupe(
+      (raw.extendedIngredients ?? [])
+        .map((ing) => ({
+          // The two-column item/measure split is TheMealDB's shape and it reads
+          // badly here: nameClean gave 'pepper' beside '1 tsp black pepper',
+          // and mangled '9″ pie crusts' into '" pie crusts'. Spoonacular's
+          // "original" is already the line a person would write on a list, so
+          // that is what gets shown, once.
+          item: (ing.original ?? ing.nameClean ?? ing.name ?? "").trim(),
+          measure: "",
+        }))
+        .filter((ing) => ing.item),
+    ),
     source: raw.sourceUrl || null,
     video: null,
   };
+}
+
+/** Spoonacular repeats ingredients across sub-recipes; the same line twice reads as a bug. */
+function dedupe(list: { item: string; measure: string }[]): { item: string; measure: string }[] {
+  const seen = new Set<string>();
+  return list.filter((ing) => {
+    const key = ing.item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function titleish(value: string): string {
