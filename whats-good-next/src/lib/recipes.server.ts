@@ -1,6 +1,12 @@
 /** TheMealDB access. Free, but still cached so a browse loop is not 40 requests. */
 import type { Recipe } from "./food";
 import { readCache, writeCache } from "./cache.server";
+import {
+  SPOONACULAR_PREFIX,
+  randomSpoonacular,
+  searchSpoonacular,
+  spoonacularById,
+} from "./spoonacular.server";
 
 const BASE = "https://www.themealdb.com/api/json/v1/1";
 const TTL = 60 * 60 * 24 * 7;
@@ -76,4 +82,35 @@ export async function randomMeal(): Promise<Recipe | null> {
   const body = (await response.json()) as { meals?: RawMeal[] | null };
   const meal = body.meals?.[0];
   return meal ? toRecipe(meal) : null;
+}
+
+/*
+ * Provider routing. Spoonacular is the real library — TheMealDB is a few
+ * hundred community recipes and it shows. TheMealDB stays as the fallback so
+ * the tab never goes blank when the key is missing, the daily budget is spent,
+ * or Spoonacular is down.
+ */
+
+export async function searchAnyRecipes(term: string): Promise<Recipe[]> {
+  const spoon = await searchSpoonacular(term).catch((error: unknown) => {
+    console.error("spoonacular search threw", error);
+    return null;
+  });
+  if (spoon && spoon.length > 0) return spoon;
+  return searchMeals(term);
+}
+
+export async function anyRecipeById(id: string): Promise<Recipe | null> {
+  if (id.startsWith(SPOONACULAR_PREFIX)) {
+    return spoonacularById(id).catch((error: unknown) => {
+      console.error("spoonacular detail threw", error);
+      return null;
+    });
+  }
+  return mealById(id);
+}
+
+export async function anyRandomRecipe(): Promise<Recipe | null> {
+  const spoon = await randomSpoonacular().catch(() => null);
+  return spoon ?? randomMeal();
 }

@@ -81,20 +81,20 @@ export const searchRecipes = createServerFn({ method: "POST" })
     z.object({ query: z.string().trim().min(1).max(80) }).parse(input),
   )
   .handler(async ({ data }): Promise<SearchResult<Recipe>> => {
-    const { searchMeals } = await import("./recipes.server");
-    return { items: await searchMeals(data.query), source: "live" };
+    const { searchAnyRecipes } = await import("./recipes.server");
+    return { items: await searchAnyRecipes(data.query), source: "live" };
   });
 
 export const getRecipe = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ id: z.string().min(1).max(40) }).parse(input))
   .handler(async ({ data }): Promise<Recipe | null> => {
-    const { mealById } = await import("./recipes.server");
-    return mealById(data.id);
+    const { anyRecipeById } = await import("./recipes.server");
+    return anyRecipeById(data.id);
   });
 
 export const surpriseRecipe = createServerFn({ method: "POST" }).handler(
   async (): Promise<Recipe | null> => {
-    const { randomMeal } = await import("./recipes.server");
-    return randomMeal();
+    const { anyRandomRecipe } = await import("./recipes.server");
+    return anyRandomRecipe();
   },
 );
