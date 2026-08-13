@@ -6,6 +6,18 @@ import {
   Sunrise, Coffee, Soup, Zap, Compass, Salad, Flame, Sparkles, Moon, Wine, Store, Utensils,
 } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
+import { formatQuantity } from'../locale';
+
+/* The Spend slider's stops. Values are the Places price tier already understood by
+   fetchVenues — index 0 is "no filter", so the slider has a real off position rather
+   than forcing a budget on someone who has not chosen one. */
+const SPEND: { label: string; value: string | null }[] = [
+  { label: 'Any', value: null },
+  { label: 'Cheap', value: '1' },
+  { label: 'Mid', value: '2' },
+  { label: 'Higher', value: '3' },
+  { label: 'Top', value: '4' },
+];
 
 interface SidebarProps {
  dimensions: Dimensions;
@@ -580,6 +592,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  // see on the canvas makes the button look wrong the moment they tap it.
  const sheetCount = [dimensions.vibe, dimensions.diet, dimensions.capacity].filter(Boolean).length;
 
+ // Distance and party size have no home in Dimensions because nothing downstream can
+ // act on them yet (see the note by the sliders). Local state keeps the control honest
+ // and responsive without inventing a filter that does not filter.
+ const [distKm, setDistKm] = React.useState(2);
+ const [party, setParty] = React.useState(2);
+ const spendIndex = Math.max(0, SPEND.findIndex((s) => s.value === dimensions.capacity));
+
  // The label of the mood currently set, so the collapsed state still tells the user
  // what is on. Progressive disclosure that hides state is just hiding.
  const activeMoodLabel = moods.find((m) => m.value === dimensions.vibe)?.label;
@@ -589,17 +608,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
 
  return (
  <aside className="editorial-search-panel bg-transparent px-5 py-6 lg:px-12 lg:py-14 flex flex-col gap-8 lg:gap-10 overflow-y-visible">
- <div className="max-w-3xl">
- <p className="editorial-eyebrow mb-5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--accent-terracotta)]">
+ {/* HERO — the prototype's `.hero`: an image frame carrying the headline, centred,
+     with a blinking live dot on the kicker. The old block was left-aligned type on
+     bare canvas with no frame, which is why the live page and the prototype read as
+     two different products. Photography drops into this frame (docs/design/README.md);
+     it stays a neutral surface until it does, never a gradient standing in for a photo. */}
+ <div className="relative flex min-h-[230px] items-end justify-center overflow-hidden rounded-3xl border border-[var(--border-color)] bg-[var(--surface-quiet-bg)] px-6 py-7 text-center">
+ <div className="relative z-10 mx-auto max-w-[32ch]">
+ <p className="mb-3 flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+ <span aria-hidden="true" className="h-[5px] w-[5px] animate-pulse rounded-full bg-[var(--accent-terracotta)]" />
  A considered guide to eating well
  </p>
- <h1 className="font-serif text-[clamp(2.5rem,5vw,5.75rem)] font-semibold leading-[0.94] text-[var(--heading-color)] tracking-[-0.045em]">
- Where are we<br />
- <span className="italic font-normal text-[var(--accent-terracotta)]">eating?</span>
+ <h1 className="text-[clamp(1.9rem,3.4vw,3rem)] font-semibold leading-[0.98] tracking-[-0.042em] text-balance text-[var(--heading-color)]">
+ Where are we <span className="text-[var(--accent-terracotta)]">eating?</span>
  </h1>
- <p className="mt-6 max-w-[46ch] text-[15px] leading-[1.65] text-[var(--text-muted)]">
- Places worth leaving the house for — chosen around your mood, your appetite and your budget, then sorted by what is <span className="text-[var(--charcoal)] font-medium">open now</span>.
+ <p className="mx-auto mt-2.5 max-w-[40ch] text-[13.5px] leading-[1.5] text-[var(--text-muted)]">
+ Places worth leaving the house for, sorted by what is <span className="font-medium text-[var(--charcoal)]">open now</span>.
  </p>
+ </div>
  </div>
 
  {/* Search first: someone who already knows what they want shouldn't have to
@@ -735,6 +761,74 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
 );
 })}
  </div>
+ </div>
+
+ {/* REFINE — the prototype's `.sliders`, sitting directly under the occasion grid.
+     Spend is the only one of the three the Places API can actually honour: it maps to
+     the priceTier already threaded through fetchVenues. Distance and party size are
+     held here and shown, but Text Search takes no radius and no party argument, so
+     they are labelled as preferences rather than being dressed up as filters — §8,
+     never imply a constraint the data cannot keep. */}
+ <div className="flex flex-col gap-4">
+ <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6">
+ <div>
+ <label htmlFor="sl-dist" className="mb-2.5 flex items-baseline justify-between gap-2">
+ <b className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-muted)]">How far</b>
+ <span className="text-[13px] font-semibold tabular-nums text-[var(--accent-terracotta)]">
+ {distKm === 6 ? 'Any' : formatQuantity(distKm) + ' km'}
+ </span>
+ </label>
+ <input
+ id="sl-dist"
+ type="range"
+ min={0}
+ max={6}
+ step={1}
+ value={distKm}
+ onChange={(e) => setDistKm(Number(e.target.value))}
+ className="block w-full cursor-pointer accent-[var(--accent-terracotta)]"
+ />
+ </div>
+
+ <div>
+ <label htmlFor="sl-spend" className="mb-2.5 flex items-baseline justify-between gap-2">
+ <b className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-muted)]">Spend</b>
+ <span className="text-[13px] font-semibold text-[var(--accent-terracotta)]">
+ {SPEND[spendIndex].label}
+ </span>
+ </label>
+ <input
+ id="sl-spend"
+ type="range"
+ min={0}
+ max={4}
+ step={1}
+ value={spendIndex}
+ onChange={(e) => onChange({ ...dimensions, capacity: SPEND[Number(e.target.value)].value })}
+ className="block w-full cursor-pointer accent-[var(--accent-terracotta)]"
+ />
+ </div>
+
+ <div>
+ <label htmlFor="sl-party" className="mb-2.5 flex items-baseline justify-between gap-2">
+ <b className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--text-muted)]">Table for</b>
+ <span className="text-[13px] font-semibold tabular-nums text-[var(--accent-terracotta)]">{party}</span>
+ </label>
+ <input
+ id="sl-party"
+ type="range"
+ min={1}
+ max={8}
+ step={1}
+ value={party}
+ onChange={(e) => setParty(Number(e.target.value))}
+ className="block w-full cursor-pointer accent-[var(--accent-terracotta)]"
+ />
+ </div>
+ </div>
+ <p className="text-[11px] leading-snug text-[var(--text-subtle)]">
+ Spend filters the results. Distance and table size are preferences we carry into the venue page — Google Places does not accept either as a search constraint.
+ </p>
  </div>
 
  <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)] select-none">

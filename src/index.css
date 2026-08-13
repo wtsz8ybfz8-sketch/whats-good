@@ -1102,15 +1102,9 @@ html.dark .shimmer::after {
     color: var(--charcoal);
   }
 
-  .desktop-nav-link[aria-current="page"]::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 5px;
-    height: 2px;
-    background: var(--accent-terracotta);
-  }
+  /* No underline. The nav is a pill row now (prototype `.tabs`): selection is carried
+     by the raised surface behind the selected tab. Keeping the rule as well drew both
+     cues at once — a lifted pill with a stripe welded under the word. */
 
   .filter-panel {
     border-radius: 0.75rem;
