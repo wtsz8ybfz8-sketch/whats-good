@@ -1678,8 +1678,14 @@ html.dark .shimmer::after {
     padding-inline: 0;
   }
 
-  /* At 380px a 3-up card grid renders three slivers. Results become a column. */
-  .find-layout > .page-grid .grid {
+  /* At 380px a 3-up card grid renders three slivers. Results become a column.
+     The earlier rules target `.grid.grid-cols-1` (two classes) and sit inside a
+     descendant chain, so a single-class descendant selector LOSES to them on
+     specificity and the cards stayed 3-up. Match their shape and add `.find-layout`
+     so this wins on specificity as well as order. `>` was wrong too: the results
+     grid is not a direct child of .page-grid. */
+  .find-layout .page-grid .grid.grid-cols-1,
+  .find-layout .page-grid .grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
