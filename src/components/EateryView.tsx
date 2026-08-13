@@ -384,6 +384,32 @@ export const EateryView: React.FC<EateryViewProps> = ({
           act — the page asked you to call before it told you why. Desktop is unaffected
           because both children are placed explicitly by column and row, which ignores
           source order; `order-*` is what the flex column below lg honours. */}
+      {/* GALLERY — the prototype's `.gal`: a four-up strip directly under the hero, so the
+          page has something to look at before it starts listing facts. These are real
+          Google Places photos of this venue (hero excluded); when Google published only
+          one photo the strip is absent rather than padded with grey blocks. Rendered
+          here and nowhere else because Place Photos is billed per media request. */}
+      {(rawEatery.galleryUrls?.length ?? 0) > 0 && (
+        <div className="px-5 sm:px-10 mt-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {rawEatery.galleryUrls!.map((url, i) => (
+            <img
+              key={url}
+              src={url}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              decoding="async"
+              className="aspect-[4/3] w-full rounded-2xl object-cover bg-[var(--surface-quiet-bg)]"
+              /* Decorative: the venue is already named in the hero and every photo here
+                 is of that venue, so alt text would just repeat the heading four times
+                 to a screen reader. */
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              style={{ animationDelay: `${i * 40}ms` }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="detail-content flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-12 lg:items-start">
 
       {/* SIDEBAR (right on desktop, BELOW the reasons on mobile) */}

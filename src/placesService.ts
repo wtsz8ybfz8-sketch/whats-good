@@ -585,6 +585,17 @@ export async function fetchVenues(
       const photoUrl = place.photos?.[0]?.name
         ? getPlacePhotoUrl(place.photos[0].name)
         : undefined;
+      /*
+       * The gallery strip on the venue page (docs/design/occasion-prototype.html, `.gal`)
+       * needs more than the one hero shot. `places.photos` is already in the field mask,
+       * so these names cost nothing extra to carry — but Place Photos is billed per
+       * MEDIA request, so the URLs are only ever resolved by the detail view, never by a
+       * list card. Capped at four after the hero for that reason.
+       */
+      const galleryUrls = (place.photos ?? [])
+        .slice(1, 5)
+        .map((p) => (p.name ? getPlacePhotoUrl(p.name) : undefined))
+        .filter((u): u is string => Boolean(u));
       const openNow = place.regularOpeningHours?.openNow;
       const hoursToday = todaysHours(place.regularOpeningHours, place.utcOffsetMinutes);
       const closingSoon = isClosingSoon(place.regularOpeningHours, place.utcOffsetMinutes);
@@ -630,6 +641,7 @@ export async function fetchVenues(
         phone,
         estimatedWait: '', // Not published by Places. "Check with venue" is filler, not a wait time.
         photoUrl,
+        galleryUrls,
         openNow,
         closingSoon,
         hoursToday,

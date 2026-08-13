@@ -65,6 +65,12 @@ export interface Venue {
   phone: string;
   estimatedWait: string;
   photoUrl?: string; // Optional override for dynamic sources (e.g. Google Places)
+  /**
+   * Additional Places photos, hero excluded, for the venue page's gallery strip
+   * (prototype `.gal`). Empty or absent whenever Google published fewer than two
+   * photos — the strip is omitted rather than padded with placeholders.
+   */
+  galleryUrls?: string[];
   openNow?: boolean; // Live from Google Places; undefined for hardcoded fallback entries
   /**
    * True when the venue is open now AND its published hours say it closes within the
