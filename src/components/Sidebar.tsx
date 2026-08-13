@@ -679,7 +679,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
 ))}
  </div>
 
- <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+ {/* Two up, always. This grid lives inside a narrow editorial column, so a
+     viewport-keyed `sm:grid-cols-3` widened the GRID while the COLUMN stayed
+     put and wrapped every label onto two lines. Column width, not screen
+     width, is what this layout answers to. */}
+ <div className="grid grid-cols-2 gap-2.5">
  {OCCASIONS[period].map((o) => {
  const active = dimensions.vibe === o.value;
  return (
@@ -700,7 +704,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  {/* Image frame. Real photography drops in here — a curated, self-hosted
      set, one image per occasion (docs/design/README.md). Neutral until
      it does, rather than a gradient pretending to be a photograph. */}
- <span className="block aspect-[4/3] w-full bg-[var(--surface-quiet-bg)]" aria-hidden="true" />
+ <span className="block aspect-[16/10] w-full bg-[var(--surface-quiet-bg)]" aria-hidden="true" />
  <span className={`block px-3 py-2.5 transition-colors duration-300 ${
  active ?'bg-[var(--accent-terracotta)]' :'bg-[var(--surface-bg)]'
  }`}>
