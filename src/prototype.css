@@ -358,3 +358,13 @@ body[data-view="detail"] .dgrid>*:nth-child(2){animation-delay:.08s}
   border-radius:var(--r2);background:var(--surf)}
 .who b{font-size:14px;font-weight:640;letter-spacing:-.02em}
 .who span{font-size:11.5px;color:var(--ink3)}
+
+/* The Saved screen at desktop width: two words of segmented control stretched across
+   1180px, a full-bleed banner above it, and the empty-state line stranded alone at the
+   far left. Two labels do not need a metre of pill. The whole column is capped and the
+   controls sit at their natural size. */
+#savedwrap{max-width:560px}
+#savedwrap .segs{display:inline-flex;width:auto}
+#savedwrap .seg{flex:0 0 auto;padding:10px 20px}
+#savedwrap .who{text-align:left;align-items:flex-start}
+#savedwrap .grid{max-width:560px}

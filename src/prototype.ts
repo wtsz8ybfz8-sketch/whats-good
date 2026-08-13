@@ -337,7 +337,7 @@ function build() {
   ($('parsed') as HTMLElement).style.display = '';
   periods();
   picked = null; venues = []; heroPhoto(undefined);
-  if (tab !== 'cook') heroPreview();
+  if (tab === 'eat' || tab === 'out') heroPreview();
   $('refine').classList.remove('on');
   $('rt').textContent = 'Nothing picked yet';
   $('rc').textContent = '';
