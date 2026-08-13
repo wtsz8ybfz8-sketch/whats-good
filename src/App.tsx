@@ -18,6 +18,7 @@ import { fetchVenues, detectCityFromCoords, formatPriceTier, isPlacesConfigured,
 import { formatDistance } from'./locale';
 import { useSavedRecipes } from'./useSavedRecipes';
 import { cuisineIcon } from'./cuisineIcon';
+import { AuthPanel } from'./components/AuthPanel';
 
 /**
  * Honest placeholder for venues without a real photo (hardcoded fallback list only).
@@ -2058,6 +2059,9 @@ export default function App() {
 ) : (
  // SAVED RECIPES OR EATERIES COLLECTION TAB
  <div className="max-w-[720px] mx-auto w-full animate-[revealUp_0.5s_cubic-bezier(0.15,1,0.3,1)_forwards]">
+ {/* Sign-in sits ABOVE the list, as in the prototype: it is the answer to "what
+ happens to this list", which is the question the Saved tab raises. */}
+ {activeTab ==='saved-recipes' && <AuthPanel />}
  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--rule)] pb-6 mb-8 gap-4">
  <div>
  <span className="font-mono text-xs uppercase tracking-wider text-[var(--accent-terracotta)] font-bold block mb-1">
