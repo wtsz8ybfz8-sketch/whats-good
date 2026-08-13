@@ -81,11 +81,28 @@ export function VenueCard({ venue }: { venue: Venue }) {
             {priceLabel(venue.price) ? ` · ${priceLabel(venue.price)}` : ""}
           </p>
           <p className="line-clamp-1 text-xs text-muted-foreground">{venue.address}</p>
-          {venue.openNow !== null ? (
-            <p className={`text-xs ${venue.openNow ? "text-primary" : "text-muted-foreground"}`}>
-              {venue.openNow ? "Open now" : "Closed right now"}
-            </p>
-          ) : null}
+          {/*
+            Signals derived from fields we already fetch. A rating without a
+            count is a weak claim; 2,000 reviews and 12 reviews mean different
+            things and the card should say which it is.
+          */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5 text-xs">
+            {venue.openNow !== null ? (
+              <span className={venue.openNow ? "text-primary" : "text-muted-foreground"}>
+                {venue.openNow ? "Open now" : "Closed right now"}
+              </span>
+            ) : null}
+            {venue.ratingCount !== null && venue.ratingCount >= 500 ? (
+              <span className="rounded-full border border-border px-2 py-0.5 text-muted-foreground">
+                Well reviewed
+              </span>
+            ) : null}
+            {venue.ratingCount !== null && venue.ratingCount < 60 ? (
+              <span className="rounded-full border border-border px-2 py-0.5 text-muted-foreground">
+                Under the radar
+              </span>
+            ) : null}
+          </div>
         </div>
       </Link>
     </article>

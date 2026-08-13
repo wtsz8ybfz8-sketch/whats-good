@@ -7,7 +7,7 @@ import { NearMeButton, type Located } from "@/components/near-me";
 import { PriceSlider } from "@/components/price-slider";
 import { CuisineIcon } from "@/components/cuisine-icon";
 import { searchVenues } from "@/lib/discovery.functions";
-import { CITIES, GUIDE_PICKS, MOODS, type PriceBand } from "@/lib/food";
+import { CITIES, GUIDE_PICKS, MOODS, MOOD_AXIS, type PriceBand } from "@/lib/food";
 
 const searchSchema = z.object({
   q: z.string().catch(""),
@@ -81,7 +81,16 @@ function EatPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-6 sm:py-10">
-      <h1 className="font-display text-3xl tracking-tight sm:text-4xl">Somewhere to eat</h1>
+      <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        Decide in one move
+      </p>
+      <h1 className="mt-3 font-display text-3xl tracking-tight sm:text-4xl">
+        What&apos;s good right now?
+      </h1>
+      <p className="mt-3 max-w-md text-muted-foreground">
+        Tell us the mood and roughly where you are. We&apos;ll find a table worth leaving the house
+        for.
+      </p>
 
       <form
         onSubmit={(event) => {
@@ -114,33 +123,34 @@ function EatPage() {
       </form>
 
       {/*
-        Cuisine WRAPS. It was a horizontally scrolling rail, which hides most of
-        the choices off-screen behind a gesture with no affordance — you cannot
-        pick what you cannot see. Apple's HIG is explicit that the options in a
-        selection control should be visible and directly tappable rather than
-        discovered by scrolling.
+        Mood first — it is what this product is sold on. Six options fit without
+        scrolling and without becoming a wall; cuisine is a filter underneath,
+        not the headline act.
       */}
-      <div className="mt-4">
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Cuisine</span>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {MOODS.map((mood) => {
-            const active = search.q === mood.placeTerms;
+      <div className="mt-5">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">The mood</span>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {MOOD_AXIS.map((mood) => {
+            const active = search.q === mood.terms;
             return (
               <button
                 key={mood.id}
                 type="button"
                 aria-pressed={active}
                 onClick={() => {
-                  const q = active ? "" : mood.placeTerms;
+                  const q = active ? "" : mood.terms;
                   setQuery(q);
                   go({ q });
                 }}
-                className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm transition-colors ${
-                  active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
+                className={`flex min-h-[44px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                  active ? "border-primary bg-primary/5" : "border-border hover:border-foreground/25"
                 }`}
               >
-                <CuisineIcon name={mood.icon} />
-                {mood.label}
+                <CuisineIcon name={mood.icon} className="size-5 shrink-0" />
+                <span>
+                  <span className="block text-sm font-medium">{mood.label}</span>
+                  <span className="block text-xs text-muted-foreground">{mood.blurb}</span>
+                </span>
               </button>
             );
           })}
@@ -170,6 +180,33 @@ function EatPage() {
 
       {filtersOpen ? (
         <div className="mt-3 space-y-5 rounded-2xl border border-border bg-card p-4">
+          <div>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Cuisine</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MOODS.map((cuisine) => {
+                const active = search.q === cuisine.placeTerms;
+                return (
+                  <button
+                    key={cuisine.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      const q = active ? "" : cuisine.placeTerms;
+                      setQuery(q);
+                      go({ q });
+                    }}
+                    className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm transition-colors ${
+                      active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
+                    }`}
+                  >
+                    <CuisineIcon name={cuisine.icon} />
+                    {cuisine.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <span className="text-xs uppercase tracking-wide text-muted-foreground">Explore</span>
             <div className="mt-2 flex flex-wrap gap-2">

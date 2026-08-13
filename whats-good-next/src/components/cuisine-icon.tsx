@@ -1,6 +1,7 @@
 import {
   Beef, Building2, Clock, Cookie, Croissant, Disc3, Drumstick, Fish, Flame, Leaf,
   Martini, Music, Pizza, Salad, Sandwich, Soup, Wheat, Wine, Beer, Utensils,
+  Armchair, Heart, Zap, Users, Sparkles, UserRound,
 } from "lucide-react";
 
 /**
@@ -10,6 +11,7 @@ import {
 const ICONS: Record<string, typeof Beef> = {
   Beef, Building2, Clock, Cookie, Croissant, Disc3, Drumstick, Fish, Flame, Leaf,
   Martini, Music, Pizza, Salad, Sandwich, Soup, Wheat, Wine, Beer,
+  Armchair, Heart, Zap, Users, Sparkles, UserRound,
 };
 
 export function CuisineIcon({ name, className = "size-4" }: { name: string; className?: string }) {

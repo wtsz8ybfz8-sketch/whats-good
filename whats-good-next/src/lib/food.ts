@@ -111,6 +111,23 @@ export const MOODS: Mood[] = [
   },
 ];
 
+/**
+ * MOOD is the axis this product is sold on: how you feel, not what cuisine you
+ * want. Cuisine is a filter underneath it. These map to real Places text
+ * queries — nothing here asserts a fact about a venue, it only shapes the
+ * search.
+ */
+export type MoodOption = { id: string; label: string; blurb: string; icon: string; terms: string };
+
+export const MOOD_AXIS: MoodOption[] = [
+  { id: "comfort", label: "Comfort", blurb: "Warm, filling, no fuss", icon: "Armchair", terms: "comfort food restaurant" },
+  { id: "date", label: "Date night", blurb: "Low light, worth dressing up", icon: "Heart", terms: "romantic restaurant" },
+  { id: "quick", label: "Quick bite", blurb: "In and out, still good", icon: "Zap", terms: "quick casual restaurant" },
+  { id: "group", label: "Big group", blurb: "Room for everyone", icon: "Users", terms: "restaurant good for groups" },
+  { id: "celebrate", label: "Celebrating", blurb: "Push the boat out", icon: "Sparkles", terms: "fine dining restaurant" },
+  { id: "solo", label: "Just me", blurb: "Counter seat, book, no rush", icon: "UserRound", terms: "casual restaurant counter seating" },
+];
+
 /** Going-out categories for the /out section — drinks and night, not dinner. */
 export const OUT_MOODS: Mood[] = [
   {
