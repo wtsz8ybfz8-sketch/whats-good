@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { lovable } from "@/integrations/lovable/index";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseConfigured } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -26,6 +26,10 @@ function AuthPage() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!supabaseConfigured) {
+      toast.error("Accounts are not switched on yet for this deployment.");
+      return;
+    }
     setBusy(true);
     const action =
       mode === "signin"
@@ -65,6 +69,13 @@ function AuthPage() {
       <p className="mt-2 text-sm text-muted-foreground">
         Keep your saved places and recipes on every device.
       </p>
+
+      {!supabaseConfigured ? (
+        <p className="mt-6 rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
+          Accounts aren&apos;t switched on for this deployment yet, so signing in won&apos;t work.
+          Your saves still work — they&apos;re kept on this device.
+        </p>
+      ) : null}
 
       <button
         type="button"

@@ -27,6 +27,16 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 
+/**
+ * Whether a real backend is configured. Exported so the UI can say "sign-in is
+ * not switched on yet" instead of presenting a form that fails against the
+ * placeholder host — a form that cannot work is worse than no form.
+ */
+export const supabaseConfigured = Boolean(
+  (import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL']) &&
+    (import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY']),
+);
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
