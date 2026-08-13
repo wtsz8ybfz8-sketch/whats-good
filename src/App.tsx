@@ -782,7 +782,7 @@ export default function App() {
     the screen edge" by another route. Drive the live value from the actual state. */
  const el = document.querySelector('meta[name="theme-color"]:not([media])')
  ?? Object.assign(document.createElement('meta'), { name:'theme-color' });
- el.setAttribute('content', isDark ?'#0F0C0A' :'#F4F2EF');
+ el.setAttribute('content', isDark ?'#0E0E0D' :'#F5F4F2');
  /* FIRST in <head>, not last, and that ordering is the whole fix.
 
     A browser picks the FIRST theme-color whose media matches. The two media tags are

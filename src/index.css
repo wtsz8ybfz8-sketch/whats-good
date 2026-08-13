@@ -472,25 +472,31 @@
 
 /* ─── Design Tokens — Light Mode ─────────────────────── */
 :root {
-  --bg-warm:            #F4F2EF;
-  --card-bg:            rgba(255, 255, 255, 0.80);
-  --charcoal:           #1A1A1A;
-  --heading-color:      #100C08;
-  --accent-terracotta:  #7C2D12;
-  --accent-tint:        #FAF2F0;
-  --accent-tint-border: #F5D1C9;
+  /* Ground is a TRUE neutral, not cream. #F4F2EF read as peach on a real screen and
+     made every muted tone look muddy — it was the single most-rejected thing in the
+     2026-08-13 design review. The accent moved with it: #7C2D12 is a brown-red that
+     never reads as an accent, only as a darker version of the page. #C8371C is a
+     vermilion that actually lands, used sparingly (selection, live state, the one
+     emotional word in a headline) against five neutrals. See CLAUDE.md §7. */
+  --bg-warm:            #F5F4F2;
+  --card-bg:            rgba(255, 255, 255, 0.85);
+  --charcoal:           #111110;
+  --heading-color:      #0B0B0A;
+  --accent-terracotta:  #C8371C;
+  --accent-tint:        #FBEEEB;
+  --accent-tint-border: #F2D3CC;
   /* --dusty-blue and --blue-light lived here. §7 allows ONE warm accent, and these
      were a second, cooler one. --blue-light was referenced nowhere at all;
      --dusty-blue coloured exactly one control — the Website icon on the venue page —
      so it sat between a terracotta Directions and a terracotta Call as the only blue
      thing on the screen. It also had NO html.dark value, so dark mode rendered the
      same mid-slate on near-black. Both deleted; the icon binds to the accent. */
-  --text-muted:         #6E6A64;
-  --text-subtle:        #716B63;   /* small labels — 4.74:1 on --bg-warm */
-  --accent-contrast:    #FFFFFF;   /* text/icons ON --accent-terracotta — 9.4:1 */
-  --rule:               #E8E4DF;   /* section rules + control borders */
-  --row-border:         #F0EDE8;   /* list-row separators, lighter than --rule */
-  --border-color:       rgba(26, 26, 26, 0.07);
+  --text-muted:         #5C5B57;   /* 6.2:1 on --bg-warm — measured, not eyeballed */
+  --text-subtle:        #6B6A66;   /* small labels — 4.97:1 on --bg-warm */
+  --accent-contrast:    #FFFFFF;   /* text/icons ON --accent-terracotta — 5.8:1 */
+  --rule:               #E3E2DE;   /* section rules + control borders */
+  --row-border:         #EDECE9;   /* list-row separators, lighter than --rule */
+  --border-color:       rgba(17, 17, 16, 0.08);
 
   /* Height of the mobile tab bar, as ONE source of truth.
      The docked action bar used to be pinned at a hardcoded 64px — a guess — while the tab
@@ -543,21 +549,25 @@
      colour spent on content. One barely-there warm lift, nothing else. */
   --body-gradient:
     radial-gradient(ellipse 120% 70% at 50% -10%, rgba(198, 160, 130, 0.10) 0%, transparent 60%),
-    linear-gradient(#F4F2EF, #F4F2EF);
+    linear-gradient(#F5F4F2, #F5F4F2);
 }
 
 /* ─── Design Tokens — Dark Mode ──────────────────────── */
 html.dark {
-  --bg-warm:            #0F0C0A;
+  /* Dark ground drops its brown cast for a true near-black, matching the light side.
+     The accent is the SAME hue as light mode, lifted for the dark ground — #fca5a5
+     was a desaturated pink that shared nothing with #7C2D12, so light and dark read
+     as two different products. One hue, two values. See CLAUDE.md §7. */
+  --bg-warm:            #0E0E0D;
   --card-bg:            rgba(255, 255, 255, 0.05);
-  --charcoal:           #EDE8E1;
-  --heading-color:      #F5F0E8;
-  --accent-terracotta:  #fca5a5;              /* dark accent standardised to pink (was #F07858 coral) */
-  --accent-tint:        rgba(252, 165, 165, 0.13);
-  --accent-tint-border: rgba(252, 165, 165, 0.24);
-  --text-muted:         #9A9088;
-  --text-subtle:        #8A8078;              /* 5.13:1 on --bg-warm dark */
-  --accent-contrast:    #1A0B04;              /* dark accent is light — needs dark ink, 6.9:1 */
+  --charcoal:           #F5F4F2;
+  --heading-color:      #FAFAF8;
+  --accent-terracotta:  #FF5A3C;              /* 6.1:1 on --bg-warm dark */
+  --accent-tint:        rgba(255, 90, 60, 0.14);
+  --accent-tint-border: rgba(255, 90, 60, 0.26);
+  --text-muted:         #A8A7A2;              /* 7.7:1 on --bg-warm dark */
+  --text-subtle:        #96958F;              /* 6.1:1 on --bg-warm dark */
+  --accent-contrast:    #170502;              /* dark accent is light — needs dark ink, 6.3:1 */
   --rule:               rgba(255, 255, 255, 0.10);
   --row-border:         rgba(255, 255, 255, 0.06);
   --border-color:       rgba(255, 255, 255, 0.07);
@@ -585,7 +595,7 @@ html.dark {
   /* Same restraint on dark — one warm lift over a near-flat near-black. */
   --body-gradient:
     radial-gradient(ellipse 120% 70% at 50% -10%, rgba(120, 55, 28, 0.16) 0%, transparent 62%),
-    linear-gradient(#0F0C0A, #0F0C0A);
+    linear-gradient(#0E0E0D, #0E0E0D);
 }
 
 /* ─── Body ───────────────────────────────────────────── */
@@ -749,11 +759,11 @@ html.dark .glass-subtle {
   cursor: pointer;
   touch-action: pan-y;
   /* Theme-aware track colors — terracotta fill on a quiet rest track */
-  --range-fill:         #7c2d12;
+  --range-fill:         #C8371C;
   --range-rest:         rgba(26, 26, 26, 0.12);
 }
 html.dark .glass-range {
-  --range-fill:         #f07858;
+  --range-fill:         #FF5A3C;
   --range-rest:         rgba(255, 255, 255, 0.14);
 }
 .glass-range::-webkit-slider-runnable-track {
@@ -808,7 +818,7 @@ html.dark .glass-range {
     0 6px 16px rgba(0, 0, 0, 0.35);
 }
 .glass-range:focus-visible {
-  outline: 2px solid #f07858;
+  outline: 2px solid var(--accent-terracotta);
   outline-offset: 4px;
   border-radius: 9999px;
 }

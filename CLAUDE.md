@@ -449,26 +449,44 @@ associated label before adding an `aria-label`.
 
 ## 7. Design direction — decided, hold to it
 
-**Feel:** warm editorial. A good food magazine, not a SaaS dashboard. Off-white paper,
-serif headlines, generous air, one warm accent. Cooler, flatter or more generically
-"clean" is wrong.
+**Feel:** editorial, quiet, confident. Reference points the owner named on 2026-08-13:
+Apple, Nike, The Row, Jacquemus, AKJP, Villa 47. A true-neutral ground with generous air
+and **one** accent that is spent deliberately — selection, live state, and the single
+emotional word in a headline ("What's **good** right now?"). Everything else is neutral,
+which is the only reason the accent lands.
+
+**Cream is retired, and must not come back.** `#F4F2EF` read as peach on a real screen,
+made every muted tone look muddy, and was rejected outright in review. Neither is the
+answer black-and-white minimalism — colour matters, especially for food; it is simply
+*rationed*. Gradients as decoration or as image stand-ins are banned: they read cheap and
+were rejected by name.
+
+**Photography carries the colour, not the interface.** Venue photos come from the Google
+Places Photo API (already paid for; cache resolved URLs in Supabase). Occasion and hero
+imagery is a curated set we own — roughly 20 images total, licensed from Pexels or
+Unsplash, chosen deliberately and self-hosted. Occasion imagery is editorial, so it is
+never fetched dynamically. Never OpenStreetMap or Wikimedia photos: they are documentation
+shots, not food photography.
 
 **Tokens live in `src/index.css`** on `:root` and `html.dark`. Bind to them. Never
 hardcode a hex; never add a colour without adding the token first.
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--bg-warm` | `#F4F2EF` | `#0F0C0A` | Page canvas |
-| `--charcoal` | `#1A1A1A` | `#EDE8E1` | Body text |
-| `--heading-color` | `#100C08` | `#F5F0E8` | Headings |
-| `--accent-terracotta` | `#7C2D12` | `#fca5a5` | The single accent |
-| `--accent-tint` | `#FAF2F0` | `rgba(252,165,165,.13)` | Accent-tinted fills |
-| `--accent-tint-border` | `#F5D1C9` | `rgba(252,165,165,.24)` | Borders on tinted fills |
-| `--accent-contrast` | `#FFFFFF` | `#1A0B04` | Text/icons **on** the accent |
-| `--text-muted` | `#6E6A64` | `#9A9088` | Metadata, captions |
-| `--text-subtle` | `#716B63` | `#8A8078` | Small labels |
-| `--rule` / `--row-border` | `#E8E4DF` / `#F0EDE8` | white @ .10 / .06 | Rules / list rows |
-| `--border-color` | `rgba(26,26,26,.07)` | `rgba(255,255,255,.07)` | Hairlines |
+| `--bg-warm` | `#F5F4F2` | `#0E0E0D` | Page canvas |
+| `--charcoal` | `#111110` | `#F5F4F2` | Body text |
+| `--heading-color` | `#0B0B0A` | `#FAFAF8` | Headings |
+| `--accent-terracotta` | `#C8371C` | `#FF5A3C` | The single accent |
+| `--accent-tint` | `#FBEEEB` | `rgba(255,90,60,.14)` | Accent-tinted fills |
+| `--accent-tint-border` | `#F2D3CC` | `rgba(255,90,60,.26)` | Borders on tinted fills |
+| `--accent-contrast` | `#FFFFFF` | `#170502` | Text/icons **on** the accent |
+| `--text-muted` | `#5C5B57` | `#A8A7A2` | Metadata, captions |
+| `--text-subtle` | `#6B6A66` | `#96958F` | Small labels |
+| `--rule` / `--row-border` | `#E3E2DE` / `#EDECE9` | white @ .10 / .06 | Rules / list rows |
+| `--border-color` | `rgba(17,17,16,.08)` | `rgba(255,255,255,.07)` | Hairlines |
+
+Measured contrast on `--bg-warm`: `--text-muted` 6.2:1 light / 7.7:1 dark, `--text-subtle`
+4.97:1 / 6.1:1, accent 5.8:1 / 6.1:1, `--accent-contrast` on accent 5.8:1 / 6.3:1. All AA.
 
 **Type:** one family, Schibsted Grotesk. All three `@theme` font tokens point at it.
 Hierarchy comes from weight, size and colour — never from switching typeface. Headings are
