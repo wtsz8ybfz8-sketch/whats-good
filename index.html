@@ -112,12 +112,6 @@
     />
   </head>
   <body>
-    <!--
-      docs/design/occasion-prototype.html — its markup, verbatim. Nothing added, nothing
-      removed, nothing renamed. src/prototype.ts drives it and src/prototype.css styles
-      it, both equally verbatim; the only departures from the prototype are the three
-      listed at the top of prototype.ts (real venues, real photography, real recipes).
-    -->
     <div class="wrap">
       <header>
         <span class="logo">What's Good</span>
@@ -171,11 +165,7 @@
 
       <div class="detail" id="detail"></div>
 
-      <p class="note"><b>Live.</b> Venues, opening status, photography and recipes are real —
-        places come from Google Places for the selected city, recipes from TheMealDB.
-        <b>Type anything</b> — "stag party", "hotel bar", "near a park", "vegan ramen" — and the
-        parse line shows what it understood, so freeform beats the tiles when the tiles don't fit.
-        Where a fact isn't confirmed it isn't shown. Place data powered by Google.</p>
+      <p class="note">Place data powered by Google · Recipes from TheMealDB</p>
     </div>
     <script type="module" src="/src/prototype.ts"></script>
   </body>
