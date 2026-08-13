@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { z } from "zod";
@@ -46,6 +46,17 @@ function CookPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">
       <h1 className="font-display text-4xl tracking-tight">Something to cook</h1>
+      <p className="mt-2 text-muted-foreground">
+        Not looking to cook it?{" "}
+        <Link
+          to="/eat"
+          search={{ q: "", mood: "", cuisine: "", city: "" }}
+          className="text-primary underline underline-offset-4"
+        >
+          Find somewhere to eat
+        </Link>
+        .
+      </p>
 
       <form
         onSubmit={(event) => {

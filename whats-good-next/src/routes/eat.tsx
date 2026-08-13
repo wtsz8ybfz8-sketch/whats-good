@@ -11,6 +11,11 @@ import { CITIES, GUIDE_PICKS, MOODS, MOOD_AXIS, type PriceBand } from "@/lib/foo
 
 const searchSchema = z.object({
   q: z.string().catch(""),
+  // Mood and cuisine are SEPARATE axes and must not share a parameter. They
+  // both wrote to `q`, so choosing a cuisine silently wiped the mood and vice
+  // versa — you could never have both, which is the whole point of the pairing.
+  mood: z.string().catch(""),
+  cuisine: z.string().catch(""),
   city: z.string().catch(""),
   price: z.enum(["cheap", "mid", "high"]).optional().catch(undefined),
   // Kept in the URL so a located search is shareable and survives a refresh.
@@ -41,17 +46,28 @@ export const Route = createFileRoute("/eat")({
   // "Looking…" placeholder waiting on a second round trip.
   loaderDeps: ({ search }) => ({
     q: search.q,
+    mood: search.mood,
+    cuisine: search.cuisine,
     city: search.city,
     price: search.price ?? null,
     lat: search.lat ?? null,
     lng: search.lng ?? null,
   }),
   loader: async ({ deps }) => {
-    if (!deps.q.trim()) return { result: null };
+    // The three combine: "date night" + "sushi" + anything typed.
+    const query = [
+      MOOD_AXIS.find((m) => m.id === deps.mood)?.terms,
+      MOODS.find((c) => c.id === deps.cuisine)?.placeTerms,
+      deps.q,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    if (!query) return { result: null };
     return {
       result: await searchVenues({
         data: {
-          query: deps.q,
+          query,
           city: deps.city,
           price: deps.price,
           lat: deps.lat,
@@ -75,7 +91,8 @@ function EatPage() {
   const [allCuisines, setAllCuisines] = useState(false);
 
   const data = result;
-  const activeFilters = (search.city ? 1 : 0) + (search.price ? 1 : 0);
+  const activeFilters =
+    (search.city ? 1 : 0) + (search.price ? 1 : 0) + (search.cuisine ? 1 : 0);
 
   const go = (next: Partial<SearchParams>) =>
     navigate({ search: (prev: SearchParams) => ({ ...prev, ...next }) });
@@ -132,17 +149,13 @@ function EatPage() {
         <span className="text-xs uppercase tracking-wide text-muted-foreground">The mood</span>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {MOOD_AXIS.map((mood) => {
-            const active = search.q === mood.terms;
+            const active = search.mood === mood.id;
             return (
               <button
                 key={mood.id}
                 type="button"
                 aria-pressed={active}
-                onClick={() => {
-                  const q = active ? "" : mood.terms;
-                  setQuery(q);
-                  go({ q });
-                }}
+                onClick={() => go({ mood: active ? "" : mood.id })}
                 className={`flex min-h-[44px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
                   active ? "border-primary bg-primary/5" : "border-border hover:border-foreground/25"
                 }`}
@@ -187,17 +200,13 @@ function EatPage() {
                 are the long tail nobody scans anyway. */}
             <div className="mt-2 flex flex-wrap gap-2">
               {(allCuisines ? MOODS : MOODS.slice(0, 6)).map((cuisine) => {
-                const active = search.q === cuisine.placeTerms;
+                const active = search.cuisine === cuisine.id;
                 return (
                   <button
                     key={cuisine.id}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => {
-                      const q = active ? "" : cuisine.placeTerms;
-                      setQuery(q);
-                      go({ q });
-                    }}
+                    onClick={() => go({ cuisine: active ? "" : cuisine.id })}
                     className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm transition-colors ${
                       active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
                     }`}
@@ -288,7 +297,7 @@ function EatPage() {
 
       {isLoading ? (
         <p className="mt-10 text-muted-foreground">Looking…</p>
-      ) : !search.q.trim() ? (
+      ) : !search.q.trim() && !search.mood && !search.cuisine ? (
         <p className="mt-10 text-muted-foreground">Tell us what you fancy to get started.</p>
       ) : data && data.items.length === 0 && !data.notice ? (
         <p className="mt-10 text-muted-foreground">

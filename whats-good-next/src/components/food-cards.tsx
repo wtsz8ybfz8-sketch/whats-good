@@ -80,21 +80,6 @@ export function VenueCard({ venue }: { venue: Venue }) {
             {venue.cuisine}
             {priceLabel(venue.price) ? ` · ${priceLabel(venue.price)}` : ""}
           </p>
-          {venue.summary ? (
-            <p className="line-clamp-2 text-sm leading-snug text-foreground/80">{venue.summary}</p>
-          ) : null}
-          {venue.attributes && venue.attributes.length > 0 ? (
-            <div className="flex flex-wrap gap-1 pt-0.5">
-              {venue.attributes.map((attribute) => (
-                <span
-                  key={attribute}
-                  className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground"
-                >
-                  {attribute}
-                </span>
-              ))}
-            </div>
-          ) : null}
           <p className="line-clamp-1 text-xs text-muted-foreground">{venue.address}</p>
           {/*
             Signals derived from fields we already fetch. A rating without a

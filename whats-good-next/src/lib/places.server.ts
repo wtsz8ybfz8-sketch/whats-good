@@ -24,13 +24,6 @@ const SEARCH_MASK = [
   "places.photos.name",
   "places.location",
   "places.regularOpeningHours.openNow",
-  // Google's own written description of the place, and confirmed attributes.
-  // These sit in the Enterprise + Atmosphere SKUs, so they cost more per
-  // search — this is the block to cut first if the bill ever gets uncomfortable.
-  "places.editorialSummary",
-  "places.outdoorSeating",
-  "places.goodForGroups",
-  "places.servesVegetarianFood",
 ].join(",");
 
 const DETAIL_MASK = [
@@ -62,24 +55,7 @@ type RawPlace = {
   nationalPhoneNumber?: string;
   websiteUri?: string;
   regularOpeningHours?: { openNow?: boolean; weekdayDescriptions?: string[] };
-  editorialSummary?: { text?: string };
-  outdoorSeating?: boolean;
-  goodForGroups?: boolean;
-  servesVegetarianFood?: boolean;
 };
-
-/**
- * Only CONFIRMED-true attributes become chips. Google returns a tri-state:
- * true, false, or absent. Rendering a false as "no outdoor seating" would turn
- * "nobody has said" into a denial about a real business.
- */
-function attributes(place: RawPlace): string[] {
-  const out: string[] = [];
-  if (place.outdoorSeating === true) out.push("Outdoor seating");
-  if (place.goodForGroups === true) out.push("Good for groups");
-  if (place.servesVegetarianFood === true) out.push("Vegetarian options");
-  return out;
-}
 
 function photoUrl(place: RawPlace, key: string, width: number): string | null {
   const name = place.photos?.[0]?.name;
@@ -103,8 +79,6 @@ function toVenue(place: RawPlace, key: string, width = 800): Venue {
     photoUrl: photoUrl(place, key, width),
     lat: place.location?.latitude ?? null,
     lng: place.location?.longitude ?? null,
-    summary: place.editorialSummary?.text ?? null,
-    attributes: attributes(place),
   };
 }
 
