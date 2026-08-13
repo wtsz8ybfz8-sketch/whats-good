@@ -2,7 +2,7 @@
 
 ## Status
 
-**`claude/version-prototype-mismatch-fjqtrx` is at `<sha>`, pushed.**
+**`claude/version-prototype-mismatch-fjqtrx` is at `375faae`, pushed.**
 
 Not a hard stop. The work below is complete, browser-verified in both colour schemes at
 three viewports, and typechecks and builds clean.
