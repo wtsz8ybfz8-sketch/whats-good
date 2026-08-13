@@ -1,0 +1,120 @@
+<title>What's Good — the journey</title>
+<style>
+  :root{--bg:#FBFAF8;--surf:#FFF;--surf2:#F1EFEA;--ink:#131210;--ink2:#55514A;--ink3:#8C877D;
+    --line:#E4E1DA;--accent:#8A6A2F;--warn:#B4642A;--good:#3F6B4A;
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif}
+  @media(prefers-color-scheme:dark){:root{--bg:#0C0B0A;--surf:#171614;--surf2:#211F1C;--ink:#F6F4F0;
+    --ink2:#A9A39A;--ink3:#77716A;--line:#282622;--accent:#D9AE68;--warn:#E0925A;--good:#7FB08C}}
+  :root[data-theme="dark"]{--bg:#0C0B0A;--surf:#171614;--surf2:#211F1C;--ink:#F6F4F0;--ink2:#A9A39A;
+    --ink3:#77716A;--line:#282622;--accent:#D9AE68;--warn:#E0925A;--good:#7FB08C}
+  :root[data-theme="light"]{--bg:#FBFAF8;--surf:#FFF;--surf2:#F1EFEA;--ink:#131210;--ink2:#55514A;
+    --ink3:#8C877D;--line:#E4E1DA;--accent:#8A6A2F;--warn:#B4642A;--good:#3F6B4A}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:34px 20px 70px}
+  .kick{font:600 10.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin:0 0 12px}
+  h1{font-size:clamp(32px,6vw,58px);font-weight:680;letter-spacing:-.042em;line-height:.95;margin:0 0 14px;text-wrap:balance}
+  h1 em{font-style:italic;font-weight:400;color:var(--ink2)}
+  .deck{color:var(--ink2);font-size:15.5px;line-height:1.55;max-width:52ch;margin:0;padding-left:14px;border-left:2px solid var(--accent)}
+  h2{font-size:13px;font-weight:660;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);
+     margin:52px 0 16px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .scroll{overflow-x:auto;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;min-width:840px;font-size:12.5px}
+  th,td{text-align:left;vertical-align:top;padding:12px 13px;border-bottom:1px solid var(--line)}
+  thead th{font:600 10.5px/1.3 var(--sans);letter-spacing:.11em;text-transform:uppercase;color:var(--ink3);
+    background:var(--surf2);border-bottom:1px solid var(--line)}
+  thead th:first-child{border-radius:8px 0 0 0} thead th:last-child{border-radius:0 8px 0 0}
+  tbody th{font-weight:640;font-size:13px;letter-spacing:-.01em;width:130px;color:var(--ink)}
+  tbody th small{display:block;font-weight:500;font-size:11px;color:var(--ink3);letter-spacing:0;margin-top:3px}
+  td{color:var(--ink2);line-height:1.45}
+  .say{color:var(--ink);font-style:italic}
+  .risk{color:var(--warn);font-weight:550}
+  .fix{color:var(--good);font-weight:550}
+  .em{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+  .em b{font-size:15px;font-weight:660;color:var(--ink)}
+  .bars{display:flex;gap:2px;align-items:flex-end;height:22px}
+  .bars i{width:5px;border-radius:1px;background:var(--accent);opacity:.85}
+  .flow{display:grid;gap:9px;grid-template-columns:1fr}
+  @media(min-width:720px){.flow{grid-template-columns:repeat(5,1fr)}}
+  .step{position:relative;background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:14px 13px}
+  .step u{display:block;font:600 10px/1 var(--sans);letter-spacing:.13em;text-transform:uppercase;
+    color:var(--accent);text-decoration:none;margin-bottom:8px}
+  .step b{display:block;font-size:14px;font-weight:640;letter-spacing:-.02em;margin-bottom:5px}
+  .step p{margin:0;font-size:12px;color:var(--ink2);line-height:1.45}
+  .step::after{content:"";position:absolute;right:-6px;top:50%;width:9px;height:9px;border-top:1.5px solid var(--line);
+    border-right:1.5px solid var(--line);transform:translateY(-50%) rotate(45deg);z-index:2}
+  .step:last-child::after{display:none}
+  @media(max-width:719px){.step::after{right:50%;top:auto;bottom:-7px;transform:translateX(50%) rotate(135deg)}}
+  .taps{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .tap{flex:1 1 190px;background:var(--surf);border:1px solid var(--line);border-radius:11px;padding:13px}
+  .tap b{display:block;font-size:22px;font-weight:680;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+  .tap span{display:block;font-size:11.5px;color:var(--ink3);margin-top:2px}
+  .tap p{margin:8px 0 0;font-size:12px;color:var(--ink2);line-height:1.45}
+  .note{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink2);font-size:12.5px;line-height:1.65;max-width:66ch}
+  .note b{color:var(--ink);font-weight:630}
+</style>
+<div class="wrap">
+  <p class="kick">What's Good · experience map</p>
+  <h1>Six seconds to <em>a decision.</em></h1>
+  <p class="deck">The whole product is one job: turn "I'm hungry and I can't decide" into a place, before the person gives up and opens Instagram. Everything below is measured against that.</p>
+
+  <h2>The spine</h2>
+  <div class="flow">
+    <div class="step"><u>00:00</u><b>Open</b><p>Location and local hour read on launch. No city picker, no permission wall before value.</p></div>
+    <div class="step"><u>00:02</u><b>Recognise</b><p>Six occasions that are plausible <em>at this hour</em>. The person sees their own situation on screen.</p></div>
+    <div class="step"><u>00:04</u><b>Pick</b><p>One tap. Results appear immediately — no Search button standing between intent and answer.</p></div>
+    <div class="step"><u>00:10</u><b>Narrow</b><p>Only if needed. Distance, spend, party as drags; neighbourhood as chips.</p></div>
+    <div class="step"><u>00:20</u><b>Commit</b><p>Directions, call, book, or save. The exit has to be as fast as the entry.</p></div>
+  </div>
+
+  <h2>Stage by stage</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Stage</th><th>They're thinking</th><th>Emotion</th><th>Where it breaks</th><th>The design answer</th></tr></thead>
+    <tbody>
+      <tr><th>Open<small>cold start</small></th>
+        <td class="say">"Just tell me something."</td>
+        <td><span class="em"><span class="bars"><i style="height:9px"></i><i style="height:7px"></i><i style="height:6px"></i></span><b>Low</b></span></td>
+        <td class="risk">Empty state that asks a question and gives nothing back.</td>
+        <td class="fix">Geolocate silently, show results before any input.</td></tr>
+      <tr><th>Recognise<small>the tiles</small></th>
+        <td class="say">"Which of these is me right now?"</td>
+        <td><span class="em"><span class="bars"><i style="height:11px"></i><i style="height:15px"></i><i style="height:17px"></i></span><b>Rising</b></span></td>
+        <td class="risk">A fixed six that's wrong at 9am. Options that overlap, so none feels right.</td>
+        <td class="fix">Set generated from local hour. One axis only — occasion.</td></tr>
+      <tr><th>Pick<small>the moment</small></th>
+        <td class="say">"Date night. Go."</td>
+        <td><span class="em"><span class="bars"><i style="height:16px"></i><i style="height:20px"></i><i style="height:22px"></i></span><b>Peak</b></span></td>
+        <td class="risk">A Search button after the choice. Two moves for a one-move promise.</td>
+        <td class="fix">Selection <em>is</em> the query. Spring feedback confirms it landed.</td></tr>
+      <tr><th>Narrow<small>optional</small></th>
+        <td class="say">"Not that far, and not that pricey."</td>
+        <td><span class="em"><span class="bars"><i style="height:14px"></i><i style="height:12px"></i><i style="height:15px"></i></span><b>Steady</b></span></td>
+        <td class="risk">Twelve chips to tap. Filters that return zero and dead-end.</td>
+        <td class="fix">Ordinal things drag; categorical things tap. Never zero — loosen and say so.</td></tr>
+      <tr><th>Commit<small>the exit</small></th>
+        <td class="say">"Is it open, and can I get in?"</td>
+        <td><span class="em"><span class="bars"><i style="height:18px"></i><i style="height:13px"></i><i style="height:8px"></i></span><b>Anxious</b></span></td>
+        <td class="risk">Turning up to a closed kitchen. This is the trust-killer.</td>
+        <td class="fix">Open-now and last-orders stated plainly. Directions and call one tap away.</td></tr>
+      <tr><th>Return<small>next time</small></th>
+        <td class="say">"That place was good."</td>
+        <td><span class="em"><span class="bars"><i style="height:12px"></i><i style="height:16px"></i><i style="height:19px"></i></span><b>Warm</b></span></td>
+        <td class="risk">Saved is a graveyard nobody reopens.</td>
+        <td class="fix">Saved feeds the next set — "you liked X, Y is like it."</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Tap budget</h2>
+  <div class="taps">
+    <div class="tap"><b>5+</b><span>Before</span><p>Type, or pick a mood, then Search, then filter, then scroll. Five moves and a decision still not made.</p></div>
+    <div class="tap"><b>1</b><span>Now — the common case</span><p>Open, tap an occasion, read results. Everything after that is optional refinement.</p></div>
+    <div class="tap"><b>3</b><span>Now — the fussy case</span><p>Occasion, drag distance, tap a neighbourhood. Two of those are drags, not taps.</p></div>
+  </div>
+
+  <h2>What I'd still argue with</h2>
+  <p class="note"><b>Six is a guess.</b> It fits a phone and it beats a list, but nothing proves six is right — four might read faster, eight might cover more. That's a test, not a decision.<br><br>
+  <b>Time-of-day is an assumption about behaviour.</b> Someone booking Saturday dinner on Tuesday morning gets a brunch set and is badly served. There needs to be a way to say "not now, later" without it becoming another filter.<br><br>
+  <b>Occasions are culturally loaded.</b> "End of month" is a South African rhythm. "Happy hour" barely exists in Paris. If the tiles are generated per city, the vocabulary has to be too — otherwise the app reads as translated rather than local.<br><br>
+  <b>The exit is the weakest stage.</b> Everything above optimises finding; almost none of it optimises the moment someone turns up and it's full. That's where trust is actually won or lost.</p>
+</div>
+<script>document.documentElement.dataset.theme=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"</script>
