@@ -1,0 +1,284 @@
+/**
+ * docs/design/occasion-prototype.html — its <style> block, verbatim.
+ *
+ * The ONLY additions are at the bottom, under REAL PHOTOGRAPHY: `.ph` needs to be able
+ * to carry an actual Google Places image, because the prototype's panels were stand-ins
+ * for exactly that. Nothing above that marker has been re-authored, re-ordered or
+ * "improved" — if it differs from the prototype, that is a bug.
+ */
+:root{--bg:#F5F4F2;--surf:#FFF;--surf2:#ECEBE8;--ink:#111110;--ink2:#5C5B57;--ink3:#8D8C87;
+  --line:#E3E2DE;--line2:#CAC9C4;--accent:#C8371C;--on-accent:#FFF;
+  --r:20px;--r2:14px;--r3:999px;--grain:.05;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#0E0E0D;--surf:#181817;--surf2:#222220;--ink:#F5F4F2;
+  --ink2:#A8A7A2;--ink3:#787771;--line:#282826;--line2:#3B3B38;--accent:#FF5A3C;--on-accent:#170502;--grain:.07}}
+:root[data-theme="dark"]{--bg:#0E0E0D;--surf:#181817;--surf2:#222220;--ink:#F5F4F2;--ink2:#A8A7A2;
+  --ink3:#787771;--line:#282826;--line2:#3B3B38;--accent:#FF5A3C;--on-accent:#170502;--grain:.07}
+:root[data-theme="light"]{--bg:#F5F4F2;--surf:#FFF;--surf2:#ECEBE8;--ink:#111110;--ink2:#5C5B57;
+  --ink3:#8D8C87;--line:#E3E2DE;--line2:#CAC9C4;--accent:#C8371C;--on-accent:#FFF;--grain:.05}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;transition:background .4s,color .4s}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 20px 80px}
+button,input,select{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* photography — narrow analogous warm band + grain, stands in for real photos */
+/* image frame — real photography drops in here; neutral until it does */
+.ph{position:relative;overflow:hidden;background:var(--surf2);isolation:isolate}
+.ph::after{content:"Image";position:absolute;inset:0;display:grid;place-items:center;
+  font:600 8.5px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);opacity:.4}
+.tile .ph::after,.dhero.ph::after,.hero.ph::after{align-items:flex-start;padding-top:14px}
+
+header{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.logo{font-size:17px;font-weight:650;letter-spacing:-.03em;white-space:nowrap;line-height:1}
+.hctrl{display:flex;gap:7px;align-items:center}
+.sel{font:500 12px/1 var(--sans);color:var(--ink2);background:var(--surf);border:1px solid var(--line);
+  padding:9px 11px;border-radius:var(--r3);cursor:pointer}
+.icb{width:35px;height:35px;display:grid;place-items:center;border-radius:var(--r3);background:var(--surf);
+  border:1px solid var(--line);cursor:pointer;transition:.2s}
+.icb:hover{border-color:var(--line2)}
+.icb svg{width:15px;height:15px;stroke:var(--ink2);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+.tabs{display:flex;gap:5px;background:var(--surf2);padding:4px;border-radius:var(--r3);margin-bottom:22px;overflow-x:auto}
+.tab{flex:1;min-width:78px;border:0;background:transparent;color:var(--ink3);font:600 13px/1 var(--sans);
+  letter-spacing:-.01em;padding:10px 12px;border-radius:var(--r3);cursor:pointer;transition:.25s;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--surf);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+
+/* hero */
+.hero{position:relative;border-radius:var(--r);min-height:230px;display:flex;align-items:flex-end;
+  padding:26px;margin-bottom:22px;color:var(--ink);text-align:center;justify-content:center}
+.hero .in{position:relative;z-index:2;max-width:32ch;margin:0 auto;text-align:center}
+.hero .kick{display:flex;align-items:center;justify-content:center;gap:7px;font:600 10px/1 var(--sans);letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink3);margin:0 0 12px}
+.hero .kick i{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:b 2.6s ease-in-out infinite}
+@keyframes b{0%,100%{opacity:1}50%{opacity:.25}}
+h1{font-size:clamp(30px,5.4vw,48px);font-weight:650;letter-spacing:-.042em;line-height:.98;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+.hero p{margin:10px auto 0;font-size:13.5px;line-height:1.5;color:var(--ink2);max-width:40ch}
+
+/* search */
+.search{display:flex;gap:9px;align-items:center;background:var(--surf);border:1px solid var(--line);
+  border-radius:var(--r3);padding:5px 5px 5px 16px;margin-bottom:12px;transition:border-color .2s}
+.search:focus-within{border-color:var(--accent)}
+.search svg{width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:1.6;flex:0 0 auto}
+.search input{flex:1;border:0;background:0;color:var(--ink);font-size:16px;padding:11px 0;outline:0;min-width:0}
+.search input::placeholder{color:var(--ink3)}
+.search button{border:0;background:var(--accent);color:var(--on-accent);font:600 13px/1 var(--sans);
+  padding:11px 18px;border-radius:var(--r3);cursor:pointer}
+.parsed{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 22px;min-height:22px;
+  font-size:11.5px;color:var(--ink3)}
+.parsed b{font-weight:600;color:var(--ink2)}
+.pz{padding:4px 10px;border-radius:var(--r3);background:var(--surf2);color:var(--ink2);font-weight:550;font-size:11.5px}
+
+/* time — sliding pill */
+.time{position:relative;display:flex;background:var(--surf2);border-radius:var(--r3);padding:5px;margin-bottom:24px}
+.time .glide{position:absolute;top:5px;bottom:5px;width:calc((100% - 10px)/3);border-radius:var(--r3);
+  background:var(--surf);box-shadow:0 1px 4px rgba(0,0,0,.11);transition:transform .55s cubic-bezier(.3,1.05,.3,1)}
+.per{position:relative;z-index:2;flex:1;background:0;border:0;padding:11px 8px;cursor:pointer;text-align:center;
+  color:var(--ink3);transition:color .3s}
+.per[aria-pressed="true"]{color:var(--ink)}
+.per u{display:block;font:600 9.5px/1 var(--sans);letter-spacing:.15em;text-decoration:none;opacity:.65;
+  margin-bottom:5px;font-variant-numeric:tabular-nums}
+.per b{display:block;font-size:14.5px;font-weight:640;letter-spacing:-.025em}
+.per em{font-style:normal;color:var(--accent);font-size:9.5px;letter-spacing:.14em;margin-left:5px}
+
+.lbl{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 13px}
+.lbl b{font:600 10px/1 var(--sans);letter-spacing:.17em;text-transform:uppercase;color:var(--ink3)}
+.lbl span{font-size:11.5px;color:var(--ink3)}
+
+.stage{display:grid;gap:32px;grid-template-columns:1fr}
+@media(min-width:960px){.stage{grid-template-columns:minmax(0,1fr) 380px;align-items:start}}
+
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:760px){.grid{grid-template-columns:repeat(3,1fr)}}
+.tile{position:relative;border:0;padding:0;border-radius:var(--r2);overflow:hidden;cursor:pointer;
+  aspect-ratio:1/.82;text-align:left;color:var(--ink);opacity:0;transform:translateY(12px) scale(.98)}
+.tile.in{opacity:1;transform:none;
+  transition:opacity .5s cubic-bezier(.2,.7,.3,1),transform .62s cubic-bezier(.3,1.2,.5,1)}
+.tile .ph{position:absolute;inset:0;transition:transform 1s cubic-bezier(.2,.7,.3,1)}
+.tile:hover .ph{transform:scale(1.07)}
+.tile .bd{position:absolute;inset:auto 0 0 0;padding:12px;display:flex;flex-direction:column;gap:8px;z-index:3;background:var(--surf);transition:background .3s,color .3s}
+.tile svg.ic{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;
+  stroke-linejoin:round;transition:transform .5s cubic-bezier(.3,1.45,.5,1)}
+.tile .nm{font-size:15.5px;font-weight:640;letter-spacing:-.028em;line-height:1.1;display:block}
+.tile .ds{font-size:11px;line-height:1.3;color:var(--ink3);display:block;margin-top:3px}
+.tile .ring{position:absolute;inset:0;border-radius:var(--r2);border:2px solid transparent;z-index:4;transition:border-color .25s}
+.tile[aria-pressed="true"] .ring{border-color:var(--accent)}
+.tile[aria-pressed="true"] svg.ic{transform:scale(1.16)}
+.tile[aria-pressed="true"] .bd{background:var(--accent);color:var(--on-accent)}
+.tile[aria-pressed="true"] .ds{color:var(--on-accent);opacity:.75}
+.pop{animation:p .5s cubic-bezier(.3,1.4,.5,1)}
+@keyframes p{0%{transform:scale(1)}32%{transform:scale(.975)}100%{transform:scale(1)}}
+
+.refine{margin-top:26px;opacity:.42;pointer-events:none;transition:opacity .4s}
+.refine.on{opacity:1;pointer-events:auto}
+.sliders{display:grid;gap:20px;grid-template-columns:1fr}
+@media(min-width:620px){.sliders{grid-template-columns:repeat(3,1fr);gap:26px}}
+.sl label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.sl label b{font:600 10px/1 var(--sans);letter-spacing:.15em;text-transform:uppercase;color:var(--ink3)}
+.sl label span{font-size:13px;font-weight:650;color:var(--accent);font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;background:0;cursor:pointer;margin:0;display:block}
+input[type=range]::-webkit-slider-runnable-track{height:2px;border-radius:2px;background:var(--line2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--accent);margin-top:-6.5px;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.35)}
+input[type=range]::-moz-range-track{height:2px;border-radius:2px;background:var(--line2)}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:var(--accent)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{font:550 12.5px/1 var(--sans);color:var(--ink2);background:var(--surf);border:1px solid var(--line);
+  padding:9px 14px;border-radius:var(--r3);cursor:pointer;transition:.2s}
+.chip:hover{border-color:var(--line2);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+
+@media(min-width:960px){.res{border-left:1px solid var(--line);padding-left:26px;position:sticky;top:20px}}
+@media(max-width:959px){.res{border-top:1px solid var(--line);padding:24px 0 0}}
+.rhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:14px}
+.rhead b{font-size:15px;font-weight:650;letter-spacing:-.025em}
+.rhead span{font-size:11.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.card{display:flex;gap:12px;padding:9px;border-radius:var(--r2);background:var(--surf);border:1px solid var(--line);
+  margin-bottom:9px;cursor:pointer;opacity:0;transform:translateY(9px);transition:border-color .2s;
+  /* the card is a <button> so it is keyboard-reachable; these four keep it looking
+     exactly like the prototype's <div>, the same way .rc already does */
+  width:100%;text-align:left;font:inherit;color:inherit}
+.card.in{opacity:1;transform:none;transition:opacity .45s,transform .55s cubic-bezier(.25,.9,.3,1),border-color .2s}
+.card:hover{border-color:var(--line2)}
+.card .th{width:62px;height:62px;border-radius:10px;flex:0 0 auto}
+.card h3{margin:0;font-size:14px;font-weight:640;letter-spacing:-.022em}
+.card p{margin:3px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.4}
+.exit{display:flex;align-items:center;gap:9px;margin-top:7px;flex-wrap:wrap}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--accent)}
+.st i{width:5px;height:5px;border-radius:50%;background:currentColor}
+.st.w{color:var(--ink3)}
+.mt{font-size:10.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.planb{margin-top:8px;padding:9px 11px;background:var(--surf2);border-radius:9px;font-size:11px;color:var(--ink2);line-height:1.45}
+.planb b{color:var(--ink)}
+.rc{display:block;width:100%;text-align:left;background:var(--surf);border:1px solid var(--line);
+  border-radius:var(--r2);overflow:hidden;margin-bottom:10px;cursor:pointer;opacity:0;transform:translateY(9px)}
+.rc.in{opacity:1;transform:none;transition:opacity .45s,transform .55s cubic-bezier(.25,.9,.3,1)}
+.rc .ph{height:104px}
+.rc .bd2{padding:12px 13px}
+.rc h3{margin:0;font-size:14.5px;font-weight:640;letter-spacing:-.022em}
+.rc p{margin:3px 0 0;font-size:11.5px;color:var(--ink2)}
+.rc .meta{display:flex;gap:14px;margin-top:9px;font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums}
+.rc .meta b{color:var(--accent);font-weight:650}
+.auth{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:26px;text-align:center;max-width:380px;margin:0 auto}
+.auth h3{margin:0 0 6px;font-size:19px;font-weight:650;letter-spacing:-.03em}
+.auth p{margin:0 0 18px;font-size:13px;color:var(--ink2);line-height:1.5}
+.auth input{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:var(--r3);padding:12px 16px;font-size:16px;margin-bottom:9px;outline:0}
+.auth input:focus{border-color:var(--accent)}
+.auth button{width:100%;border:0;background:var(--accent);color:var(--on-accent);font:650 13.5px/1 var(--sans);
+  padding:13px;border-radius:var(--r3);cursor:pointer}
+.segs{display:flex;gap:5px;background:var(--surf2);padding:4px;border-radius:var(--r3);margin-bottom:18px}
+.seg{flex:1;border:0;background:0;color:var(--ink3);font:600 13px/1 var(--sans);padding:10px;
+  border-radius:var(--r3);cursor:pointer;transition:.25s}
+.seg[aria-pressed="true"]{background:var(--surf);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+.who{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink2)}
+.who b{color:var(--ink);font-weight:600}
+.savebtn{margin-left:auto;border:1px solid var(--line);background:var(--surf);color:var(--ink2);
+  font:600 11px/1 var(--sans);padding:7px 12px;border-radius:var(--r3);cursor:pointer}
+.savebtn[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.empty{color:var(--ink3);font-size:13.5px;line-height:1.55}
+
+/* venue detail */
+.detail{display:none}
+body[data-view="detail"] .detail{display:block}
+body[data-view="detail"] .browse{display:none}
+.back{display:inline-flex;align-items:center;gap:7px;font:600 12.5px/1 var(--sans);color:var(--ink2);
+  background:var(--surf);border:1px solid var(--line);padding:10px 15px;border-radius:var(--r3);cursor:pointer;margin-bottom:16px}
+.back:hover{color:var(--ink)}
+.dhero{position:relative;border-radius:var(--r);min-height:290px;display:flex;align-items:flex-end;padding:24px;color:var(--ink)}
+.dhero .in{position:relative;z-index:3}
+.dhero h2{margin:0;font-size:clamp(28px,4.6vw,42px);font-weight:650;letter-spacing:-.04em;line-height:1}
+.dhero .sub{margin:8px 0 0;font-size:13.5px;color:var(--ink2);line-height:1.45}
+.gal{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.gal .ph{aspect-ratio:1/1;border-radius:11px}
+.dgrid{display:grid;gap:26px;grid-template-columns:1fr;margin-top:26px}
+@media(min-width:820px){.dgrid{grid-template-columns:minmax(0,1fr) 300px}}
+.facts{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+@media(min-width:560px){.facts{grid-template-columns:repeat(4,1fr)}}
+.fact{background:var(--surf);padding:14px 13px}
+.fact u{display:block;font:600 9.5px/1 var(--sans);letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink3);text-decoration:none;margin-bottom:7px}
+.fact b{font-size:14.5px;font-weight:640;letter-spacing:-.02em}
+.fact span{display:block;font-size:11px;color:var(--ink3);margin-top:3px}
+h4{font:600 10px/1 var(--sans);letter-spacing:.17em;text-transform:uppercase;color:var(--ink3);margin:26px 0 12px}
+.known{display:grid;gap:9px}
+.dish{display:flex;justify-content:space-between;gap:14px;align-items:baseline;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.dish b{font-size:14px;font-weight:600;letter-spacing:-.02em}
+.dish p{margin:3px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.4}
+.dish span{font-size:11.5px;color:var(--ink3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.socials{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.soc{width:38px;height:38px;display:grid;place-items:center;border-radius:var(--r3);background:var(--surf);
+  border:1px solid var(--line);cursor:pointer;transition:.2s}
+.soc:hover{border-color:var(--accent);color:var(--accent)}
+.soc svg{width:16px;height:16px;fill:currentColor}
+.side{background:var(--surf);border:1px solid var(--line);border-radius:var(--r2);padding:16px}
+.side .cta{display:block;width:100%;border:0;background:var(--accent);color:var(--on-accent);
+  font:650 13.5px/1 var(--sans);padding:14px;border-radius:var(--r3);cursor:pointer;margin-bottom:8px}
+.side .cta2{display:block;width:100%;border:1px solid var(--line);background:var(--surf);color:var(--ink);
+  font:600 13px/1 var(--sans);padding:13px;border-radius:var(--r3);cursor:pointer;margin-bottom:8px}
+.hours{margin-top:14px;font-size:12px;color:var(--ink2);line-height:1.7}
+.hours div{display:flex;justify-content:space-between;gap:10px}
+.hours .now{color:var(--accent);font-weight:600}
+
+.note{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink2);font-size:12.5px;line-height:1.7;max-width:70ch}
+.note b{color:var(--ink);font-weight:640}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}
+  .tile,.card{opacity:1!important;transform:none!important}}
+
+/* ─── REAL PHOTOGRAPHY ────────────────────────────────────────────────────────
+   Everything above is the prototype. This is the one place it has to change,
+   because the prototype's whole photographic layer was a stand-in for the Google
+   Places images the app already pays for.
+
+   `.ph.has-photo` carries a real image and drops the "Image" caption; a `.ph`
+   with no photo keeps the prototype's neutral panel exactly as it was, which is
+   the correct state for a venue Google returns no photograph for. */
+.ph.has-photo{background-size:cover;background-position:center}
+.ph.has-photo::after{content:none}
+
+/* The canvas must be painted, or the safe-area regions on a notched iPhone show
+   straight through the app (CLAUDE.md §6). The prototype only ever painted <body>
+   because it was never opened on a phone. */
+html{background:var(--bg)}
+
+/* The search input has a visible placeholder but no visible label; screen readers still
+   need one. `.sr-only` is deliberately NOT used — it is position:absolute and escapes an
+   unpositioned interactive ancestor (CLAUDE.md §12). Clip-path stays put. */
+.visually-hidden{position:static;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;display:inline-block}
+
+/* Landscape safe area. A notched iPhone reports ~59px on `safe-area-inset-left/right`
+   when rotated and 0 everywhere else; the prototype consumed neither, so in landscape
+   the content sat under the notch. One rule on the only wrapper, so it cannot drift. */
+.wrap{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+
+/* ─── PHONE FIXES THE PROTOTYPE NEVER HAD ─────────────────────────────────────
+   The prototype was authored in a desktop browser and never opened on a handset.
+   These are the three things a real phone breaks, all measured by verify/checks.mjs.
+
+   1. 44pt targets via an INVISIBLE box, never grown ink (CLAUDE.md §11.3). Every
+      small control keeps its exact painted size; only the touch area reaches 44.
+   2. Form fields at 16px. Below that iOS Safari ZOOMS the page on focus and never
+      zooms back — the selects were 12px.
+   3. The header must wrap. Logo + two selects + a button exceeds 393px, which
+      pushed the right-hand control to within 6px of the bezel. */
+.tab,.search button,.savebtn,.back,.chip,.seg,.per,.soc,.icb{position:relative;touch-action:manipulation}
+.tab::before,.search button::before,.savebtn::before,.back::before,.chip::before,
+.seg::before,.per::before,.soc::before,.icb::before{
+  content:"";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
+  min-height:44px;pointer-events:auto}
+.sel{font-size:16px;min-height:44px}
+.icb{min-width:44px}
+header{flex-wrap:wrap}
+.hctrl{flex-wrap:wrap;justify-content:flex-end}
+/* The three sliders are 20px tall with a 2px track and a 15px thumb, so the ELEMENT is
+   almost entirely transparent. Growing the box to 44 grows the touch area and no ink. */
+input[type=range]{height:44px}
+.auth button{position:relative;touch-action:manipulation;min-height:44px}
+/* The search field itself is 41px inside the pill. Its own box carries the target — a
+   ::before would sit over the text and swallow the caret. Padding, not ink: the pill's
+   fill belongs to `.search`, so the input growing 3px changes nothing visible. */
+.search input{padding:13px 0}

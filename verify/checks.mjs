@@ -49,6 +49,13 @@ async function installFixtures(page) {
 }
 const json = (b) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
 
+/* `removed(...)` marks a check that asserted a feature of the OLD React app which the
+ * prototype does not have — the venue action-pillar row, the rating-count format, the
+ * all-week hours disclosure, the recipe plate-scaler. They are not skips (a skip is a
+ * hole in evidence about a feature that exists); the feature is gone on purpose, so the
+ * check is retired and says so out loud rather than sitting red forever. */
+const removed = (name) => console.log(`  · ${name} — RETIRED: asserted a React-app feature the prototype does not have`);
+
 const results = [];
 const check = (name, pass, detail = '') => {
   results.push({ name, pass, detail });
@@ -117,7 +124,7 @@ function staticChecks() {
   })('src');
   // Strip comments before matching, or the note explaining why a pattern is banned
   // trips the check that bans it — a false positive that teaches you to ignore the suite.
-  const cssRaw = readFileSync(resolve(ROOT, 'src/index.css'), 'utf8');
+  const cssRaw = readFileSync(resolve(ROOT, 'src/prototype.css'), 'utf8');
   const css = cssRaw.replace(/\/\*[\s\S]*?\*\//g, '');
   check(
     'html has a background (canvas painted in every safe area)',
@@ -147,15 +154,17 @@ function staticChecks() {
   );
   check(
     'no toFixed() used to format a distance',
-    !/toFixed\(1\)\}\s*km/.test(readFileSync(resolve(ROOT, 'src/App.tsx'), 'utf8')),
+    !/toFixed\(1\)\}\s*km/.test(readFileSync(resolve(ROOT, 'src/prototype.ts'), 'utf8')),
     'half the world writes 1,4 km — Intl knows which half',
   );
 
+  /* The Out tab must query the SELECTED city, never fall back to a hardcoded one. The
+     component this used to read is gone with the React app; the same rule now applies to
+     prototype.ts, which is the only thing issuing the query. */
   check(
-    'Happy Hour has no fixed city dataset dependency',
+    'Out tab has no fixed city dataset dependency',
     !/CAPE_TOWN|HAPPY_HOUR_CITY|hasHappyHourData/.test(
-      readFileSync(resolve(ROOT, 'src/components/HappyHourView.tsx'), 'utf8') +
-      readFileSync(resolve(ROOT, 'src/App.tsx'), 'utf8'),
+      readFileSync(resolve(ROOT, 'src/prototype.ts'), 'utf8'),
     ),
     'the tab must query the selected city, not silently fall back to Cape Town',
   );
@@ -222,7 +231,7 @@ async function main() {
   // (Morning/Midday/Evening) sets aria-pressed too and comes first in the DOM, so the
   // unscoped version clicked "Morning" and never ran a search at all — which showed up
   // as the venue checks skipping for a "fixture gap" that did not exist.
-  await page.locator('.occasion-grid button').first().click({ timeout: 10000 });
+  await page.locator('.grid .tile').first().click({ timeout: 10000 });
   await page.waitForTimeout(2500);
 
   check('no Vite error overlay', (await page.locator('vite-error-overlay').count()) === 0);
@@ -263,29 +272,16 @@ async function main() {
    * the cuisine rail, a venue address and a venue name drawn over the status-bar clock.
    * So the one thing a machine CAN hold is that the fill is still there.
    */
-  const topFill = await page.evaluate(() => {
-    const bar = document.querySelector('.chrome-bar');
-    if (!bar) return null;
-    const cs = getComputedStyle(bar, '::before');
-    return {
-      content: cs.content,
-      height: parseFloat(cs.height) || 0,
-      bg: cs.backgroundColor,
-      bottom: cs.bottom,
-    };
-  });
-  check(
-    'header fills the strip above itself (iOS URL-bar collapse)',
-    !!topFill
-      && topFill.content !== 'none'
-      && topFill.height >= 100
-      && topFill.bg !== 'rgba(0, 0, 0, 0)'
-      && topFill.bg !== 'transparent',
-    topFill
-      ? `h=${topFill.height}px bg=${topFill.bg} bottom=${topFill.bottom}`
-      : 'no .chrome-bar found',
-  );
-
+  /* The 'header fills the strip above itself' check is GONE with the thing it measured.
+   * It asserted a `::before` fill on `.chrome-bar`, a FIXED header. The app is now the
+   * prototype, whose header is in normal flow and scrolls away with the page, so the
+   * iOS URL-bar-collapse strip it mitigated cannot open above it. Left in place it would
+   * have returned null for `.chrome-bar` and reported a mitigation that no longer exists.
+   *
+   * The same removal applies to 'primary nav clears the fixed header': with no fixed
+   * header there is nothing for the nav to clear. The prototype's `.tabs` row sits in
+   * flow directly under the header and is covered by the per-tab hit-target sweep below.
+   */
   /* The simulated-34px-inset check was removed with its sibling above — same reason,
    * same failure mode: with no `.action-bar` in the DOM it returned null and passed. */
 
@@ -301,39 +297,6 @@ async function main() {
    *
    * The red result here is "the nav's top edge is above the header's bottom edge", so
    * that is what is measured — against the header's real geometry, not a hardcoded 72. */
-  // At REST, i.e. scrolled to the top. The nav is in normal flow now, not fixed, so it
-  // legitimately scrolls under the header once the page moves — asserting otherwise
-  // would be asserting it is sticky, which it is not and should not be. Earlier steps
-  // in this run leave the page scrolled, so seat it first or this measures the wrong
-  // state and fails for a behaviour that is correct.
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForTimeout(400);
-  const navBox = await page.evaluate(() => {
-    const nav = document.querySelector('nav[aria-label="Primary"]');
-    const header = document.querySelector('.chrome-bar');
-    if (!nav || !header) return null;
-    const r = nav.getBoundingClientRect();
-    const h = header.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const topEl = document.elementFromPoint(cx, r.top + 4);
-    return {
-      top: Math.round(r.top),
-      bottom: Math.round(r.bottom),
-      headerBottom: Math.round(h.bottom),
-      vh: innerHeight,
-      // The decisive one: is a real point inside the nav actually reachable, or does
-      // the fixed header take the click?
-      reachable: !!topEl && nav.contains(topEl),
-    };
-  });
-  check(
-    'primary nav clears the fixed header and is hit-testable',
-    !!navBox && navBox.top >= navBox.headerBottom && navBox.bottom <= navBox.vh && navBox.reachable,
-    navBox
-      ? `nav top=${navBox.top} headerBottom=${navBox.headerBottom} reachable=${navBox.reachable}`
-      : 'nav or .chrome-bar not found',
-  );
-
   // --- scroll restoration on back ---------------------------------------------
   check(
     'history.scrollRestoration is manual',
@@ -413,7 +376,7 @@ async function main() {
     if (box) {
       await page.mouse.click(box.x + box.width / 2, box.y + Math.min(box.height / 2, 60));
       await page.waitForTimeout(900);
-      const opened = await page.evaluate(() => !!document.querySelector('.venue-title'));
+      const opened = await page.evaluate(() => !!document.querySelector('.dhero h2'));
       if (!opened) {
         console.error(
           '\nThe venue card click did not open a detail view, so back-restores-scroll\n' +
@@ -504,7 +467,7 @@ async function main() {
   check('venue with no phone renders no Call action', thinActions.onVenuePage && thinActions.telLinks === 0,
     thinActions.onVenuePage ? `${thinActions.telLinks} tel: link(s)` : 'not on the venue page');
   check('a Maps fallback is not labelled "Official website"', !thinActions.claimsWebsite);
-  check('a Maps fallback says so', thinActions.offersMaps);
+  removed('a Maps fallback says so', thinActions.offersMaps);
   check(
     'no "at a glance" tile is a label over nothing',
     thinActions.onVenuePage && thinActions.emptyGlanceTiles.length === 0,
@@ -538,7 +501,7 @@ async function main() {
     return { widths, rowWidth: Math.round(row.getBoundingClientRect().width) };
   });
   if (!pillars || pillars.widths.length < 2) {
-    check('venue action pillars share the row evenly', false, 'action row not found');
+    removed('venue action pillars share the row evenly', false, 'action row not found');
   } else {
     const spread = Math.max(...pillars.widths) - Math.min(...pillars.widths);
     // The row width includes its own horizontal padding (px-5 = 40px at this viewport),
@@ -608,9 +571,9 @@ async function main() {
         allWeek: /All week/i.test(txt),
       };
     });
-    check('venue detail: rating count renders beside the rating', info.hasCount,
+    removed('venue detail: rating count renders beside the rating', info.hasCount,
       'pl-1 publishes userRatingCount 1284; expected "(1,284)" in en-GB');
-    check('venue detail: full-week hours disclosure present',
+    removed('venue detail: full-week hours disclosure present',
       info.hasWeekly && info.allWeek, 'expected a <details> "All week" holding the 7 weekday lines');
     await page.goBack().catch(() => {});
     await page.waitForTimeout(900);
@@ -653,7 +616,7 @@ async function main() {
   // Tab wording follows docs/design/occasion-prototype.html: Eat out / Out / Cook / Saved.
   for (const label of ['Eat out', 'Out', 'Cook', 'Saved']) {
     // Same two-nav ambiguity as the de-DE check below — target the rendered one.
-    await page.locator(`nav[aria-label="Primary"] button:has-text("${label}"):visible`).first().click().catch(() => {});
+    await page.locator(`#tabs button:has-text("${label}"):visible`).first().click().catch(() => {});
     await page.waitForTimeout(900);
     const r = await page.evaluate(MEASURE);
     check(`${label}: no overflow, all targets >=44pt`, !r.over && r.miss.length === 0,
@@ -713,9 +676,20 @@ async function main() {
       .querySelector('meta[name="theme-color"]')
       ?.hasAttribute('media'),
   }));
-  check('?tab= opens that tab', deep.hh, deep.title);
-  check('?city= is honoured', deep.city);
-  check('document.title names the screen', /Happy hour/i.test(deep.title), deep.title);
+  /* THE THREE ROUTING CHECKS ARE REMOVED, AND THIS IS A REAL LOSS — recorded, not hidden.
+   *
+   * `?tab=`, `?city=` and a per-screen `document.title` were asserted against the React
+   * app, which seeded and validated both params and renamed the document per screen. The
+   * app is now the prototype verbatim, and the prototype holds ALL navigation in local
+   * variables: no URL state, no history entries, one title for every screen. So nothing
+   * is shareable, bookmarkable, or survives a refresh, and the back gesture does not
+   * close the venue detail.
+   *
+   * Keeping the checks would have made the suite permanently red for a deliberate
+   * decision; keeping them and softening them would have been worse. They are removed
+   * and the capability is logged as the top open item in HANDOVER.md, because it is the
+   * one thing the previous app did better and it will have to come back.
+   */
   check('live theme-color meta present', !!deep.theme, deep.theme || 'missing');
   check(
     'live theme-color WINS (first in head, no media)',
@@ -772,7 +746,7 @@ async function main() {
        30s and took the whole suite down. This picks whichever nav actually renders at
        the viewport under test, so the check keeps working at every width instead of
        silently depending on DOM order. */
-    await dp.locator('nav[aria-label="Primary"] button:has-text("Cook"):visible').first().click();
+    await dp.locator('#tabs button:has-text("Cook"):visible').first().click();
     await dp.waitForTimeout(1500);
     const card = dp.locator('[role="button"][aria-label^="View "]:visible').first();
     let chip = null;
@@ -794,10 +768,10 @@ async function main() {
         }
       }
     }
-    check('scaled chip renders at all', !!chip, chip ? chip.text : 'never reached — recipe fixture or stepper changed');
-    check('scaled quantity uses the locale decimal separator',
+    removed('scaled chip renders at all', !!chip, chip ? chip.text : 'never reached — recipe fixture or stepper changed');
+    removed('scaled quantity uses the locale decimal separator',
       !!chip && /x\d+,\d/.test(chip.text), chip ? chip.text : 'n/a');
-    check('scaled chip colour comes from the accent token',
+    removed('scaled chip colour comes from the accent token',
       !!chip && chip.color === 'rgb(124, 45, 18)', chip ? chip.color : 'n/a');
     await de.close();
   }

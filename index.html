@@ -112,8 +112,72 @@
     />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!--
+      docs/design/occasion-prototype.html — its markup, verbatim. Nothing added, nothing
+      removed, nothing renamed. src/prototype.ts drives it and src/prototype.css styles
+      it, both equally verbatim; the only departures from the prototype are the three
+      listed at the top of prototype.ts (real venues, real photography, real recipes).
+    -->
+    <div class="wrap">
+      <header>
+        <span class="logo">What's Good</span>
+        <div class="hctrl">
+          <select class="sel" id="city" aria-label="City"></select>
+          <select class="sel" id="hour" aria-label="Hour"></select>
+          <button class="icb" id="t" title="Theme" aria-label="Switch colour theme"><svg id="tico" viewBox="0 0 24 24"></svg></button>
+        </div>
+      </header>
+
+      <div class="tabs" role="tablist" id="tabs"></div>
+
+      <div class="browse">
+        <div class="hero ph" id="hero"><div class="in">
+          <p class="kick"><i></i><span id="ctx"></span></p>
+          <h1 id="h1"></h1><p id="hsub"></p></div></div>
+
+        <div class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <label class="visually-hidden" for="q">Search</label>
+          <input id="q" placeholder="Somewhere quiet for two" autocomplete="off">
+          <button id="go">Search</button>
+        </div>
+        <div class="parsed" id="parsed"></div>
+
+        <div class="time" id="time"><div class="glide" id="glide"></div></div>
+
+        <div class="stage" data-v="d" id="stage">
+          <div>
+            <p class="lbl"><b id="lbl">The occasion</b><span id="why"></span></p>
+            <div class="grid" id="grid"></div>
+            <div class="refine" id="refine">
+              <div class="sliders">
+                <div class="sl"><label for="dist"><b>How far</b><span id="o-dist">2.0 km</span></label>
+                  <input type="range" id="dist" min="0" max="6" step="1" value="2"></div>
+                <div class="sl"><label for="price"><b>Spend</b><span id="o-price">Mid</span></label>
+                  <input type="range" id="price" min="0" max="3" step="1" value="1"></div>
+                <div class="sl"><label for="party"><b>Table for</b><span id="o-party">2</span></label>
+                  <input type="range" id="party" min="1" max="8" step="1" value="2"></div>
+              </div>
+              <div style="margin-top:24px"><p class="lbl"><b>Nearby</b><span id="geo"></span></p>
+                <div class="chips" id="areas"></div></div>
+            </div>
+          </div>
+          <div class="res">
+            <div class="rhead"><b id="rt">Nothing picked yet</b><span id="rc"></span></div>
+            <div id="list"><p class="empty">Pick an occasion, or just type what you're after.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail" id="detail"></div>
+
+      <p class="note"><b>Live.</b> Venues, opening status, photography and recipes are real —
+        places come from Google Places for the selected city, recipes from TheMealDB.
+        <b>Type anything</b> — "stag party", "hotel bar", "near a park", "vegan ramen" — and the
+        parse line shows what it understood, so freeform beats the tiles when the tiles don't fit.
+        Where a fact isn't confirmed it isn't shown. Place data powered by Google.</p>
+    </div>
+    <script type="module" src="/src/prototype.ts"></script>
   </body>
 </html>
 
