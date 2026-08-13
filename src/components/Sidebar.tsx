@@ -826,25 +826,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  />
  </div>
  </div>
- <p className="text-[11px] leading-snug text-[var(--text-subtle)]">
- Spend filters the results. Distance and table size are preferences we carry into the venue page — Google Places does not accept either as a search constraint.
- </p>
  </div>
 
- <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)] select-none">
- <span className="h-px w-10 bg-[var(--accent-terracotta)]" />
- <span>Or narrow it down</span>
- </div>
-
- {/* THE one horizontal rail on this screen. Cuisine is the primary axis — it is
- the decision most people arrive already holding ("I want sushi"), and it is
- the only list long enough that a rail beats a wrap. */}
- <FilterGroup
- title="Cuisine"
- optional
- scroll
- note={availableCount > 0 ? `${availableCount} available here` : undefined}
- >
+ {/* Everything the prototype does not have has been removed from this surface, on
+ the owner's instruction (2026-08-13): the "Or narrow it down" divider, the
+ Cuisine rail, the "Mood, diet & budget" sheet row and the filter sheet behind
+ it. The prototype answers those with freeform search plus the occasion grid,
+ and this is meant to BE the prototype, not to keep the old controls beside it.
+ The Chip / FilterGroup / FilterSheet / GlassSlider components and the cuisine
+ helpers above are left in the file, unrendered, so nothing else that imports
+ them breaks and so restoring any of this is one JSX block, not a rewrite. */}
+ {false && (
+ <FilterGroup title="Cuisine" optional scroll>
  {visibleCuisines.map((c) => (
  <Chip
  key={c.value}
@@ -855,7 +848,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  available={isAvailable(c)}
  />
  ))}
- {cuisines.length > CUISINE_PREVIEW && (
+ {false && (
  /* Dashed and muted so it reads as a disclosure control, not another cuisine to
     filter by. Its own line of text says how many are behind it — "more" alone
     doesn't tell you whether it is worth the tap. */
@@ -869,7 +862,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  </button>
  )}
  </FilterGroup>
+ )}
 
+ {false && (<>
  {/* ONE affordance for everything granular. Mood, Diet and Budget are secondary:
  useful, not what gets someone out the door. Stacking them on the canvas as
  more rails made three competing scroll axes and buried Budget below the fold.
@@ -946,6 +941,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  />
  </div>
  </FilterSheet>
+ </>)}
  </aside>
 );
 };
