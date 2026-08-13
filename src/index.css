@@ -1651,3 +1651,35 @@ html.dark .shimmer::after {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* ─── Find tab: decision-led layout ──────────────────────
+ * docs/design/occasion-prototype.html puts the DECISION in the wide column and the
+ * RESULTS in a narrow one beside it. The shell ships the opposite — a 280-340px filter
+ * rail against a 3-to-4-up card grid — which is why the occasion tiles read as a cramped
+ * strip bolted onto the old design instead of the primary decision on the screen.
+ *
+ * Scoped to `.find-layout`, which App.tsx sets only while the Find rail is showing. An
+ * unscoped `.desktop-shell` override was written and reverted before it shipped: the
+ * sidebar is `lg:hidden` on every other tab, so the flip left a dead 380px column on
+ * Stay In / Out / Saved and collapsed their card grids to one column.
+ *
+ * Six earlier `.desktop-shell` rules disagree about widths across breakpoints. This block
+ * is last and carries a class, so it wins on both order and specificity.
+ */
+@media (min-width: 1024px) {
+  .desktop-shell.find-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 380px);
+    gap: 2.5rem;
+  }
+
+  /* The editorial panel is the wide column now, so it stops behaving like a rail. */
+  .find-layout .desktop-filter-region {
+    max-width: none;
+    padding-inline: 0;
+  }
+
+  /* At 380px a 3-up card grid renders three slivers. Results become a column. */
+  .find-layout > .page-grid .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

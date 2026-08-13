@@ -683,7 +683,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
      viewport-keyed `sm:grid-cols-3` widened the GRID while the COLUMN stayed
      put and wrapped every label onto two lines. Column width, not screen
      width, is what this layout answers to. */}
- <div className="grid grid-cols-2 gap-2.5">
+ <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
  {OCCASIONS[period].map((o) => {
  const active = dimensions.vibe === o.value;
  return (

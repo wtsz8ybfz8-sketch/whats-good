@@ -1706,7 +1706,14 @@ export default function App() {
  /* Content clearance for the fixed tab bar, from --tabbar-h + the home-indicator
     inset. A hardcoded 76px was a guess against 57px of chrome; when it ran short the
     last list row sat under the bar, unreachable. */
- className="flex-1 flex flex-col lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:max-w-[1440px] lg:mx-auto relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0 desktop-shell"
+ /* `find-layout` flips the column proportions for the Find tab ONLY — wide
+    decision column, narrow results column, per docs/design. It is scoped to this
+    tab on purpose: the sidebar is `lg:hidden` everywhere else, so applying the
+    flip globally leaves a dead 380px column on Stay In / Out / Saved and squeezes
+    their grids. Class, not a blanket CSS override, for exactly that reason. */
+ className={`flex-1 flex flex-col lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:max-w-[1440px] lg:mx-auto relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0 desktop-shell${
+ showRail ?' find-layout' :''
+ }`}
  style={{ paddingTop:'calc(72px + env(safe-area-inset-top))' }}
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
