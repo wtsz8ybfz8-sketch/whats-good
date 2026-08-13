@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { NearMeButton, type Located } from "@/components/near-me";
 import { PriceSlider } from "@/components/price-slider";
+import { CuisineIcon } from "@/components/cuisine-icon";
 import { CITIES, MOODS, type PriceBand } from "@/lib/food";
 
 export const Route = createFileRoute("/")({
@@ -99,7 +100,7 @@ function Index() {
                 htmlFor="mood"
                 className="text-sm font-medium uppercase tracking-wide text-muted-foreground"
               >
-                What you&apos;re after
+                The mood
               </label>
               <div id="mood" className="mt-3 grid gap-2 sm:grid-cols-2">
                 {visibleMoods.map((m) => {
@@ -116,7 +117,10 @@ function Index() {
                           : "border-border hover:border-foreground/25"
                       }`}
                     >
-                      <span className="block text-sm font-medium">{m.label}</span>
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        <CuisineIcon name={m.icon} />
+                        {m.label}
+                      </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">{m.blurb}</span>
                     </button>
                   );

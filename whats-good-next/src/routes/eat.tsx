@@ -5,6 +5,7 @@ import { z } from "zod";
 import { VenueCard } from "@/components/food-cards";
 import { NearMeButton, type Located } from "@/components/near-me";
 import { PriceSlider } from "@/components/price-slider";
+import { CuisineIcon } from "@/components/cuisine-icon";
 import { searchVenues } from "@/lib/discovery.functions";
 import { CITIES, GUIDE_PICKS, MOODS, type PriceBand } from "@/lib/food";
 
@@ -113,13 +114,15 @@ function EatPage() {
       </form>
 
       {/*
-        One rail, and it is the cuisine one. Everything else is behind Filters:
-        twelve city chips, four guide chips and a two-line disclaimer used to
-        stack above the results, so a phone showed a full screen of controls
-        before a single restaurant.
+        Cuisine WRAPS. It was a horizontally scrolling rail, which hides most of
+        the choices off-screen behind a gesture with no affordance — you cannot
+        pick what you cannot see. Apple's HIG is explicit that the options in a
+        selection control should be visible and directly tappable rather than
+        discovered by scrolling.
       */}
-      <div className="-mx-5 mt-4 overflow-x-auto px-5">
-        <div className="flex w-max gap-2">
+      <div className="mt-4">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">Cuisine</span>
+        <div className="mt-2 flex flex-wrap gap-2">
           {MOODS.map((mood) => {
             const active = search.q === mood.placeTerms;
             return (
@@ -132,10 +135,11 @@ function EatPage() {
                   setQuery(q);
                   go({ q });
                 }}
-                className={`min-h-[44px] whitespace-nowrap rounded-full border px-4 text-sm transition-colors ${
+                className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-sm transition-colors ${
                   active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
                 }`}
               >
+                <CuisineIcon name={mood.icon} />
                 {mood.label}
               </button>
             );
@@ -167,7 +171,7 @@ function EatPage() {
       {filtersOpen ? (
         <div className="mt-3 space-y-5 rounded-2xl border border-border bg-card p-4">
           <div>
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Where</span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Explore</span>
             <div className="mt-2 flex flex-wrap gap-2">
               {CITIES.map((name) => (
                 <button
@@ -222,8 +226,8 @@ function EatPage() {
               })}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              These search for places described as award-listed. Check the guide itself before you
-              book.
+              Guide picks search for places described as award-listed. Always double-check with
+              the guide itself before booking.
             </p>
           </div>
         </div>

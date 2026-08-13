@@ -8,11 +8,14 @@ export type Mood = {
   placeTerms: string;
   /** Search term handed to the recipe provider. */
   recipeTerm: string;
+  /** lucide icon name, resolved in the UI layer. */
+  icon: string;
 };
 
 export const MOODS: Mood[] = [
   {
     id: "burgers",
+    icon: "Beef",
     label: "Burgers & wings",
     blurb: "Messy, hot, hands-on",
     placeTerms: "burger restaurant",
@@ -20,6 +23,7 @@ export const MOODS: Mood[] = [
   },
   {
     id: "pizza",
+    icon: "Pizza",
     label: "Pizza & pasta",
     blurb: "Italian, share a table",
     placeTerms: "pizza restaurant",
@@ -27,6 +31,7 @@ export const MOODS: Mood[] = [
   },
   {
     id: "curry",
+    icon: "Flame",
     label: "Curry & spice",
     blurb: "Indian, Thai, chilli forward",
     placeTerms: "indian curry restaurant",
@@ -34,6 +39,7 @@ export const MOODS: Mood[] = [
   },
   {
     id: "noodles",
+    icon: "Soup",
     label: "Noodles & sushi",
     blurb: "Ramen, pho, Japanese",
     placeTerms: "ramen sushi restaurant",
@@ -41,6 +47,7 @@ export const MOODS: Mood[] = [
   },
   {
     id: "grill",
+    icon: "Drumstick",
     label: "Steak & grill",
     blurb: "Fire, meat, proper plates",
     placeTerms: "steakhouse grill restaurant",
@@ -48,6 +55,7 @@ export const MOODS: Mood[] = [
   },
   {
     id: "brunch",
+    icon: "Croissant",
     label: "Brunch & coffee",
     blurb: "Eggs, pastries, daylight",
     placeTerms: "brunch cafe breakfast",
@@ -55,13 +63,47 @@ export const MOODS: Mood[] = [
   },
   {
     id: "healthy",
+    icon: "Salad",
     label: "Salads & bowls",
     blurb: "Light, fresh, no regrets",
     placeTerms: "healthy salad bowls restaurant",
     recipeTerm: "salad",
   },
   {
+    id: "seafood",
+    icon: "Fish",
+    label: "Seafood",
+    blurb: "Oysters, line fish, cold wine",
+    placeTerms: "seafood restaurant",
+    recipeTerm: "fish",
+  },
+  {
+    id: "tacos",
+    icon: "Sandwich",
+    label: "Tacos & tostadas",
+    blurb: "Mexican, hot sauce, cold beer",
+    placeTerms: "mexican taqueria restaurant",
+    recipeTerm: "mexican",
+  },
+  {
+    id: "plant",
+    icon: "Leaf",
+    label: "Plant-based",
+    blurb: "Vegan and vegetarian kitchens",
+    placeTerms: "vegan vegetarian restaurant",
+    recipeTerm: "vegetarian",
+  },
+  {
+    id: "bakery",
+    icon: "Wheat",
+    label: "Bakery & pastry",
+    blurb: "Sourdough, croissants, tarts",
+    placeTerms: "bakery patisserie",
+    recipeTerm: "bread",
+  },
+  {
     id: "sweet",
+    icon: "Cookie",
     label: "Dessert",
     blurb: "Cake, gelato, doughnuts",
     placeTerms: "dessert bakery",
@@ -73,6 +115,7 @@ export const MOODS: Mood[] = [
 export const OUT_MOODS: Mood[] = [
   {
     id: "cocktails",
+    icon: "Martini",
     label: "Cocktail bar",
     blurb: "Proper drinks, low light",
     placeTerms: "cocktail bar",
@@ -80,6 +123,7 @@ export const OUT_MOODS: Mood[] = [
   },
   {
     id: "pub",
+    icon: "Beer",
     label: "Pub",
     blurb: "Pints, no fuss",
     placeTerms: "pub",
@@ -87,6 +131,7 @@ export const OUT_MOODS: Mood[] = [
   },
   {
     id: "wine",
+    icon: "Wine",
     label: "Wine bar",
     blurb: "Small plates, big list",
     placeTerms: "wine bar",
@@ -94,6 +139,7 @@ export const OUT_MOODS: Mood[] = [
   },
   {
     id: "livemusic",
+    icon: "Music",
     label: "Live music",
     blurb: "Bands, jazz, something on",
     placeTerms: "live music venue bar",
@@ -101,6 +147,7 @@ export const OUT_MOODS: Mood[] = [
   },
   {
     id: "club",
+    icon: "Disc3",
     label: "Late & loud",
     blurb: "Dancing until it's tomorrow",
     placeTerms: "nightclub",
@@ -108,6 +155,7 @@ export const OUT_MOODS: Mood[] = [
   },
   {
     id: "rooftop",
+    icon: "Building2",
     label: "Rooftop & views",
     blurb: "Outside, up high",
     placeTerms: "rooftop bar",
@@ -115,6 +163,7 @@ export const OUT_MOODS: Mood[] = [
   },
   {
     id: "happyhour",
+    icon: "Clock",
     label: "Happy hour",
     blurb: "Cheap rounds, early doors",
     placeTerms: "happy hour bar",
