@@ -1603,13 +1603,16 @@ export default function App() {
 
  {/* Desktop nav. On mobile this is replaced by the bottom tab bar below — five
  tabs in a horizontally-scrolling 50vw strip was unusable and hid Saved entirely. */}
- <nav className="desktop-nav hidden md:flex items-center gap-5 whitespace-nowrap" aria-label="Primary">
+ {/* Pill row, per docs/design/occasion-prototype.html `.tabs` — a recessed track with
+ the selected tab lifted onto a raised surface. Text links top-right gave the four
+ destinations no shared container and no visible selected state beyond ink colour. */}
+ <nav className="desktop-nav hidden md:flex items-center gap-1 whitespace-nowrap rounded-full bg-[var(--surface-quiet-bg)] p-1" aria-label="Primary">
  <button
  onClick={() => handleTabSwitch('mood')}
  aria-current={activeTab === 'mood' ? 'page' : undefined}
- className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
+ className={`desktop-nav-link hit-44 relative rounded-full px-4 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
  activeTab === 'mood'
- ? 'text-[var(--charcoal)]'
+ ? 'bg-[var(--surface-bg)] text-[var(--charcoal)] shadow-sm'
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
@@ -1621,9 +1624,9 @@ export default function App() {
  handleTabSwitch('random');
  }}
  aria-current={activeTab === 'random' ? 'page' : undefined}
- className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
+ className={`desktop-nav-link hit-44 relative rounded-full px-4 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer ${
  activeTab === 'random'
- ? 'text-[var(--charcoal)]'
+ ? 'bg-[var(--surface-bg)] text-[var(--charcoal)] shadow-sm'
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
@@ -1632,9 +1635,9 @@ export default function App() {
  <button
  onClick={() => handleTabSwitch('happy-hour')}
  aria-current={activeTab === 'happy-hour' ? 'page' : undefined}
- className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`desktop-nav-link hit-44 relative rounded-full px-4 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab === 'happy-hour'
- ? 'text-[var(--charcoal)]'
+ ? 'bg-[var(--surface-bg)] text-[var(--charcoal)] shadow-sm'
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
@@ -1643,9 +1646,9 @@ export default function App() {
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
  aria-current={activeTab === 'saved-recipes' ? 'page' : undefined}
- className={`desktop-nav-link hit-44 px-1 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ className={`desktop-nav-link hit-44 relative rounded-full px-4 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
  activeTab === 'saved-recipes'
- ? 'text-[var(--charcoal)]'
+ ? 'bg-[var(--surface-bg)] text-[var(--charcoal)] shadow-sm'
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >

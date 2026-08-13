@@ -605,7 +605,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  {/* Search first: someone who already knows what they want shouldn't have to
  answer three mood questions to get there. */}
  <div className="flex flex-col gap-2">
- <label htmlFor="place-search" className="text-[12px] font-semibold tracking-[-0.005em] text-[var(--charcoal)]">
+ <label htmlFor="place-search" className="sr-only">
  Search
  </label>
  {/* A real form: pressing Enter (or the phone keyboard's "Search" key) submits and
@@ -615,8 +615,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  <form
  onSubmit={(e) => { e.preventDefault(); onTriggerMatch(); }}
  role="search"
- className="relative"
+ /* Full-width pill with a FILLED submit button, per docs/design/occasion-prototype.html
+    `.search` (surface fill, 1px rule, accent button inside the same radius). The old
+    bare underlined input read as a form field on a page that has no other form fields;
+    the pill reads as the primary way in, which is what it is. */
+ className="relative flex items-center gap-2 rounded-full bg-[var(--surface-bg)] border border-[var(--border-color)] pl-4 pr-1.5 py-1.5 transition-colors focus-within:border-[var(--accent-terracotta)]"
  >
+ <Search className="w-4 h-4 flex-none text-[var(--text-muted)]" />
  <input
  id="place-search"
  type="search"
@@ -624,19 +629,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  autoComplete="off"
  value={dimensions.searchQuery}
  onChange={(e) => onChange({ ...dimensions, searchQuery: e.target.value })}
- placeholder="A place, a dish, or an area…"
- className="w-full bg-transparent border-0 border-b border-[var(--charcoal)]/25 dark:border-white/20 rounded-none py-4 pl-9 pr-14 text-[16px] text-[var(--charcoal)] focus:outline-none focus:border-[var(--accent-terracotta)] focus:ring-0 placeholder:text-[var(--text-subtle)] transition-all [&::-webkit-search-cancel-button]:appearance-none"
+ placeholder="Somewhere quiet for two"
+ className="min-w-0 flex-1 bg-transparent border-0 rounded-none py-2.5 text-[16px] text-[var(--charcoal)] focus:outline-none focus:ring-0 placeholder:text-[var(--text-subtle)] [&::-webkit-search-cancel-button]:appearance-none"
  />
- <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-[var(--text-muted)]" />
  {dimensions.searchQuery && (
  <button
  type="button"
  onClick={() => onChange({ ...dimensions, searchQuery:'' })}
- className="absolute right-3 top-2.5 px-2 py-1 text-[12px] text-[var(--accent-terracotta)] font-semibold hover:underline transition-colors cursor-pointer"
+ className="flex-none px-2 py-1 text-[12px] text-[var(--text-muted)] font-semibold hover:text-[var(--charcoal)] transition-colors cursor-pointer"
  >
  Clear
  </button>
 )}
+ <button
+ type="submit"
+ className="hit-44 relative flex-none rounded-full bg-[var(--accent-terracotta)] px-5 py-2.5 text-[13px] font-semibold text-[var(--accent-contrast)] cursor-pointer transition-opacity hover:opacity-90"
+ >
+ Search
+ </button>
  </form>
  </div>
 
