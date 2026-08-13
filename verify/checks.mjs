@@ -586,7 +586,8 @@ async function main() {
   };
 
   for (const label of ['Find', 'Stay In', 'Happy Hour', 'Saved']) {
-    await page.locator(`nav[aria-label="Primary"] button:has-text("${label}")`).first().click().catch(() => {});
+    // Same two-nav ambiguity as the de-DE check below — target the rendered one.
+    await page.locator(`nav[aria-label="Primary"] button:has-text("${label}"):visible`).first().click().catch(() => {});
     await page.waitForTimeout(900);
     const r = await page.evaluate(MEASURE);
     check(`${label}: no overflow, all targets >=44pt`, !r.over && r.miss.length === 0,
@@ -698,7 +699,14 @@ async function main() {
     const dp = await de.newPage();
     await installFixtures(dp);
     await dp.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await dp.locator('nav[aria-label="Primary"] button:has-text("Stay In")').first().click();
+    /* `:visible` is load-bearing, not decoration. Since the desktop workspace landed
+       there are TWO buttons matching this selector — the `.desktop-nav-link` (hidden
+       below `md`) and the mobile tab bar's. At this context's 390px, `.first()`
+       resolved to the desktop one, which is correctly invisible, so the click spun for
+       30s and took the whole suite down. This picks whichever nav actually renders at
+       the viewport under test, so the check keeps working at every width instead of
+       silently depending on DOM order. */
+    await dp.locator('nav[aria-label="Primary"] button:has-text("Stay In"):visible').first().click();
     await dp.waitForTimeout(1500);
     const card = dp.locator('[role="button"][aria-label^="View "]:visible').first();
     let chip = null;
