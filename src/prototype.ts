@@ -27,6 +27,13 @@
  */
 import './prototype.css';
 import { fetchVenues } from './placesService';
+import {
+  isAuthConfigured, sendMagicLink, captureSessionFromUrl, restoreSession, signOut,
+  type AuthSession,
+} from './auth';
+import {
+  readLocal, writeLocal, addRemote, removeRemote, mergeLocalIntoRemote,
+} from './savedStore';
 import type { Venue } from './venue';
 
 /* ── verbatim: brand glyph paths ─────────────────────────────────────────────── */
@@ -175,16 +182,29 @@ const LS = {
   get: (k: string) => { try { return JSON.parse(localStorage.getItem('wg_' + k) || 'null'); } catch { return null; } },
   set: (k: string, v: unknown) => { try { localStorage.setItem('wg_' + k, JSON.stringify(v)); } catch { /* private mode */ } },
 };
-const saved: { places: string[]; recipes: string[] } = LS.get('saved') || { places: [], recipes: [] };
+/* The list on screen. Its BACKING STORE depends on whether anyone is signed in: this
+   browser's localStorage when they are not, their account when they are (see
+   savedStore.ts). The variable is the same either way so every Save button stays one
+   line of code. */
+const saved: { places: string[]; recipes: string[] } = readLocal();
+/** Null until a session is restored or a magic link is followed. */
+let session: AuthSession | null = null;
 let savedSeg: 'places' | 'recipes' = 'places';
 const isSaved = (t: 'places' | 'recipes', n: string) => saved[t].includes(n);
 function toggleSave(t: 'places' | 'recipes', n: string, el?: HTMLElement) {
   /* Saving used to bounce you to a sign-in gate that could not save anything anywhere.
      It saves. */
   const i = saved[t].indexOf(n);
-  if (i < 0) saved[t].push(n); else saved[t].splice(i, 1);
-  LS.set('saved', saved);
-  if (el) el.setAttribute('aria-pressed', String(i < 0));
+  const adding = i < 0;
+  if (adding) saved[t].push(n); else saved[t].splice(i, 1);
+  writeLocal(saved);
+  if (el) el.setAttribute('aria-pressed', String(adding));
+  /* Optimistic: the button flips now and the account catches up. A save that waits on a
+     round trip on a phone outside a restaurant feels broken. */
+  if (session) {
+    (adding ? addRemote(session, t, n) : removeRemote(session, t, n))
+      .catch(() => { /* the local copy still holds it; the next sign-in merges it up */ });
+  }
 }
 const PR = ['Low', 'Mid', 'High', 'Top'];
 const DIST: (number | 'any')[] = [0.5, 1, 2, 3, 5, 8, 'any'];
@@ -372,17 +392,29 @@ function renderSaved() {
   let h = document.getElementById('savedwrap');
   if (!h) { h = document.createElement('div'); h.id = 'savedwrap'; $('time').parentNode!.insertBefore(h, $('time')); }
   h.style.display = '';
-  /* THE SIGN-IN WAS A LIE, and it was told at the exact moment a person decides whether
-     to trust the app. The gate said "They stay on your account, on every device" — there
-     is no account: any string with an @ in it was accepted, nothing was sent anywhere, and
-     every save went to localStorage in that one browser. `src/auth.ts` has real token
-     plumbing, but nothing here ever called it. Until a backend exists, the honest product
-     is no gate at all: saving works immediately, and the screen says plainly where the
-     list lives. When auth.ts is wired to a real server, this is where sign-in returns —
-     as an upgrade that moves the list, not as a toll gate that pretends to. */
+  /* Three states, and each one says only what is true of it.
+     The old gate said "They stay on your account, on every device" while accepting any
+     string with an @ in it and writing to localStorage — an account that did not exist.
+     Now: no credentials configured → device-only, said plainly. Configured and signed
+     out → a REAL magic link, and saving still works meanwhile. Signed in → the account is
+     the source of truth and the list follows you. Signing in is an upgrade, never a toll
+     gate: nothing is withheld until you do it. */
+  const total = saved.places.length + saved.recipes.length;
+  const head = session
+    ? '<div class="who"><b>' + esc(session.email) + '</b>'
+        + '<span>' + total + ' saved · synced to your account, on every device</span>'
+        + '<button class="savebtn" id="so">Sign out</button></div>'
+    : isAuthConfigured()
+      ? '<div class="who"><b>Kept on this device</b>'
+          + '<span>' + total + ' saved · sign in to carry them to your phone</span>'
+          + '<form id="sif" class="siform"><input id="em" type="email" required '
+          + 'placeholder="you@email.com" autocomplete="email" aria-label="Email address">'
+          + '<button id="si" type="submit">Email me a link</button></form>'
+          + '<span id="simsg" class="simsg" role="status"></span></div>'
+      : '<div class="who"><b>Kept on this device</b>'
+          + '<span>' + total + ' saved · this browser only, nothing sent anywhere</span></div>';
   const list = saved[savedSeg];
-  h.innerHTML = '<div class="who"><b>Kept on this device</b>'
-      + '<span>' + (saved.places.length + saved.recipes.length) + ' saved · this browser only, nothing sent anywhere</span></div>'
+  h.innerHTML = head
     + '<div class="segs" style="margin-top:16px">'
       + '<button class="seg" data-s="places" aria-pressed="' + (savedSeg === 'places') + '">Places · ' + saved.places.length + '</button>'
       + '<button class="seg" data-s="recipes" aria-pressed="' + (savedSeg === 'recipes') + '">Recipes · ' + saved.recipes.length + '</button></div>'
@@ -391,6 +423,34 @@ function renderSaved() {
         + '<span class="bd"><span><span class="nm">' + esc(n) + '</span><span class="ds">' + (savedSeg === 'places' ? 'Saved place' : 'Saved recipe') + '</span></span></span></button>').join('') + '</div>'
       : '<p class="empty">Nothing saved under ' + savedSeg + ' yet. Tap Save on anything and it lands here.</p>');
   h.querySelectorAll('.seg').forEach((b) => { (b as HTMLElement).onclick = () => { savedSeg = (b as HTMLElement).dataset.s as 'places' | 'recipes'; renderSaved(); }; });
+
+  const form = document.getElementById('sif') as HTMLFormElement | null;
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const email = ($('em') as HTMLInputElement).value.trim();
+      const btn = $('si') as HTMLButtonElement;
+      const msg = $('simsg');
+      btn.disabled = true; msg.textContent = 'Sending…';
+      const out = await sendMagicLink(email);
+      btn.disabled = false;
+      /* The confirmation names the address, because "check your email" is useless if the
+         typo is the reason nothing arrives. */
+      msg.textContent = out.ok
+        ? 'Link sent to ' + email + '. Open it on any device and your list comes with you.'
+        : (out.error || 'That did not send. Try again in a moment.');
+      msg.className = 'simsg' + (out.ok ? ' ok' : ' bad');
+    };
+  }
+  const so = document.getElementById('so');
+  if (so) {
+    so.onclick = () => {
+      signOut(); session = null;
+      /* The list stays on the device it was signed out on — it is still theirs, and it is
+         still on the account. Wiping it here would look like a punishment for signing out. */
+      renderSaved();
+    };
+  }
 }
 
 /** True while `parse()` is choosing the tile, so `pick` knows not to clear the query. */
@@ -738,3 +798,17 @@ period = auto(hour);
 ti();
 syncThemeColor();
 build();
+
+/* Sign-in resolves AFTER first paint, deliberately: the app is fully usable while it is
+   happening, and nothing on screen waits for a network round trip. When a session turns
+   up — either from the link just followed or from a previous visit — anything saved on
+   this device is merged up, and only then does the Saved tab redraw. */
+(async () => {
+  if (!isAuthConfigured()) return;
+  session = (await captureSessionFromUrl()) || (await restoreSession());
+  if (!session) return;
+  const merged = await mergeLocalIntoRemote(session);
+  saved.places = merged.places;
+  saved.recipes = merged.recipes;
+  if (tab === 'saved') renderSaved();
+})();
