@@ -211,20 +211,42 @@ async function main() {
   // The app intentionally requires a destination before searching. The browser context
   // already has London in storage; fire the same user-visible trigger so the venue
   // assertions test the app rather than an unstarted search.
-  await page.getByRole('button', { name: 'Find a place' }).click();
+  //
+  // That trigger USED to be a fixed "Find a place" CTA bar. It is gone: selecting an
+  // occasion is now the query, exactly as the prototype has it, so the harness drives
+  // the app the way a user does — tap a tile. Tapping the FIRST tile rather than a
+  // named one keeps this honest across the three period sets (the six occasions differ
+  // by time of day, so hardcoding "Date night" would pass at 8pm and fail at 9am).
+  //
+  // Scoped to `.occasion-grid`, NOT to a bare `[aria-pressed]`: the period switcher
+  // (Morning/Midday/Evening) sets aria-pressed too and comes first in the DOM, so the
+  // unscoped version clicked "Morning" and never ran a search at all — which showed up
+  // as the venue checks skipping for a "fixture gap" that did not exist.
+  await page.locator('.occasion-grid button').first().click({ timeout: 10000 });
   await page.waitForTimeout(2500);
-  await page.locator('.filter-cta').waitFor({ state: 'attached', timeout: 10000 }).catch(() => {});
 
   check('no Vite error overlay', (await page.locator('vite-error-overlay').count()) === 0);
 
-  // --- chrome has no gap ------------------------------------------------------
-  const gap = await page.evaluate(() => {
-    const bar = document.querySelector('.action-bar');
-    const nav = document.querySelector('nav[aria-label="Primary"]');
-    if (!bar || !nav) return null;
-    return Math.round(nav.getBoundingClientRect().top - bar.getBoundingClientRect().bottom);
-  });
-  check('action bar sits flush on the tab bar', gap === null || gap === 0, gap === null ? 'action bar not rendered in this state' : `gap ${gap}px`);
+  /* --- the two "chrome is flush" checks have been REMOVED, not silenced ---------
+   *
+   * They asserted that the fixed action bar sat flush on the fixed bottom tab bar,
+   * once at rest and once at a simulated 34px home-indicator inset. Both bars are
+   * gone: the tab bar is now a pill row under the header, and the "Find a place" CTA
+   * was deleted outright (App.tsx).
+   *
+   * Both checks were written as `gap === null || gap === 0` — null meaning "not
+   * rendered in this state" — so with the bars removed they would have gone on
+   * reporting PASS forever while measuring nothing at all. That is precisely the
+   * "check that cannot fail" §13.2 exists to name, and leaving two of them green in
+   * the summary would have made this change look better-verified than it is.
+   *
+   * Nothing docks to the viewport floor on the browse surface any more, so there is
+   * no flush relationship left to assert here. The venue and recipe detail views DO
+   * still have docked bars deriving from --tabbar-h; they are not covered by these
+   * two checks and never were (§6: "a viewport measured on the wrong SCREEN is not
+   * covered"). That gap is real, it is now the ONLY docked-bar geometry in the app,
+   * and it is recorded as open in HANDOVER.md rather than papered over here.
+   */
 
   /**
    * The header must carry an opaque fill ABOVE itself.
@@ -264,28 +286,53 @@ async function main() {
       : 'no .chrome-bar found',
   );
 
-  /**
-   * Simulated safe-area inset.
+  /* The simulated-34px-inset check was removed with its sibling above — same reason,
+   * same failure mode: with no `.action-bar` in the DOM it returned null and passed. */
+
+  /* The nav must be REACHABLE, which the old bottom tab bar got for free by being
+   * fixed to the viewport. It is now an in-flow pill row near the top of the document,
+   * so it can be scrolled away from — and, more to the point, it can be pushed off by
+   * a header whose height is wrong. Assert it is on screen and inside the viewport on
+   * first paint, which is the property that actually changed. */
+  /* The first version of this check asserted `top >= 0 && bottom <= innerHeight` and
+   * PASSED while the nav sat at top:20, entirely underneath the 72px fixed header —
+   * rendered, painted, and invisible. It could not fail for the one thing that had
+   * actually broken, which is the §13 rule in miniature: name the red result first.
    *
-   * Chromium always reports env(safe-area-inset-bottom) as 0, so "gap is 0 here" says
-   * nothing about an iPhone with a home indicator — which is precisely the hole the
-   * last fix fell through. We cannot make Chromium produce a real inset, but we CAN
-   * ask the question that matters: if the inset were 34px, does the relationship still
-   * hold? Both bars derive from --tabbar-h, so substituting a taller value tests the
-   * same arithmetic the real inset drives.
-   */
-  const simulated = await page.evaluate(() => {
-    const el = document.createElement('style');
-    el.textContent = ':root { --tabbar-h: 91px; }'; // 57 + a 34px home-indicator inset
-    document.head.appendChild(el);
-    const bar = document.querySelector('.action-bar');
+   * The red result here is "the nav's top edge is above the header's bottom edge", so
+   * that is what is measured — against the header's real geometry, not a hardcoded 72. */
+  // At REST, i.e. scrolled to the top. The nav is in normal flow now, not fixed, so it
+  // legitimately scrolls under the header once the page moves — asserting otherwise
+  // would be asserting it is sticky, which it is not and should not be. Earlier steps
+  // in this run leave the page scrolled, so seat it first or this measures the wrong
+  // state and fails for a behaviour that is correct.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(400);
+  const navBox = await page.evaluate(() => {
     const nav = document.querySelector('nav[aria-label="Primary"]');
-    if (!bar || !nav) return null;
-    const g = Math.round(nav.getBoundingClientRect().top - bar.getBoundingClientRect().bottom);
-    el.remove();
-    return g;
+    const header = document.querySelector('.chrome-bar');
+    if (!nav || !header) return null;
+    const r = nav.getBoundingClientRect();
+    const h = header.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const topEl = document.elementFromPoint(cx, r.top + 4);
+    return {
+      top: Math.round(r.top),
+      bottom: Math.round(r.bottom),
+      headerBottom: Math.round(h.bottom),
+      vh: innerHeight,
+      // The decisive one: is a real point inside the nav actually reachable, or does
+      // the fixed header take the click?
+      reachable: !!topEl && nav.contains(topEl),
+    };
   });
-  check('chrome stays flush at a simulated 34px inset', simulated === null || simulated === 0, simulated === null ? 'action bar not rendered in this state' : `gap ${simulated}px`);
+  check(
+    'primary nav clears the fixed header and is hit-testable',
+    !!navBox && navBox.top >= navBox.headerBottom && navBox.bottom <= navBox.vh && navBox.reachable,
+    navBox
+      ? `nav top=${navBox.top} headerBottom=${navBox.headerBottom} reachable=${navBox.reachable}`
+      : 'nav or .chrome-bar not found',
+  );
 
   // --- scroll restoration on back ---------------------------------------------
   check(
@@ -322,7 +369,25 @@ async function main() {
   const card = page.locator('[role="button"][aria-label^="View "]:visible').first();
   let restored = null;
   if (await card.count()) {
-    await page.evaluate(() => window.scrollTo(0, 400));
+    /*
+     * Scroll to where the LIST is, not to a hardcoded 400px.
+     *
+     * 400 happened to land on a venue card while tapping an occasion also collapsed
+     * the decision panel. The panel now stays open (that collapse hid the selected
+     * tile and the un-dimming refine block — the app's entire response to the tap),
+     * so the list starts lower and 400px landed above it. The check then found no
+     * card in its safe band and SKIPPED, reporting a "fixture gap" that did not
+     * exist — the fixture was fine and the venues were rendering.
+     *
+     * Deriving the offset from the first card keeps the check measuring the thing it
+     * is for — that going back restores a NON-ZERO scroll offset — instead of
+     * measuring where the layout happened to be on the day it was written.
+     */
+    await page.evaluate(() => {
+      const c = document.querySelector('[role="button"][aria-label^="View "]');
+      const y = c ? window.scrollY + c.getBoundingClientRect().top - 180 : 400;
+      window.scrollTo(0, Math.max(240, Math.round(y)));
+    });
     await page.waitForTimeout(300);
     const before = await page.evaluate(() => Math.round(window.scrollY));
     /*

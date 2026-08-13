@@ -58,6 +58,14 @@ export interface Dimensions {
    */
   cuisines: string[];
   capacity: string | null;
+  /**
+   * A neighbourhood within the current city, single-select — the prototype's `Nearby`
+   * chips (docs/design/occasion-prototype.html `.chips` / `#areas`). It is folded into
+   * the Places text query alongside the city, which is a real narrowing: "sushi Sea
+   * Point Cape Town" returns a different set to "sushi Cape Town". It is NOT a radius
+   * — Text Search takes none — so it is labelled as a place, never as a distance.
+   */
+  area: string | null;
   searchQuery: string;
   locationMode: LocationMode;
 }

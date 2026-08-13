@@ -275,6 +275,7 @@ export default function App() {
  regional: null,
  cuisines: [],
  capacity: null,
+ area: null,
  searchQuery:'',
  locationMode: initialSharedMeal ? 'gourmet' : 'dineout',
  });
@@ -326,8 +327,11 @@ export default function App() {
  clear: set({ capacity: null }),
  }
  : null,
+ dimensions.area
+ ? { key:'area', label:'Nearby', value: dimensions.area, clear: set({ area: null }) }
+ : null,
  ].filter(Boolean) as { key: string; label: string; value: string; clear: () => void }[];
- }, [dimensions.searchQuery, dimensions.cuisines, dimensions.vibe, dimensions.diet, dimensions.capacity]);
+ }, [dimensions.searchQuery, dimensions.cuisines, dimensions.vibe, dimensions.diet, dimensions.capacity, dimensions.area]);
 
  /**
   * The result list actually shown, narrowed live from the fetched pool by the free-text
@@ -597,6 +601,21 @@ export default function App() {
  chromeSuppressUntil.current = performance.now() + 320;
  seatChrome(y);
  };
+
+ /* A NEW RESULT LIST IS A LAYOUT CHANGE, NOT A GESTURE.
+    Swapping the results in reflows the page under a stationary finger, and the browser
+    emits scroll events for it. Measured: tapping an occasion moved scrollY from 0 to 21
+    and the direction logic read those 21px as deliberate downward travel, so the header
+    — wordmark, city control and theme toggle — retracted off-screen the instant the
+    user made their first choice. This is the same class of event as a tab switch or a
+    back-restore, which `syncChromeBaseline` already exists to absorb; the results swap
+    simply was not wired to it, because until now a search always collapsed the panel
+    and the shift was buried in a much larger change. */
+ useEffect(() => {
+ if (detailOpenRef.current) return;
+ syncChromeBaseline(window.scrollY);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [recipes]);
 
  useEffect(() => {
  const reduceMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -929,6 +948,7 @@ export default function App() {
  regional: null,
  cuisines: [],
  capacity: null,
+ area: null,
  searchQuery:'',
  locationMode:'dineout',
  });
@@ -1033,6 +1053,9 @@ export default function App() {
  customQuery === undefined && dimensions.cuisines.length > 0 ? dimensions.cuisines.join(' ') : null,
  customQuery === undefined && dimensions.vibe ? VIBE_PLACE_TERMS[dimensions.vibe] : null,
  customQuery === undefined ? dimensions.diet : null,
+ // The Nearby chip. A neighbourhood name genuinely narrows a Text Search — it is
+ // part of the place string Google resolves, not a radius we are pretending to have.
+ customQuery === undefined ? dimensions.area : null,
  ].filter(Boolean).join(' ');
 
  // No local fallback venue set. This used to seed the list with the app's original
@@ -1481,28 +1504,33 @@ export default function App() {
    The home affordance is now a real <button> around the mark and wordmark only. The
    city badge is its sibling, not its descendant, so each owns its own hit area.
  */}
+ {/* One wordmark, one weight, no mark, no accent — per the prototype's `.logo`
+     (17px/650, -.03em). The accent used to be spent twice on this screen: once
+     on an italic "Good" here and again on the word "good" in the H1 directly
+     below it. §7 rations the accent to ONE deliberate use, and the headline is
+     the one that carries meaning; a logo that shouts competes with it and makes
+     neither land. The heart glyph went with it — the app's own name is the
+     stronger mark, and it does not need a picture of food to explain itself. */}
  <button
  type="button"
  onClick={resetHome}
  aria-label="What's Good — back to the start"
- className="tap-44 flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0"
+ className="tap-44 flex items-center cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0"
  >
- <span className="w-6.5 h-6.5 bg-[var(--charcoal)] dark:bg-[#2a2a2a] rounded-full flex items-center justify-center transform transition-transform group-hover:scale-105">
- <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5" aria-hidden="true">
- <path
- d="M12 3C8 3 5 7 5 11c0 3 1.5 5.5 4 7v2h6v-2c2.5-1.5 4-4 4-7 0-4-3-8-7-8z"
- fill="white"
- />
- </svg>
- </span>
- <span className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none whitespace-nowrap">
- <span>What's</span> <span className="text-[var(--accent-terracotta)] italic font-normal">Good</span>
+ <span className="text-[17px] font-semibold tracking-[-0.03em] leading-none select-none whitespace-nowrap text-[var(--heading-color)]">
+ What's Good
  </span>
  </button>
+ </div>
 
- <div className="font-serif text-xl sm:text-[22px] font-semibold tracking-tight flex items-center gap-1.5 select-none">
+ {/* Header controls, grouped RIGHT, per the prototype's `.hctrl`: destination,
+     then location sort, then theme. They used to straddle the bar — the city
+     slab sat against the wordmark while the two icon buttons sat opposite —
+     so the header had two competing left-hand elements and no single place to
+     look for "change where I am". */}
+ <div className="flex items-center gap-1.5">
  {/* City badge doubles as a destination picker — search a city you're not in. */}
- <span className="relative ml-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+ <span className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
  <button
  type="button"
  onClick={() => setCityMenuOpen((o) => !o)}
@@ -1515,7 +1543,12 @@ export default function App() {
  // whole Find journey depends on, and it was the smallest target on screen.
  // `.hit-44` buys the reach without drawing a 44px slab beside the wordmark,
  // which is the thing that note was right to refuse.
- className="hit-44 flex items-center gap-1 text-xs bg-black dark:bg-[#222222] text-white pl-2.5 pr-2 py-1.5 rounded-lg tracking-wide font-semibold cursor-pointer hover:opacity-85 transition-opacity whitespace-nowrap"
+ /* The prototype's `.sel`: a neutral select on the surface fill with a
+    1px rule, not a filled black slab. The slab read as the primary action
+    on a screen whose primary action is the occasion grid, and it put a
+    second high-contrast block next to the wordmark. Neutral chrome, so
+    the accent is spent below the fold where the decision is. */
+ className="hit-44 flex items-center gap-1.5 text-[12px] font-medium bg-[var(--surface-bg)] border border-[var(--border-color)] text-[var(--text-muted)] px-3 py-2 rounded-full cursor-pointer hover:border-[var(--text-subtle)] hover:text-[var(--charcoal)] transition-colors whitespace-nowrap"
  >
  {cityIsManual && <MapPin className="w-2.5 h-2.5" />}
  <span>{city || 'Set location'}</span>
@@ -1549,11 +1582,7 @@ export default function App() {
  </>
  )}
  </span>
- </div>
- </div>
 
- {/* Header Right Segment with GPS Sorting & Tab Selector */}
- <div className="flex items-center gap-1">
  <button
  id="location-header-toggle"
  onClick={() => requestUserLocation(true)}
@@ -1570,7 +1599,10 @@ export default function App() {
  // one bar that should sit still. State rides on the icon alone now: accent when
  // it's on, MapPinOff once denied, dimmed while it resolves. The full sentence
  // stays in the tooltip and the aria-label, where it costs nothing to read.
- className="hit-44 flex w-10 h-10 items-center justify-center rounded-full transition-colors cursor-pointer flex-shrink-0 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:cursor-default"
+ /* Prototype `.icb`: a bordered 35px circle on the surface fill, so the two
+    icon controls read as a matched pair with the city select beside them
+    rather than as bare glyphs floating in the bar. */
+ className="hit-44 flex w-[35px] h-[35px] items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--surface-bg)] transition-colors cursor-pointer flex-shrink-0 hover:border-[var(--text-subtle)] disabled:cursor-default"
  >
  {locState ==='denied' ? (
  <MapPinOff className="w-4 h-4 text-[var(--text-muted)]" />
@@ -1596,18 +1628,17 @@ export default function App() {
  try { localStorage.setItem(THEME_KEY, next ? 'dark' : 'light'); } catch { /* private mode: session-only, still correct */ }
  return next;
  })}
- className="hit-44 flex w-10 h-10 items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer flex-shrink-0"
+ className="hit-44 flex w-[35px] h-[35px] items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--surface-bg)] text-[var(--text-muted)] hover:text-[var(--charcoal)] hover:border-[var(--text-subtle)] transition-colors cursor-pointer flex-shrink-0"
  aria-label={isDark ?'Switch to light mode' :'Switch to dark mode'}
  >
  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
  </button>
 
- {/* Desktop nav. On mobile this is replaced by the bottom tab bar below — five
- tabs in a horizontally-scrolling 50vw strip was unusable and hid Saved entirely. */}
- {/* Pill row, per docs/design/occasion-prototype.html `.tabs` — a recessed track with
- the selected tab lifted onto a raised surface. Text links top-right gave the four
- destinations no shared container and no visible selected state beyond ink colour. */}
- <nav className="desktop-nav hidden md:flex items-center gap-1 whitespace-nowrap rounded-full bg-[var(--surface-quiet-bg)] p-1" aria-label="Primary">
+ {/* MOVED OUT OF THE HEADER — see the pill row below `</header>`. It lived here,
+     `hidden md:flex`, which is why the prototype's nav appeared on desktop only
+     and the phone kept the original bottom tab bar. */}
+ {false && (
+ <nav className="desktop-nav hidden items-center gap-1 whitespace-nowrap rounded-full bg-[var(--surface-quiet-bg)] p-1" aria-label="Primary-legacy">
  <button
  onClick={() => handleTabSwitch('mood')}
  aria-current={activeTab === 'mood' ? 'page' : undefined}
@@ -1657,68 +1688,85 @@ export default function App() {
  <span>Saved{savedRecipes.length > 0 ? ` (${savedRecipes.length})` : ''}</span>
  </button>
  </nav>
+ )}
  </div>
  </header>
 
- {/* Mobile tab bar — this is an app, so navigation lives at the thumb, not the
- forehead. Safe-area padding keeps it clear of the iOS home indicator. */}
+ {/* PRIMARY NAV — one nav, every viewport, per the prototype's `.tabs`: a recessed
+     track directly under the header with the selected tab lifted onto a raised
+     surface. Text only, no icons.
+
+     This replaces BOTH the desktop-only pill that used to sit inside the header and
+     the mobile bottom tab bar. The bottom bar was the last structural piece of the
+     original still standing: it put four icons at the thumb on a screen whose primary
+     decision is a six-tile grid, and it meant the phone and the desktop were running
+     two different navigation models — the desktop matched the prototype and the phone
+     did not, which is exactly what a phone user sees and a desktop reviewer does not.
+
+     Losing the fixed bottom bar also retires the `--tabbar-h` offset arithmetic that
+     three separate bugs came out of (§6). Nothing docks to the viewport floor now. */}
+ {/* The nav owns the fixed header's clearance, because it is the first thing under
+     it. Placed without this it rendered at top:20 — behind the 72px fixed header,
+     present in the DOM, painted, and completely invisible. `<main>` below therefore
+     no longer pads for the header; padding in both places would double-count it. */}
  <nav
- className={`tabbar md:hidden safe-x fixed bottom-0 left-0 right-0 z-50 min-h-[var(--tabbar-h)] bg-[var(--bg-warm)] border-t border-[var(--rule)]${chromeHidden ? ' is-hidden' : ''}`}
- style={{ paddingBottom:'env(safe-area-inset-bottom)' }}
+ className="page-grid"
  aria-label="Primary"
+ /* MARGIN, not padding. As padding the clearance sat INSIDE the nav's own box, so
+    the element still began at y=0 under the header — the pill row was visible but
+    the nav's box was not clear of it, and anything measuring the nav (or hit-testing
+    its top edge) still landed on the header. */
+ style={{ marginTop:'calc(72px + env(safe-area-inset-top) + 1rem)' }}
  >
- <ul className="flex items-stretch">
+ <div className="col-start-2 flex gap-1 overflow-x-auto rounded-full bg-[var(--surface-quiet-bg)] p-1">
  {([
- { tab:'mood' as ActiveTab, label:'Eat out', Icon: Search },
- { tab:'happy-hour' as ActiveTab, label:'Out', Icon: Sparkles },
- { tab:'random' as ActiveTab, label:'Cook', Icon: Dices },
- { tab:'saved-recipes' as ActiveTab, label:'Saved', Icon: Heart },
- ]).map(({ tab, label, Icon }) => {
+ { tab:'mood' as ActiveTab, label:'Eat out' },
+ { tab:'happy-hour' as ActiveTab, label:'Out' },
+ { tab:'random' as ActiveTab, label:'Cook' },
+ { tab:'saved-recipes' as ActiveTab, label:'Saved' },
+ ]).map(({ tab, label }) => {
  const active = activeTab === tab;
  return (
- <li key={tab} className="flex-1">
  <button
+ key={tab}
  onClick={() => {
  if (tab ==='random') setDimensions((prev) => ({ ...prev, locationMode:'gourmet' }));
  handleTabSwitch(tab);
  }}
  aria-current={active ?'page' : undefined}
- className="w-full min-h-[56px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors press"
- >
- <span className="relative">
- <Icon
- className={`w-[18px] h-[18px] transition-colors ${active ?'text-[var(--accent-terracotta)]' :'text-[var(--text-subtle)]'}`}
- strokeWidth={active ? 2.2 : 1.8}
- />
- </span>
- <span
- className={`text-xs leading-none tracking-[-0.005em] ${
- active ?'text-[var(--accent-terracotta)] font-semibold' :'text-[var(--text-subtle)] font-medium'
+ className={`hit-44 relative min-w-[78px] flex-1 whitespace-nowrap rounded-full px-3 py-2.5 text-[13px] font-semibold tracking-[-0.01em] transition-colors duration-200 cursor-pointer ${
+ active
+ ?'bg-[var(--surface-bg)] text-[var(--charcoal)] shadow-sm'
+ :'text-[var(--text-subtle)] hover:text-[var(--charcoal)]'
  }`}
  >
  {label}
- </span>
+ {tab ==='saved-recipes' && savedRecipes.length > 0 ? ` (${savedRecipes.length})` : ''}
  </button>
- </li>
  );
  })}
- </ul>
+ </div>
  </nav>
 
  {/* Main Layout Grid wrapper */}
  <div
- /* Content clearance for the fixed tab bar, from --tabbar-h + the home-indicator
-    inset. A hardcoded 76px was a guess against 57px of chrome; when it ran short the
-    last list row sat under the bar, unreachable. */
+ /* Bottom clearance is now just the home-indicator inset. The fixed tab bar this
+    used to clear is gone (see the nav above), so `--tabbar-h` is no longer part of
+    the arithmetic — reserving 64px for a bar that does not exist leaves a dead band
+    under the footer on every phone. The safe-area inset stays: the home indicator
+    is still there whether or not we draw anything above it. */
  /* `find-layout` flips the column proportions for the Find tab ONLY — wide
     decision column, narrow results column, per docs/design. It is scoped to this
     tab on purpose: the sidebar is `lg:hidden` everywhere else, so applying the
     flip globally leaves a dead 380px column on Stay In / Out / Saved and squeezes
     their grids. Class, not a blanket CSS override, for exactly that reason. */
- className={`flex-1 flex flex-col lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:max-w-[1440px] lg:mx-auto relative w-full items-center pb-[calc(var(--tabbar-h)+env(safe-area-inset-bottom)+1.25rem)] md:pb-0 desktop-shell${
+ className={`flex-1 flex flex-col lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:max-w-[1440px] lg:mx-auto relative w-full items-center pb-[calc(env(safe-area-inset-bottom)+1.25rem)] md:pb-0 desktop-shell${
  showRail ?' find-layout' :''
  }`}
- style={{ paddingTop:'calc(72px + env(safe-area-inset-top))' }}
+ /* No header padding here any more — the nav above it carries that clearance and
+    pushes this down in normal flow. Padding both put 72px twice into the top of
+    every screen. */
+ style={{ paddingTop:'1rem' }}
  >
  {/* Sidebar as a drop-down/high-end legend filter section */}
  <div
@@ -1726,8 +1774,16 @@ export default function App() {
     — a rail that animates to max-h-0 would leave a dead 320px column — so the panel
     is pinned open and sticky, or removed from the grid entirely on other tabs. */
  className={`transition-all duration-500 overflow-hidden w-full max-w-7xl mx-auto px-5 lg:px-8 desktop-filter-region ${
- activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 mt-6' :'max-h-0 opacity-0 pointer-events-none'
- } ${showRail ?'lg:max-h-none lg:opacity-100 lg:pointer-events-auto lg:overflow-visible lg:mt-6' :'lg:hidden'}`}
+ /* `invisible` — visibility:hidden — not just opacity-0.
+    A collapsed panel that is merely transparent still lays out its controls, still
+    puts them in the tab order, and still reports real geometry: the Search button
+    inside it was measured as a live 40px target sitting behind the page on the Cook
+    and Saved tabs. It was only ever missed because it used to fall below the fold,
+    where the audit skips it — removing the bottom chrome shortened the page and
+    brought it into view. Opacity hides a control from the eye; visibility hides it
+    from the browser too, which is what "collapsed" is supposed to mean. */
+ activeTab ==='mood' && !selectedRecipe && filtersOpen ?'max-h-[1500px] opacity-100 visible mt-6' :'max-h-0 opacity-0 invisible pointer-events-none'
+ } ${showRail ?'lg:max-h-none lg:opacity-100 lg:visible lg:pointer-events-auto lg:overflow-visible lg:mt-6' :'lg:hidden'}`}
  >
  {/* Single owner of the horizontal margin is the px-5 wrapper above. This card
  carries no padding of its own; the Sidebar owns only its inner rhythm. The old
@@ -1737,8 +1793,24 @@ export default function App() {
  <Sidebar
  dimensions={dimensions}
  nearbyCuisines={nearbyCuisines}
+ city={city}
+ /* `areas` is deliberately NOT passed. The prototype's Nearby chips are a
+    hardcoded six per city (Sea Point, Long Street, …) — fine in a prototype
+    that ships four cities, a fabricated venue fact in an app that resolves
+    any city on earth. The app's only `areas` state is TheMealDB's CUISINE
+    list (British, Italian), so wiring it here would have labelled "Italian"
+    a neighbourhood of Cape Town. The chip UI and its query path are built
+    and working in Sidebar; they render the moment a real source exists —
+    Places `addressComponents` carries `sublocality`, which is the honest
+    way in and is a data-layer change, not a layout one. §8. */
  onChange={setDimensions}
- onTriggerMatch={() => { handleTriggerMatch(); setFiltersOpen(false); }}
+ /* The panel STAYS OPEN. It used to collapse on every trigger, which meant the
+    entire response to tapping an occasion was the panel disappearing — the
+    selected tile's accent fill and the refine block un-dimming, both designed
+    as the confirmation that the tap registered, were never visible to anyone.
+    The prototype keeps the grid on screen with the selection lit and puts the
+    results below it; `filtersOpen` remains user-controlled via Adjust filters. */
+ onTriggerMatch={() => { syncChromeBaseline(window.scrollY); handleTriggerMatch(); }}
  isLoading={isLoading && activeTab ==='mood'}
  />
  </div>
@@ -1935,6 +2007,7 @@ export default function App() {
  regional: null,
  cuisines: [],
  capacity: null,
+ area: null,
  searchQuery:'',
  }))}
  className="hit-44 mt-6 font-mono text-xs uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--charcoal)] cursor-pointer transition-colors"
@@ -2192,33 +2265,16 @@ export default function App() {
  </main>
  </div>
 
- {/* Fixed Bottom CTA — mood tab, whenever filters are open. MOBILE ONLY.
-     It is a thumb-reach affordance pinned above the tab bar. On desktop it used
-     to go `md:static`, but this block is a sibling of <main>, so static dropped it
-     at the very END of the document — a lone terracotta button stranded below the
-     footer, under the results, attached to nothing. Desktop does not need it:
-     results auto-load from the debounced search, and the "Hide filters / Adjust
-     filters" toggle already collapses the panel. So it is simply hidden at md+. */}
- {activeTab ==='mood' && !selectedRecipe && filtersOpen && !isLoading && (
- <div className={`filter-cta action-bar fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-0 right-0 z-[60] px-5 pb-4 pt-3 flex justify-center md:hidden${chromeHidden ? ' is-hidden' : ''}`}>
- <button
- onClick={() => { handleTriggerMatch(); setFiltersOpen(false); }}
- className="w-full max-w-md py-4 rounded-2xl font-sans font-semibold text-base tracking-[-0.01em] transition-all duration-200 ease-out cursor-pointer flex items-center justify-center gap-2 shadow-md bg-[var(--accent-terracotta)] text-[var(--accent-contrast)] hover:opacity-90 hover:shadow-[0_12px_32px_rgba(124,45,18,0.15)] active:scale-[0.97]"
- >
- {isLoading ? (
- <span className="flex items-center justify-center gap-2">
- <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
- Searching...
- </span>
-) : (
- <>
- <span>{dimensions.searchQuery.trim() ?'Search places' :'Find a place'}</span>
- <ChevronRight className="w-5 h-5" />
- </>
-)}
- </button>
- </div>
-)}
+ {/* THE FIXED "Find a place" CTA IS GONE, and its absence is the point.
+     The prototype has no Search button between intent and results: tapping an
+     occasion IS the query, and every tile's onClick already calls onTriggerMatch.
+     A full-width terracotta bar pinned over the content restated a decision the
+     user had already made one tap earlier, covered the bottom of the occasion
+     grid to do it, and was the second half — with the bottom tab bar — of the
+     stack of chrome the phone layout was built around.
+
+     The typed path keeps its own submit: the search pill's own Search button,
+     inside the form, which is where the prototype puts it. */}
 
  </div>
 );

@@ -6,7 +6,7 @@ import {
   Sunrise, Coffee, Soup, Zap, Compass, Salad, Flame, Sparkles, Moon, Wine, Store, Utensils,
 } from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
-import { formatQuantity } from'../locale';
+import { formatQuantity, userLocale } from'../locale';
 
 /* The Spend slider's stops. Values are the Places price tier already understood by
    fetchVenues — index 0 is "no filter", so the slider has a real off position rather
@@ -31,6 +31,14 @@ interface SidebarProps {
   * Burgers, Fried chicken" and kills discovery. Baseline first, local extras after.
   */
  nearbyCuisines?: string[];
+ /**
+  * The resolved city, for the hero kicker. The prototype's kicker is live context —
+  * `CAPE TOWN · 19:40 SAST` — not a tagline, which is what makes the hero read as
+  * "here, now" rather than as marketing (docs/design/occasion-prototype.html `#ctx`).
+  */
+ city?: string;
+ /** Neighbourhoods in the current city — the prototype's `Nearby` chips (`#areas`). */
+ areas?: string[];
 }
 
 /**
@@ -426,7 +434,7 @@ export const resolveCuisine = (raw: string): { label: string; value: string } | 
  return { label, value: label };
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTriggerMatch, nearbyCuisines = [] }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTriggerMatch, nearbyCuisines = [], city, areas = [] }) => {
  const moods = [
  { label:'Cosy', value:'tired & cosy' },
  { label:'Comfort food', value:'need comfort food' },
@@ -597,6 +605,65 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  // and responsive without inventing a filter that does not filter.
  const [distKm, setDistKm] = React.useState(2);
  const [party, setParty] = React.useState(2);
+
+ /* The hero kicker, per the prototype's `#ctx`: PLACE · LOCAL TIME · ZONE. It ticks,
+    because a clock that is wrong by an hour is worse than no clock — and because the
+    period selector below it is derived from the same hour, so the two must agree.
+    Time and zone come from Intl, never hand-formatted: a reader on a 12-hour locale
+    gets 7:40 pm and a reader on a 24-hour one gets 19:40, from the same code. */
+ /* FREEFORM INTENT — the prototype's `.parsed` line and its RULES table.
+    "Freeform beats the tiles when the tiles don't fit": someone who already knows they
+    want vegan ramen should not have to find the tile that nearly means that.
+
+    This reads the typed text and reports what it UNDERSTOOD, which is the whole point
+    of the line — it is a receipt, not a suggestion. Every rule therefore resolves to a
+    filter this app can genuinely apply (an existing `vibe` or `diet` value), so the
+    line never claims an understanding the query cannot act on (§8). Text that matches
+    nothing says so plainly and is still passed to Places verbatim, which is the honest
+    outcome — Google may well know "Nando's" even though no rule here does. */
+ const INTENT_RULES: { re: RegExp; note: string; vibe?: string; diet?: string }[] = [
+ { re: /vegan/i, note:'vegan', diet:'Vegan' },
+ { re: /vegetarian|veggie|plant[- ]based/i, note:'vegetarian', diet:'Vegetarian' },
+ { re: /halaal|halal/i, note:'halaal', diet:'Halaal' },
+ { re: /seafood|fish|oyster|sushi/i, note:'seafood', diet:'Seafood' },
+ { re: /date|romantic|anniversary/i, note:'date night', vibe:'feeling fancy' },
+ { re: /birthday|celebrat|treat/i, note:'celebrating', vibe:'treating myself' },
+ { re: /quick|fast|in a hurry|grab/i, note:'quick', vibe:'stressed, need quick and easy' },
+ { re: /cosy|cozy|quiet|tucked away|catch up/i, note:'quiet and cosy', vibe:'tired & cosy' },
+ { re: /spicy|hot|chilli|chili|curry/i, note:'bold and spicy', vibe:'craving something bold & spicy' },
+ { re: /comfort|hearty|filling|stodge/i, note:'comfort food', vibe:'need comfort food' },
+ { re: /light|fresh|salad|healthy/i, note:'fresh and light', vibe:'something fresh & light' },
+ { re: /new|never been|somewhere different|adventur/i, note:'something new', vibe:'feeling adventurous' },
+ { re: /slow|long lunch|no rush|lazy/i, note:'no hurry', vibe:'lazy Sunday energy' },
+ ];
+ const intent = React.useMemo(() => {
+ const q = dimensions.searchQuery.trim();
+ if (!q) return null;
+ const hits = INTENT_RULES.filter((r) => r.re.test(q));
+ return { notes: Array.from(new Set(hits.map((h) => h.note))), hits };
+ }, [dimensions.searchQuery]);
+
+ const [now, setNow] = React.useState(() => new Date());
+ React.useEffect(() => {
+ const id = setInterval(() => setNow(new Date()), 30000);
+ return () => clearInterval(id);
+ }, []);
+ const kicker = React.useMemo(() => {
+ // No city, no kicker. The line's job is to say WHERE and WHEN you are; a bare
+ // "6:22 PM UTC" tells the user their own clock back, which they already have, and
+ // reads as a debug readout above the headline. The place is the half that carries
+ // the information, so the time is only shown once there is a place to attach it to.
+ if (!city) return '';
+ let stamp = '';
+ try {
+ stamp = new Intl.DateTimeFormat(userLocale(), {
+ hour: 'numeric',
+ minute: '2-digit',
+ timeZoneName: 'short',
+ }).format(now);
+ } catch { /* an exotic locale tag: the city alone is still true */ }
+ return [city, stamp].filter(Boolean).join(' · ');
+ }, [city, now]);
  const spendIndex = Math.max(0, SPEND.findIndex((s) => s.value === dimensions.capacity));
 
  // The label of the mood currently set, so the collapsed state still tells the user
@@ -615,15 +682,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
      it stays a neutral surface until it does, never a gradient standing in for a photo. */}
  <div className="relative flex min-h-[230px] items-end justify-center overflow-hidden rounded-3xl border border-[var(--border-color)] bg-[var(--surface-quiet-bg)] px-6 py-7 text-center">
  <div className="relative z-10 mx-auto max-w-[32ch]">
+ {/* Live context, not a tagline. The dot only earns its accent next to something
+     that is actually live; with no city resolved yet there is no claim to make,
+     so the whole line is withheld rather than shown half-true (§8). */}
+ {kicker && (
  <p className="mb-3 flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
  <span aria-hidden="true" className="h-[5px] w-[5px] animate-pulse rounded-full bg-[var(--accent-terracotta)]" />
- A considered guide to eating well
+ {kicker}
  </p>
+ )}
  <h1 className="text-[clamp(1.9rem,3.4vw,3rem)] font-semibold leading-[0.98] tracking-[-0.042em] text-balance text-[var(--heading-color)]">
- Where are we <span className="text-[var(--accent-terracotta)]">eating?</span>
+ What's <span className="text-[var(--accent-terracotta)]">good</span> right now?
  </h1>
  <p className="mx-auto mt-2.5 max-w-[40ch] text-[13.5px] leading-[1.5] text-[var(--text-muted)]">
- Places worth leaving the house for, sorted by what is <span className="font-medium text-[var(--charcoal)]">open now</span>.
+ Pick the occasion, or just tell us what you're after.
  </p>
  </div>
  </div>
@@ -639,7 +711,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  filters live as you type — see App's displayedRecipes — so the box narrows the
  results whether or not you ever hit Enter. */}
  <form
- onSubmit={(e) => { e.preventDefault(); onTriggerMatch(); }}
+ onSubmit={(e) => {
+ e.preventDefault();
+ // Apply whatever the parse line said it understood, so the receipt above the
+ // results and the query behind them cannot disagree. Only fills fields the
+ // user has not already set by hand — a typed word must never silently
+ // overwrite a tile they deliberately tapped.
+ const first = intent?.hits[0];
+ if (first) {
+ onChange({
+ ...dimensions,
+ vibe: dimensions.vibe ?? first.vibe ?? null,
+ diet: dimensions.diet ?? first.diet ?? null,
+ });
+ }
+ onTriggerMatch();
+ }}
  role="search"
  /* Full-width pill with a FILLED submit button, per docs/design/occasion-prototype.html
     `.search` (surface fill, 1px rule, accent button inside the same radius). The old
@@ -669,11 +756,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
 )}
  <button
  type="submit"
- className="hit-44 relative flex-none rounded-full bg-[var(--accent-terracotta)] px-5 py-2.5 text-[13px] font-semibold text-[var(--accent-contrast)] cursor-pointer transition-opacity hover:opacity-90"
+ /* px-4, not px-5. The input must stay at 16px or iOS zooms the page on focus
+    (checks.mjs enforces it), which costs ~1.5px per character against the
+    prototype's 14.5px — enough that "Somewhere quiet for two" was clipped to
+    "…quiet for t" at 390px. The room comes back off the button's padding
+    rather than off the type size, since only one of the two is negotiable. */
+ className="hit-44 relative flex-none rounded-full bg-[var(--accent-terracotta)] px-4 py-2.5 text-[13px] font-semibold text-[var(--accent-contrast)] cursor-pointer transition-opacity hover:opacity-90"
  >
  Search
  </button>
  </form>
+
+ {/* The receipt. Reserves its own height so typing does not shunt the occasion
+     grid down a line on every keystroke — a layout shift on the primary
+     decision, for a line that is often one word long. */}
+ <p
+ className="flex min-h-[22px] flex-wrap items-center gap-1.5 text-[11.5px] text-[var(--text-subtle)]"
+ aria-live="polite"
+ >
+ {intent && (intent.notes.length > 0 ? (
+ <>
+ <b className="font-semibold text-[var(--text-muted)]">Reading that as</b>
+ {intent.notes.map((n) => (
+ <span key={n} className="rounded-full bg-[var(--surface-quiet-bg)] px-2.5 py-1 font-medium text-[var(--text-muted)]">
+ {n}
+ </span>
+ ))}
+ </>
+ ) : (
+ <span>Searching for that exactly — try &ldquo;vegan&rdquo;, &ldquo;quiet&rdquo;, &ldquo;spicy&rdquo; to narrow it.</span>
+ ))}
+ </p>
  </div>
 
  {/* THE OCCASION — the primary decision, and the only one on this axis.
@@ -681,15 +794,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
      immediately re-queries Places: the selection IS the query, so there is no Search
      button standing between intent and results. */}
  <div className="flex flex-col gap-4">
- <div className="flex items-baseline justify-between gap-3">
- <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">The occasion</span>
- <span className="text-[11px] text-[var(--text-subtle)]">
- {period === nowPeriod ?'set by the clock' :'you chose this'}
- </span>
- </div>
-
  {/* Three periods. Auto-set from the device clock, switchable in one tap so
-     planning dinner at 10am does not need a hidden control. */}
+     planning dinner at 10am does not need a hidden control.
+
+     ORDER MATTERS, and it was wrong: the label sat above this row, which read as
+     though "The occasion" named the Morning/Midday/Evening switch. It does not —
+     the period chooses WHICH SIX occasions exist, and the label belongs to the grid
+     underneath. Prototype order is time, then label, then grid. */}
  <div className="relative flex rounded-full bg-[var(--surface-quiet-bg)] p-1">
  <span
  aria-hidden="true"
@@ -715,11 +826,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
 ))}
  </div>
 
+ <div className="flex items-baseline justify-between gap-3">
+ <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">The occasion</span>
+ <span className="text-[11px] text-[var(--text-subtle)]">
+ {period === nowPeriod ?'set by the clock' :'you chose this'}
+ </span>
+ </div>
+
  {/* Two up, always. This grid lives inside a narrow editorial column, so a
      viewport-keyed `sm:grid-cols-3` widened the GRID while the COLUMN stayed
      put and wrapped every label onto two lines. Column width, not screen
      width, is what this layout answers to. */}
- <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
+ {/* `md:grid-cols-3` matches the prototype's own 760px rule, and it is keyed on
+     screen width HERE only because between md and lg the panel genuinely IS the
+     full page width — the narrow 320px rail does not exist until lg. Without it a
+     phone in landscape (≥768px wide, §6) rendered two tiles per row at ~400px
+     each, so a single occasion took a quarter of a 390px-tall viewport. */}
+ <div className="occasion-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2.5">
  {OCCASIONS[period].map((o) => {
  const active = dimensions.vibe === o.value;
  return (
@@ -768,8 +891,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
      the priceTier already threaded through fetchVenues. Distance and party size are
      held here and shown, but Text Search takes no radius and no party argument, so
      they are labelled as preferences rather than being dressed up as filters — §8,
-     never imply a constraint the data cannot keep. */}
- <div className="flex flex-col gap-4">
+     never imply a constraint the data cannot keep.
+
+     Held back until an occasion is picked, per the prototype's `.refine` / `.refine.on`.
+     This is the sequence the whole screen is arguing for — occasion FIRST, refinement
+     after — and showing five live controls at full strength before the primary decision
+     flattens that into "here are eight filters, good luck". `inert` rather than opacity
+     alone: a dimmed control that still takes focus and still answers a tap is a trap
+     for anyone arriving by keyboard or screen reader. */}
+ <div
+ className={`flex flex-col gap-4 transition-opacity duration-400 ${
+ dimensions.vibe ? 'opacity-100' : 'opacity-40'
+ }`}
+ inert={dimensions.vibe ? undefined : true}
+ >
  <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6">
  <div>
  <label htmlFor="sl-dist" className="mb-2.5 flex items-baseline justify-between gap-2">
@@ -826,6 +961,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  />
  </div>
  </div>
+
+ {/* NEARBY — the prototype's `#areas` chips. Single-select: these are places, and
+     you are in one of them at a time. The value is folded into the Places text
+     query (App.tsx `placesSearchTerms`), so this narrows real results rather than
+     decorating the panel. Withheld entirely when we have no neighbourhoods for
+     the current city — an empty chip row is worse than no row. */}
+ {areas.length > 0 && (
+ <div className="flex flex-col gap-3">
+ <div className="flex items-baseline justify-between gap-3">
+ <b className="text-[10px] font-semibold uppercase tracking-[0.17em] text-[var(--text-muted)]">Nearby</b>
+ {city && <span className="text-[11.5px] text-[var(--text-subtle)]">in {city}</span>}
+ </div>
+ <div className="flex flex-wrap gap-1.5">
+ {areas.map((a) => {
+ const on = dimensions.area === a;
+ return (
+ <button
+ key={a}
+ type="button"
+ aria-pressed={on}
+ onClick={() => {
+ onChange({ ...dimensions, area: on ? null : a });
+ onTriggerMatch();
+ }}
+ className={`hit-44 relative rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition-colors cursor-pointer ${
+ on
+ ? 'border-[var(--accent-terracotta)] bg-[var(--accent-terracotta)] text-[var(--accent-contrast)]'
+ : 'border-[var(--border-color)] bg-[var(--surface-bg)] text-[var(--text-muted)] hover:border-[var(--text-subtle)] hover:text-[var(--charcoal)]'
+ }`}
+ >
+ {a}
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ )}
  </div>
 
  {/* Everything the prototype does not have has been removed from this surface, on

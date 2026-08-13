@@ -503,21 +503,27 @@
      bar actually renders 57px tall. The 7px difference was not padding: it was a strip
      of the scrolling page showing through between two pieces of opaque chrome, which is
      exactly what it looked like. Any hardcoded offset drifts the moment either bar's
-     content changes, so both now derive from this one value and cannot disagree. */
-  --tabbar-h: 64px;
+     content changes, so both now derive from this one value and cannot disagree.
+
+     NOW ZERO AT EVERY WIDTH. The bottom tab bar was removed (App.tsx) in favour of the
+     prototype's single top pill row, so there is no bar left for anything to dock above.
+     The TOKEN stays rather than being deleted: EateryView's Directions bar and both of
+     RecipeView's bars still derive their offset from it, and they must keep clearing the
+     home-indicator inset. Zeroing here makes every one of those offsets collapse to
+     `env(safe-area-inset-bottom)` in a single edit — which is the whole reason the token
+     exists (§6, "one token, all sites"). Deleting it would have meant hand-editing four
+     call sites, which is how the 7px seam happened the first time. */
+  --tabbar-h: 0px;
 }
 
-/* THE TAB BAR DOES NOT EXIST AT md+ — SO NEITHER MAY ITS OFFSET.
-   The bar is `md:hidden`, but --tabbar-h stayed 64px at every width, so every element
-   that docks above it reserved 64px for a bar that was not on screen. A PHONE IN
-   LANDSCAPE IS ≥768px WIDE, which is why this only ever showed up on rotation: the
-   venue page's Directions bar floated 64px off the bottom, mid-screen on a 430px-tall
-   viewport, straight across the photo and the address. Reported from a real device.
-   Zeroing the token here fixes the action bar in EateryView AND both bars in
-   RecipeView at once — the "one token, all sites" rule doing its job. */
+/* The md+ override that used to zero --tabbar-h is gone: the token is 0 at every width
+   now, because the bar it measured no longer exists at any width. The bug it was written
+   for is worth keeping in view — a phone in landscape is ≥768px wide, so a `md:hidden`
+   bar whose offset was NOT `md:`-scoped left the venue page's Directions bar floating
+   64px off the bottom, mid-screen, across the photo. Found on a real device. The class
+   of bug (an offset outliving the chrome it was measuring) is exactly what this removal
+   is closing out, so the note stays even though the media query does not. */
 @media (min-width: 768px) {
-  :root { --tabbar-h: 0px; }
-
   /* Glassmorphism tokens.
      Was blur(22px)/180% over 0.70 white — a heavy frost that read as plastic.
      Real glass is a *lighter* blur over a *lower*-opacity surface, with a bright

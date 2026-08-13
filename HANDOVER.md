@@ -2,111 +2,146 @@
 
 ## Status
 
-**`main` is at `7ee65be`, pushed.**
+**`claude/version-prototype-mismatch-fjqtrx` is at `<sha>`, pushed.**
 
-Session ended on a §3 hard stop: the browser renderer timed out mid-verification and
-was not re-probed. All work is committed and pushed; nothing is stranded in the tree.
-CI was still `in_progress` on `7ee65be` when the session ended — **read the Actions tab
-before trusting anything below marked "CI is the gate".**
+Not a hard stop. The work below is complete, browser-verified in both colour schemes at
+three viewports, and typechecks and builds clean.
 
 ## Objective
 
-Transplant the agreed design direction (`docs/design/occasion-prototype.html`) into the
-live app so it ships on https://whats-good-nu.vercel.app/ rather than sitting in a
-prototype nobody deploys.
+The owner reported that the version on `main` still carried "the same remnants as the
+original that I didn't like", having asked for it to be made identical to
+`docs/design/occasion-prototype.html`. Establish what actually still differed — by
+rendering both and comparing, not from memory — and close the gap.
 
 ## What changed
 
-Six commits, in order:
+The diff was taken from side-by-side renders of `/` and `/next.html` at 390×844 and
+1440×900, not from reading the source. Six structural remnants of the original were
+found still standing, and all six are gone:
 
-- `080529a` — palette retune. Cream ground `#F4F2EF` → true neutral `#F5F4F2`; accent
-  `#7C2D12` → `#C8371C`; dark `#0F0C0A` → `#0E0E0D` / `#FF5A3C`. Four hardcoded hexes
-  predating the token system, plus both `theme-color` tags and their live JS twin.
-  **CLAUDE.md §7 rewritten in the same commit** — it declared the old palette decided,
-  so shipping without it would have left the repo contradicting its own rules.
-- `c1d8103` — registered `happyHourSources.ts` in the inspection ledger. It had never
-  been declared, and was failing `verify/ledger-check.mjs` on every push.
-- `63d3951` — neutralised `--body-gradient`, which was washing a brown overlay across
-  both schemes and reinstating the peach cast on top of the corrected ground.
-- `628ac34` — `verify/checks.mjs`: added `:visible` to the two `nav[aria-label="Primary"]`
-  selectors. Not a softened assertion; see Verification.
-- `90dfd58` — **occasion tiles.** Six tiles are now the primary decision, generated from
-  the device clock under three periods (Morning / Midday / Evening), auto-set and
-  switchable. Each tile maps onto an existing `vibe` value, so a tap runs the same
-  Places query the mood sheet always ran and re-queries immediately.
-- `7ee65be` — occasion grid sized to its column, not the viewport.
+- **The bottom tab bar.** The prototype has ONE nav — a text-only segmented pill row
+  under the header, at every width. The app had that pill on desktop only, inside the
+  header, `hidden md:flex`; the phone still ran the original's icon tab bar fixed to the
+  viewport floor. Desktop matched the prototype and the phone did not, which is exactly
+  the half a desktop reviewer never sees. Both are replaced by one in-flow `page-grid`
+  nav.
+- **The fixed "Find a place" CTA.** Deleted. Selecting an occasion already called
+  `onTriggerMatch`, so the bar restated a decision made one tap earlier and covered the
+  bottom of the grid to do it. The typed path keeps the Search button inside the search
+  pill, which is where the prototype puts it.
+- **Hero copy.** All three strings were the original's. Now the prototype's: kicker is
+  live context (`LONDON · 18:28 UTC`, via `Intl`, ticking, withheld entirely until a city
+  resolves), headline is *What's **good** right now?*, sub is *Pick the occasion, or just
+  tell us what you're after.*
+- **The header.** Logo mark and italic terracotta "Good" removed — the accent was being
+  spent twice on one screen, competing with the word it exists for in the H1. The black
+  `Set location` slab became the prototype's neutral `.sel`; both icon buttons became its
+  `.icb`; all three controls are now grouped right per `.hctrl`.
+- **Order.** The period switcher now precedes the "The occasion" label. The label sat
+  above the switcher, so it read as naming Morning/Midday/Evening rather than the grid.
+- **Missing elements.** Added the parse line under the search (a receipt — every rule
+  resolves to a `vibe` or `diet` the app can actually apply, and it fills only fields the
+  user has not set by hand) and the refine block's hold-back until an occasion is picked
+  (`inert`, not opacity alone).
+
+Two behavioural fixes fell out of the above:
+
+- **The panel no longer collapses on selection.** It did, which meant the whole visible
+  response to tapping an occasion was the panel vanishing — the selected tile's accent
+  fill and the refine block un-dimming, both designed as the confirmation, were never
+  seen by anyone.
+- **`--tabbar-h` is 0 at every width.** The token stays because EateryView and
+  RecipeView's docked bars derive from it; zeroing it collapses all of them to
+  `env(safe-area-inset-bottom)` in one edit.
 
 ## Customer journey impact
 
-**Express intent** and **Choose** are the stages that moved. The app previously opened on
-a search box plus a cuisine rail; the first decision is now a single tap on an occasion,
-and the selection *is* the query — no Search button between intent and results. Party
-size, diet and budget stayed in the sheet, because they can all be true at once and were
-never moods; conflating them onto one row is why the old row never felt right.
+**Orient** and **Express intent** moved most. One nav instead of two models, a hero that
+says where and when you are instead of a tagline, and a single primary decision with the
+refinement held back until it has been made. **Choose** improved by accident of the
+collapse fix: the selection is now visibly acknowledged.
 
-**Trust** and **Recover** are untouched. Nothing here adds or invents a venue fact.
+**Trust** and **Recover** are untouched. Nothing here invents a venue fact — see the
+Nearby chips under Known risks for the one place that was declined on those grounds.
 
 ## Verification and actual results
 
-- **esbuild (rung 1): clean** on `src/App.tsx` and `src/components/Sidebar.tsx`.
-- **Typecheck / build: did not complete.** Both exceed this machine's timeout (§6). CI is
-  the gate and was still running at session end.
-- **Deployed page, looked at in a real browser** — 375×812 light and 1280×860 dark, via
-  the Browser pane against the live URL. Palette lands; periods render with the `Now`
-  marker on the current one; tiles render with labels on one line after `7ee65be`.
-- **Places data confirmed live** — 20 real Cape Town venues with real photos rendered at
-  1280×860 during this session.
-- **NOT verified:** that clicking an occasion tile actually returns filtered results. The
-  click timed out and triggered the §3 hard stop. **This is the single most important
-  unverified claim in this handover** — the wiring is `onChange` + `onTriggerMatch`, which
-  is the same path the mood sheet uses, but nobody has watched it work.
-- **NOT verified:** 390×844 and 844×390 as `checks.mjs` measures them; contrast over
-  photos; iOS Safari anything.
-- **The `:visible` fix in `628ac34` needs a second opinion.** The selector matched two
-  elements after the desktop workspace landed and `.first()` resolved to the hidden
-  desktop nav inside a 390px context, so the click waited 30s and killed the suite.
-  `:visible` targets whichever nav actually renders. It relaxes no expectation — but it
-  is a change to the harness made by the same session whose work the harness was gating,
-  which is exactly the shape that deserves review.
+- **`verify/checks.mjs`: 56/58, 0 skipped.** The two failures are `?tab= opens that tab`
+  and `scaled chip colour comes from the accent token`.
+- **Control run on `main`, stashed, before drawing any conclusion: 57/59, and the SAME
+  two failures.** Both are pre-existing and neither is caused by this work. The count
+  differs because two checks were removed and one added (below).
+- **`tsc --noEmit`: exit 0.** It completed this session, which is unusual for this
+  machine (§6). It caught one real error — a `Dimensions` literal missing the new `area`
+  field — which is now fixed.
+- **`npm run build`: exit 0**, 2091 modules.
+- **Looked at, not just measured:** 390×844 light and dark, 844×390, 1440×900, each as a
+  screenshot that was read. Plus a run with Places fixtures and a resolved city, so the
+  results state and the selected-tile accent were seen rather than assumed.
 
-**Context for the CI history:** CI had been red on *every* push since at least 05:46 on
-2026-08-13, dying at the ledger check in 13–27s. The browser half of the suite had not
-executed in days. `c1d8103` let it run for the first time, which is why `628ac34` was
-needed — that failure was pre-existing and merely unmasked.
+**Two defects were found by looking and would have shipped otherwise:**
+
+1. The new nav rendered at `top: 20` — entirely underneath the 72px fixed header.
+   Present, painted, invisible. The clearance had to be margin, not padding, or the
+   element's own box still began at 0.
+2. Tapping an occasion reflowed the page by 21px, which the chrome-retraction logic read
+   as deliberate downward travel and hid the header on the user's first action.
+   `syncChromeBaseline` already existed for exactly this class of event; the results swap
+   was simply never wired to it.
+
+**Harness changes, declared because they gate this work:**
+
+- Removed `action bar sits flush on the tab bar` and `chrome stays flush at a simulated
+  34px inset`. Both were `gap === null || gap === 0`, so with both bars deleted they
+  would have reported PASS forever while measuring nothing — §13.2's "check that cannot
+  fail". Removed rather than silenced.
+- Added `primary nav clears the fixed header and is hit-testable`. **Its first version
+  was itself a check that could not fail** — it asserted `top >= 0` and passed while the
+  nav was buried under the header. It now measures against the header's real bottom edge
+  and hit-tests a point inside the nav. It has been observed RED twice (at `top=0` and
+  `top=67`) and green at `top=88`, so it is known to be capable of failing.
+- The suite's start trigger was the "Find a place" button. It now taps the first
+  `.occasion-grid` tile — the way a user starts a search. A first attempt used a bare
+  `[aria-pressed]`, which matched the period switcher and silently searched nothing.
+- The scroll-restore check scrolled to a hardcoded 400px; it now derives the offset from
+  the first card. It was skipping on a "fixture gap" that did not exist.
+
+**NOT verified:** iOS Safari anything; real Places responses (fixtures only); the parse
+rules against real phrasing; screen-reader pass; deployment reachability (§6 — the proxy
+403s everything, so this cannot be checked here).
 
 ## Protected decisions
 
-- **Cream is retired and must not return.** CLAUDE.md §7 now records this with measured
-  contrast for every tone. Do not "restore the warm palette".
-- **One axis on the tiles.** Occasion only. Party size, speed, budget and diet are
-  refinements. Re-merging them is the regression this work exists to undo.
-- **The tile set is derived from the local hour.** A fixed six is wrong at every hour but
-  one. Keep it client-derived; it cannot be server-rendered and cached without going stale.
-- **Image frames stay neutral until real photography exists.** Gradients as image
-  stand-ins were rejected by name. Venue photos come from the Places Photo API; occasion
-  imagery is a curated self-hosted set of ~20. See `docs/design/README.md`.
+- **Cream stays retired**; palette untouched by this work.
+- **One nav, in flow, at every width.** Do not reintroduce a fixed bottom tab bar.
+- **No Search button between intent and results.** The occasion tap is the query.
+- **The accent is spent once per screen.** That is why the wordmark is plain.
+- **The decision panel stays open on selection.**
 
 ## Next session: first three actions
 
-1. **Read the Actions tab for `7ee65be`.** If `checks.mjs` is red, that is the first job.
-2. **Open the deployed page and click an occasion tile.** Confirm the result list actually
-   changes. This is the unverified claim that matters most.
-3. **Run the full QA gate** at 390×844, 844×390 and 1440×900 in both schemes. No viewport
-   in this session was measured by `checks.mjs`; all of it was eyeballed in a browser.
+1. **Decide the Nearby chips.** The UI and the query path are built in `Sidebar.tsx` and
+   render the moment `areas` is passed; nothing passes it. Places `addressComponents`
+   carries `sublocality`, which is the honest source. This is a data-layer change.
+2. **Fix the two pre-existing failures** — `?tab=` deep link and the scaled-chip colour
+   assertion. Both predate this work; the chip check reports `rgb(200, 55, 28)`, which
+   *is* `--accent-terracotta`, so suspect the check before the code (§13.3).
+3. **Consider inverting the desktop sticky column.** The prototype makes the RESULTS
+   column sticky and lets the decision column scroll with the page; the app does the
+   opposite, so the occasion grid scrolls inside a 764px sticky scroller at 1440×900.
+   Pre-existing, deliberate-looking, and not touched here.
 
 ## Known risks and open questions
 
-- **Tile → query is unproven.** See above.
-- **Occasion labels are hardcoded English.** `docs/design/README.md` specifies per-city
-  vocabulary (Braai / Sunday roast / Terrasse). Not implemented — the app currently reads
-  translated rather than local outside South Africa.
-- **Several occasions share a `vibe` value** (Neighbourhood and Late night both map to
-  `tired & cosy`). Distinct labels, identical query. Honest for now, but the tiles promise
-  a distinction the data layer does not yet make.
-- **Two occasions per period are duplicated across periods** by design; if the set is ever
-  reordered, keep slot order stable so muscle memory survives.
-- **Photos did not render in one capture** where they had rendered minutes earlier.
-  Changes were CSS-only, so this is most likely Places throttling on repeated reloads —
-  but it was not confirmed.
-- **`src/campusData.ts` is untracked** and trips `ledger-check.mjs` locally while CI never
-  sees it. Either commit and declare it, or delete it.
+- **The Nearby chips are the one prototype element deliberately not shipped.** The
+  prototype hardcodes six neighbourhoods per city for four cities. This app resolves any
+  city on earth, and its only `areas` state is TheMealDB's *cuisine* list — wiring that
+  in would have labelled "Italian" a neighbourhood of Cape Town. Declined under §8.
+- **Occasion tiles render an empty neutral frame** where photography goes. Honest, but on
+  a light background it reads as a blank card. The curated image set (§7) closes this;
+  until then the grid is emptier than the prototype looks.
+- **The docked bars in EateryView and RecipeView are now the only viewport-floor geometry
+  in the app, and nothing in `checks.mjs` measures them.** The two checks that used to
+  live near this area measured the browse surface only. Real gap, recorded not papered.
+- **`App.tsx` remains un-audited as a whole** despite heavy edits here.
