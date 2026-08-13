@@ -32,7 +32,12 @@ button,input,select{font-family:inherit}
    inset frame, and a barely-there tonal wash built from the surface tokens (no hue, no
    gradient-as-picture — §7). It reads as a plate, not a hole. */
 .ph::after{content:attr(data-mono);position:absolute;inset:0;display:grid;place-items:center;
-  font:280 clamp(26px,17cqw,64px)/1 var(--sans);letter-spacing:.06em;color:var(--ink);opacity:.13}
+  font:280 clamp(26px,17cqw,64px)/1 var(--sans);letter-spacing:.06em;color:var(--ink);opacity:.17}
+/* Ink at 17% reads as a watermark on the light ground and vanishes on the dark one, so the
+   dark scheme gets its own value — measured on screen, not assumed. */
+@media(prefers-color-scheme:dark){.ph::after{opacity:.28}}
+:root[data-theme="dark"] .ph::after{opacity:.28}
+:root[data-theme="light"] .ph::after{opacity:.17}
 .ph:not(.has-photo){container-type:inline-size;
   background:radial-gradient(120% 100% at 50% 0%,var(--surf) 0%,var(--surf2) 100%)}
 .ph:not(.has-photo)::before{content:"";position:absolute;inset:7px;border:1px solid var(--line);
@@ -342,3 +347,14 @@ body[data-view="detail"] .dgrid>*:nth-child(2){animation-delay:.08s}
 .hero.has-photo h1{color:#FFF}
 .hero.has-photo .kick{color:rgba(255,255,255,.78)}
 .hero.has-photo p{color:rgba(255,255,255,.84)}
+
+/* The tab strip scrolls when four labels do not fit, but the scrollbar itself was
+   rendering as a grey sliver welded to the right edge with "Saved" tucked under it. */
+.tabs{scrollbar-width:none;-ms-overflow-style:none}
+.tabs::-webkit-scrollbar{display:none}
+
+/* "Kept on this device" replaced the signed-in row; it is a statement, not an account. */
+.who{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid var(--line);
+  border-radius:var(--r2);background:var(--surf)}
+.who b{font-size:14px;font-weight:640;letter-spacing:-.02em}
+.who span{font-size:11.5px;color:var(--ink3)}

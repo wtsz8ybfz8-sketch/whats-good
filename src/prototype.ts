@@ -175,12 +175,12 @@ const LS = {
   get: (k: string) => { try { return JSON.parse(localStorage.getItem('wg_' + k) || 'null'); } catch { return null; } },
   set: (k: string, v: unknown) => { try { localStorage.setItem('wg_' + k, JSON.stringify(v)); } catch { /* private mode */ } },
 };
-let user = LS.get('user');
 const saved: { places: string[]; recipes: string[] } = LS.get('saved') || { places: [], recipes: [] };
 let savedSeg: 'places' | 'recipes' = 'places';
 const isSaved = (t: 'places' | 'recipes', n: string) => saved[t].includes(n);
 function toggleSave(t: 'places' | 'recipes', n: string, el?: HTMLElement) {
-  if (!user) { tab = 'saved'; build(); return; }
+  /* Saving used to bounce you to a sign-in gate that could not save anything anywhere.
+     It saves. */
   const i = saved[t].indexOf(n);
   if (i < 0) saved[t].push(n); else saved[t].splice(i, 1);
   LS.set('saved', saved);
@@ -248,6 +248,24 @@ const monogram = (name?: string) => (name || '')
   .split(/[\s&·-]+/).filter(Boolean).slice(0, 2)
   .map((w) => w[0]).join('').toUpperCase() || '·';
 
+/* The landing screen used to be the ONE screen with no photograph — the hero only took
+   one once results arrived, so the first impression of a product whose whole pitch is
+   photography was a flat dark box. One Places search per city, cached for the session, is
+   enough to dress it: a real place in the city you are actually in, not stock. */
+const heroCache: Record<string, string> = {};
+async function heroPreview() {
+  const k = city + '|' + tab;
+  if (heroCache[k]) { heroPhoto(heroCache[k]); return; }
+  const out = await fetchVenues(
+    tab === 'out' ? 'popular bar' : 'well reviewed restaurant',
+    city, undefined, undefined, tab === 'out' ? 'bar' : 'restaurant',
+  );
+  if (out.status !== 'ok') return;
+  const url = out.venues.find((v) => v.photoUrl)?.photoUrl;
+  /* Only if the user has not since picked an occasion — its own photo outranks this one. */
+  if (url && !picked) { heroCache[k] = url; heroPhoto(url); }
+}
+
 /** Dresses the hero with a photograph, or returns it to its plain plate. */
 function heroPhoto(url?: string) {
   const h = $('hero');
@@ -295,7 +313,15 @@ function periods() {
 function build() {
   const t = T(), C = CITY[city], P2 = t.per.find((p) => p.k === period) || t.per[0];
   document.body.dataset.view = 'browse';
-  $('ctx').textContent = city + ' · ' + String(hour).padStart(2, '0') + ':' + String(new Date().getMinutes()).padStart(2, '0') + ' ' + C.tz;
+  /* Two clocks used to disagree on screen: the header select said 23:00 while this line
+     said 23:24 — because it spliced the SELECTED hour onto the LIVE minutes. Now it is one
+     or the other, and it says which: the live time when the app set the period itself, and
+     an explicit "planning for" when the hour was chosen by hand. */
+  const nowT = new Date();
+  $('ctx').textContent = manual
+    ? city + ' · planning for ' + String(hour).padStart(2, '0') + ':00 ' + C.tz
+    : city + ' · ' + String(nowT.getHours()).padStart(2, '0') + ':'
+      + String(nowT.getMinutes()).padStart(2, '0') + ' ' + C.tz;
   $('h1').innerHTML = t.h;
   $('hsub').textContent = t.s;
   $('why').textContent = manual ? 'you chose this' : 'set by the clock';
@@ -311,6 +337,7 @@ function build() {
   ($('parsed') as HTMLElement).style.display = '';
   periods();
   picked = null; venues = []; heroPhoto(undefined);
+  if (tab !== 'cook') heroPreview();
   $('refine').classList.remove('on');
   $('rt').textContent = 'Nothing picked yet';
   $('rc').textContent = '';
@@ -319,7 +346,9 @@ function build() {
   P2.keys.forEach((k, i) => {
     const b = document.createElement('button');
     b.className = 'tile'; b.type = 'button'; b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = '<span class="ph"></span><span class="ring"></span>'
+    /* The tile plate carries the occasion's own monogram, so the top half is composed
+       rather than void — the same plate the venue cards use, one system. */
+    b.innerHTML = '<span ' + phAttrs(undefined, label(k)) + '></span><span class="ring"></span>'
       + '<span class="bd">' + icon(D[k][0]) + '<span><span class="nm">' + esc(label(k)) + '</span><span class="ds">' + esc(D[k][1]) + '</span></span></span>';
     b.onclick = () => pick(k, b);
     $('grid').appendChild(b);
@@ -343,37 +372,39 @@ function renderSaved() {
   let h = document.getElementById('savedwrap');
   if (!h) { h = document.createElement('div'); h.id = 'savedwrap'; $('time').parentNode!.insertBefore(h, $('time')); }
   h.style.display = '';
-  if (!user) {
-    h.innerHTML = '<div class="auth"><h3>Keep what you like</h3>'
-      + '<p>Sign in to save places and recipes. They stay on your account, on every device.</p>'
-      + '<input id="em" type="email" placeholder="you@email.com" autocomplete="email">'
-      + '<button id="si">Continue</button></div>';
-    $('si').onclick = () => {
-      const v = ($('em') as HTMLInputElement).value.trim();
-      if (!v || !v.includes('@')) { $('em').focus(); return; }
-      user = { email: v }; LS.set('user', user); renderSaved();
-    };
-    $('em').addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') ($('si') as HTMLElement).click(); });
-    return;
-  }
+  /* THE SIGN-IN WAS A LIE, and it was told at the exact moment a person decides whether
+     to trust the app. The gate said "They stay on your account, on every device" — there
+     is no account: any string with an @ in it was accepted, nothing was sent anywhere, and
+     every save went to localStorage in that one browser. `src/auth.ts` has real token
+     plumbing, but nothing here ever called it. Until a backend exists, the honest product
+     is no gate at all: saving works immediately, and the screen says plainly where the
+     list lives. When auth.ts is wired to a real server, this is where sign-in returns —
+     as an upgrade that moves the list, not as a toll gate that pretends to. */
   const list = saved[savedSeg];
-  h.innerHTML = '<div class="who"><b>' + esc(user.email) + '</b><span>signed in</span>'
-      + '<button class="savebtn" id="so">Sign out</button></div>'
+  h.innerHTML = '<div class="who"><b>Kept on this device</b>'
+      + '<span>' + (saved.places.length + saved.recipes.length) + ' saved · this browser only, nothing sent anywhere</span></div>'
     + '<div class="segs" style="margin-top:16px">'
       + '<button class="seg" data-s="places" aria-pressed="' + (savedSeg === 'places') + '">Places · ' + saved.places.length + '</button>'
       + '<button class="seg" data-s="recipes" aria-pressed="' + (savedSeg === 'recipes') + '">Recipes · ' + saved.recipes.length + '</button></div>'
     + (list.length ? '<div class="grid">' + list.map((n) =>
-        '<button class="tile in" type="button" aria-pressed="false"><span class="ph"></span><span class="ring"></span>'
+        '<button class="tile in" type="button" aria-pressed="false"><span ' + phAttrs(undefined, n) + '></span><span class="ring"></span>'
         + '<span class="bd"><span><span class="nm">' + esc(n) + '</span><span class="ds">' + (savedSeg === 'places' ? 'Saved place' : 'Saved recipe') + '</span></span></span></button>').join('') + '</div>'
       : '<p class="empty">Nothing saved under ' + savedSeg + ' yet. Tap Save on anything and it lands here.</p>');
-  $('so').onclick = () => { user = null; LS.set('user', null); renderSaved(); };
   h.querySelectorAll('.seg').forEach((b) => { (b as HTMLElement).onclick = () => { savedSeg = (b as HTMLElement).dataset.s as 'places' | 'recipes'; renderSaved(); }; });
 }
+
+/** True while `parse()` is choosing the tile, so `pick` knows not to clear the query. */
+let parseDriven = false;
 
 function pick(k: string, el: HTMLElement) {
   document.querySelectorAll('.tile').forEach((t) => t.setAttribute('aria-pressed', 'false'));
   el.setAttribute('aria-pressed', 'true');
   el.classList.remove('pop'); void (el as HTMLElement).offsetWidth; el.classList.add('pop');
+  /* Tapping a tile is a NEW intent. Now that the typed words drive the query, a stale
+     search box would silently override the tile the user just chose. Clearing it — unless
+     the parse line is what selected this tile in the first place — keeps the two paths
+     from fighting. */
+  if (!parseDriven) { ($('q') as HTMLInputElement).value = ''; $('parsed').innerHTML = ''; }
   picked = k; $('refine').classList.add('on'); render();
 }
 
@@ -392,7 +423,9 @@ async function render() {
   $('o-dist').textContent = d === 'any' ? 'anywhere' : (d as number).toFixed(1) + ' km';
   $('o-price').textContent = p;
   $('o-party').textContent = party === 8 ? '8+' : String(party);
-  $('rt').textContent = label(picked) + ' · ' + (areas.length ? areas.slice(0, 2).join(', ') : city);
+  const typedNow = ($('q') as HTMLInputElement).value.trim();
+  $('rt').textContent = (typedNow || label(picked))
+    + ' · ' + (areas.length ? areas.slice(0, 2).join(', ') : city);
 
   if (tab === 'cook') return renderRecipes();
 
@@ -401,7 +434,15 @@ async function render() {
   $('list').innerHTML = '<p class="empty">Looking…</p>';
 
   const kind = BAR_KEYS.has(picked) ? 'bar' : 'restaurant';
-  const terms = [QUERY[picked] || label(picked), ...areas].join(' ');
+  /* What the user TYPED outranks the tile the parse line happened to land on. Typing
+     "vegan ramen near a park" used to set the sliders, print "vegan · japanese · outdoor
+     seating", then search the occasion label "Neighbourhood" — which returned a café with
+     the word Neighbour in its name and no ramen anywhere. The parse line was describing an
+     understanding the query never carried. Now the typed words ARE the query, the tile's
+     terms only add to it, and the parse line is a readout of a search that really ran. */
+  const typed = ($('q') as HTMLInputElement).value.trim();
+  const terms = [typed, typed ? '' : (QUERY[picked] || label(picked)), ...areas]
+    .filter(Boolean).join(' ');
   const out = await fetchVenues(terms, city, sliderState().tier, undefined, kind);
   if (seq !== loadSeq) return;
 
@@ -629,8 +670,10 @@ function parse() {
   const all = [...new Set(hits.map((x) => x.note))];
   P3.innerHTML = '<b>Reading that as</b>' + all.map((n) => '<span class="pz">' + esc(n) + '</span>').join('');
   const tile = [...document.querySelectorAll('.tile')].find((t) => t.querySelector('.nm')?.textContent === label(h.occ));
+  parseDriven = true;
   if (tile) pick(h.occ, tile as HTMLElement);
   else { picked = h.occ; $('refine').classList.add('on'); render(); }
+  parseDriven = false;
 }
 
 /* ── verbatim: the rotating placeholder ──────────────────────────────────────── */
