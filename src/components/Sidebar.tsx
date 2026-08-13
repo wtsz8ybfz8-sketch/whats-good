@@ -1,7 +1,10 @@
 import React from'react';
 import { createPortal } from'react-dom';
 import { Dimensions } from'../types';
-import { Search, SlidersHorizontal, X, type LucideIcon } from'lucide-react';
+import {
+  Search, SlidersHorizontal, X, type LucideIcon,
+  Sunrise, Coffee, Soup, Zap, Compass, Salad, Flame, Sparkles, Moon, Wine, Store, Utensils,
+} from'lucide-react';
 import { cuisineIcon } from'../cuisineIcon';
 
 interface SidebarProps {
@@ -424,6 +427,59 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  { label:'Feeling fancy', value:'feeling fancy' },
  ];
 
+ /* OCCASIONS — the primary selector.
+    One axis only: the occasion. Party size, budget and diet stay in the sheet below,
+    because "quick" and "just me" and "big group" can all be true at once and were
+    never moods (CLAUDE.md §7, docs/design/README.md).
+
+    Every tile maps onto an existing `vibe` value, so selecting one runs the SAME
+    Places query the mood sheet always ran. This is a new way into the existing data
+    layer, not a second one — nothing here invents a venue fact (§8).
+
+    The set is generated from the local hour under three periods. A fixed six is wrong
+    at every hour but the one it was designed for: at 09:00 "Late night" is noise and
+    breakfast is the whole product. */
+ const OCCASIONS: Record<string, { label: string; note: string; value: string; Icon: LucideIcon }[]> = {
+ am: [
+ { label:'Slow morning', note:'Nowhere to be', value:'lazy Sunday energy', Icon: Sunrise },
+ { label:'Coffee & work', note:'A plug, no rush', value:'stressed, need quick and easy', Icon: Coffee },
+ { label:'Fresh & light', note:'Start it well', value:'something fresh & light', Icon: Salad },
+ { label:'Comfort', note:'Warm, filling, no fuss', value:'need comfort food', Icon: Soup },
+ { label:'Neighbourhood', note:'Close, easy, reliable', value:'tired & cosy', Icon: Store },
+ { label:'Something new', note:'Not been before', value:'feeling adventurous', Icon: Compass },
+ ],
+ mid: [
+ { label:'Quick lunch', note:'In and out, still good', value:'stressed, need quick and easy', Icon: Zap },
+ { label:'Long lunch', note:'No hurry at all', value:'lazy Sunday energy', Icon: Utensils },
+ { label:'Fresh & light', note:'Nothing heavy', value:'something fresh & light', Icon: Salad },
+ { label:'Bold & spicy', note:'Wake yourself up', value:'craving something bold & spicy', Icon: Flame },
+ { label:'Neighbourhood', note:'Close, easy, reliable', value:'tired & cosy', Icon: Store },
+ { label:'Something new', note:'Not been before', value:'feeling adventurous', Icon: Compass },
+ ],
+ pm: [
+ { label:'Date night', note:'Low light, worth it', value:'feeling fancy', Icon: Wine },
+ { label:'Comfort', note:'Warm, filling, no fuss', value:'need comfort food', Icon: Soup },
+ { label:'Celebrating', note:'Push the boat out', value:'treating myself', Icon: Sparkles },
+ { label:'Bold & spicy', note:'Something with heat', value:'craving something bold & spicy', Icon: Flame },
+ { label:'Late night', note:"Kitchen's still open", value:'tired & cosy', Icon: Moon },
+ { label:'Something new', note:'Not been before', value:'feeling adventurous', Icon: Compass },
+ ],
+ };
+ const PERIODS = [
+ { key:'am', name:'Morning', span:'05–11' },
+ { key:'mid', name:'Midday', span:'11–17' },
+ { key:'pm', name:'Evening', span:'17–late' },
+ ];
+
+ /* Derived from the device clock on the client. A time-derived UI cannot be rendered
+    server-side and cached without going stale within the hour. */
+ const nowPeriod = React.useMemo(() => {
+ const h = new Date().getHours();
+ return h < 11 ?'am' : h < 17 ?'mid' :'pm';
+ }, []);
+ const [period, setPeriod] = React.useState<string>(nowPeriod);
+ const periodIndex = PERIODS.findIndex((p) => p.key === period);
+
  // Baseline, then whatever is genuinely nearby that the baseline doesn't already
  // cover. A German in London gets Italian AND the Lebanese place down the road.
  /* Ten cuisines wrapped to five rows and swallowed the phone screen before the user
@@ -584,9 +640,92 @@ export const Sidebar: React.FC<SidebarProps> = ({ dimensions, onChange, onTrigge
  </form>
  </div>
 
+ {/* THE OCCASION — the primary decision, and the only one on this axis.
+     Selecting a tile sets `vibe`, which is the same field the mood sheet sets, and
+     immediately re-queries Places: the selection IS the query, so there is no Search
+     button standing between intent and results. */}
+ <div className="flex flex-col gap-4">
+ <div className="flex items-baseline justify-between gap-3">
+ <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">The occasion</span>
+ <span className="text-[11px] text-[var(--text-subtle)]">
+ {period === nowPeriod ?'set by the clock' :'you chose this'}
+ </span>
+ </div>
+
+ {/* Three periods. Auto-set from the device clock, switchable in one tap so
+     planning dinner at 10am does not need a hidden control. */}
+ <div className="relative flex rounded-full bg-[var(--surface-quiet-bg)] p-1">
+ <span
+ aria-hidden="true"
+ className="absolute top-1 bottom-1 rounded-full bg-[var(--surface-bg)] shadow-sm transition-transform duration-500 ease-out"
+ style={{ width:'calc((100% - 0.5rem) / 3)', transform:`translateX(${periodIndex * 100}%)` }}
+ />
+ {PERIODS.map((p) => (
+ <button
+ key={p.key}
+ type="button"
+ onClick={() => setPeriod(p.key)}
+ aria-pressed={period === p.key}
+ className={`relative z-10 flex-1 hit-44 rounded-full px-2 py-2.5 text-center transition-colors duration-300 cursor-pointer ${
+ period === p.key ?'text-[var(--charcoal)]' :'text-[var(--text-muted)]'
+ }`}
+ >
+ <span className="block text-[9.5px] font-semibold tracking-[0.14em] opacity-70 tabular-nums">{p.span}</span>
+ <span className="block text-[13.5px] font-semibold tracking-[-0.02em]">
+ {p.name}
+ {p.key === nowPeriod && <span className="ml-1.5 text-[9.5px] tracking-[0.12em] text-[var(--accent-terracotta)]">Now</span>}
+ </span>
+ </button>
+))}
+ </div>
+
+ <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+ {OCCASIONS[period].map((o) => {
+ const active = dimensions.vibe === o.value;
+ return (
+ <button
+ key={o.label}
+ type="button"
+ onClick={() => {
+ onChange({ ...dimensions, vibe: active ? null : o.value });
+ if (!active) onTriggerMatch();
+ }}
+ aria-pressed={active}
+ className={`group relative overflow-hidden rounded-2xl border text-left transition-colors duration-300 cursor-pointer ${
+ active
+ ?'border-[var(--accent-terracotta)]'
+ :'border-[var(--rule)] hover:border-[var(--text-subtle)]'
+ }`}
+ >
+ {/* Image frame. Real photography drops in here — a curated, self-hosted
+     set, one image per occasion (docs/design/README.md). Neutral until
+     it does, rather than a gradient pretending to be a photograph. */}
+ <span className="block aspect-[4/3] w-full bg-[var(--surface-quiet-bg)]" aria-hidden="true" />
+ <span className={`block px-3 py-2.5 transition-colors duration-300 ${
+ active ?'bg-[var(--accent-terracotta)]' :'bg-[var(--surface-bg)]'
+ }`}>
+ <o.Icon
+ className={`mb-1.5 h-[18px] w-[18px] transition-transform duration-500 ${
+ active ?'text-[var(--accent-contrast)] scale-110' :'text-[var(--text-muted)]'
+ }`}
+ strokeWidth={1.5}
+ />
+ <span className={`block text-[14.5px] font-semibold leading-tight tracking-[-0.025em] ${
+ active ?'text-[var(--accent-contrast)]' :'text-[var(--charcoal)]'
+ }`}>{o.label}</span>
+ <span className={`mt-0.5 block text-[11px] leading-snug ${
+ active ?'text-[var(--accent-contrast)]/75' :'text-[var(--text-subtle)]'
+ }`}>{o.note}</span>
+ </span>
+ </button>
+);
+})}
+ </div>
+ </div>
+
  <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)] select-none">
  <span className="h-px w-10 bg-[var(--accent-terracotta)]" />
- <span>Or refine the feeling</span>
+ <span>Or narrow it down</span>
  </div>
 
  {/* THE one horizontal rail on this screen. Cuisine is the primary axis — it is
