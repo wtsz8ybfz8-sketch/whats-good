@@ -197,6 +197,13 @@ let city = 'Cape Town', tab = 'eat', period = 'pm', picked: string | null = null
 
 /** Live venues for the current query. The prototype's `NAMES`/`BLURB` arrays are gone. */
 let venues: Venue[] = [];
+/** The TheMealDB records behind the cards on screen — search.php returns the full
+ *  record, so opening one costs no second request. */
+interface Meal {
+  strMeal: string; strMealThumb: string; strCategory: string; strArea: string;
+  strInstructions?: string; strTags?: string; strYoutube?: string; strSource?: string;
+}
+let recipes: Meal[] = [];
 let loadSeq = 0;
 
 Object.keys(CITY).forEach((c) => { const o = document.createElement('option'); o.textContent = c; $('city').appendChild(o); });
@@ -229,6 +236,34 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
    out. */
 const phStyle = (url?: string) =>
   (url ? " has-photo\" style=\"background-image:url('" + url.replace(/'/g, '%27').replace(/"/g, '%22') + "')" : '');
+
+/* The no-photo state. Google returns venues with no photograph at all, and TheMealDB has
+   gaps too — so this is a state the product is in regularly, not an edge case. The old
+   answer was the word "Image", which reads as an unfinished build. Gradients are banned
+   (§7) and documentation shots from OSM/Wikimedia were rejected by name, so the honest
+   move is typographic: the venue's own monogram, set in the neutral palette, treated as
+   a deliberate plate rather than a hole where a picture failed. */
+const monogram = (name?: string) => (name || '')
+  .replace(/^(the|le|la|el)\s+/i, '')
+  .split(/[\s&·-]+/).filter(Boolean).slice(0, 2)
+  .map((w) => w[0]).join('').toUpperCase() || '·';
+
+/** Dresses the hero with a photograph, or returns it to its plain plate. */
+function heroPhoto(url?: string) {
+  const h = $('hero');
+  if (url) {
+    h.classList.add('has-photo');
+    h.style.backgroundImage = "url('" + url.replace(/'/g, '%27') + "')";
+  } else {
+    h.classList.remove('has-photo');
+    h.style.backgroundImage = '';
+  }
+}
+
+/** Every `.ph` panel in the app: a real photograph, or its monogram plate. */
+const phAttrs = (url?: string, name?: string, extra = '') =>
+  'class="' + (extra ? extra + ' ' : '') + 'ph' + phStyle(url) + '"'
+  + (url ? '' : ' data-mono="' + esc(monogram(name)) + '"');
 
 function tabs() {
   $('tabs').innerHTML = '';
@@ -275,7 +310,7 @@ function build() {
   (document.querySelector('.search') as HTMLElement).style.display = '';
   ($('parsed') as HTMLElement).style.display = '';
   periods();
-  picked = null; venues = [];
+  picked = null; venues = []; heroPhoto(undefined);
   $('refine').classList.remove('on');
   $('rt').textContent = 'Nothing picked yet';
   $('rc').textContent = '';
@@ -382,6 +417,12 @@ async function render() {
     return;
   }
   $('rc').textContent = venues.length + (kind === 'bar' ? ' bars' : ' places');
+  /* The hero was a flat panel on every screen — the single largest surface in the app,
+     carrying no photograph, on a product whose selling point is photography. It now
+     borrows the top result's own Places photo: real, already fetched for the card below
+     it, costs no extra request, and it is a picture OF the thing being recommended
+     rather than stock. It changes as the occasion changes, which is the point. */
+  heroPhoto(venues.find((v) => v.photoUrl)?.photoUrl);
   $('list').innerHTML = '';
   venues.forEach((v, i) => {
     /* A <button>, not the prototype's <div>. The prototype made result cards clickable
@@ -402,7 +443,7 @@ async function render() {
         : '<span class="st w"><i></i>Closed</span>';
     const meta = [v.fallbackDistance, typeof v.priceTier === 'number' ? PR[v.priceTier - 1] : null]
       .filter(Boolean).join(' · ');
-    c.innerHTML = '<div class="th ph' + phStyle(v.photoUrl) + '"></div><div style="min-width:0;flex:1">'
+    c.innerHTML = '<div ' + phAttrs(v.photoUrl, v.name, 'th') + '></div><div style="min-width:0;flex:1">'
       + '<h3>' + esc(v.name) + '</h3><p>' + esc(v.cuisine || v.address) + '</p><div class="exit">'
       + status
       + (meta ? '<span class="mt">' + esc(meta) + '</span>' : '')
@@ -420,7 +461,7 @@ async function render() {
 async function renderRecipes() {
   const seq = ++loadSeq;
   $('list').innerHTML = '<p class="empty">Looking…</p>';
-  let meals: { strMeal: string; strMealThumb: string; strCategory: string; strArea: string }[] = [];
+  let meals: Meal[] = [];
   try {
     const res = await fetch('https://www.themealdb.com/api/json/v1/1/search.php?s='
       + encodeURIComponent(COOK_QUERY[picked!] || picked!));
@@ -432,12 +473,18 @@ async function renderRecipes() {
     return;
   }
   meals = meals.slice(0, 6);
+  recipes = meals;
+  heroPhoto(meals.find((m) => m.strMealThumb)?.strMealThumb);
   $('rc').textContent = meals.length + ' recipes';
   $('list').innerHTML = '';
   meals.forEach((m, i) => {
     const b = document.createElement('button');
     b.className = 'rc'; b.type = 'button';
-    b.innerHTML = '<div class="ph' + phStyle(m.strMealThumb) + '"></div><div class="bd2"><h3>' + esc(m.strMeal) + '</h3>'
+    b.setAttribute('aria-label', 'Open ' + m.strMeal);
+    /* The card was a <button> that did nothing: six recipes you could look at and not
+       open. Cook was the only tab with no second screen. */
+    b.addEventListener('click', () => recipe(i));
+    b.innerHTML = '<div ' + phAttrs(m.strMealThumb, m.strMeal) + '></div><div class="bd2"><h3>' + esc(m.strMeal) + '</h3>'
       + '<p>' + esc([m.strArea, m.strCategory].filter(Boolean).join(' · ')) + '</p>'
       + '<div class="meta"><button class="savebtn" aria-pressed="' + isSaved('recipes', m.strMeal) + '">Save</button></div></div>';
     b.querySelector('.savebtn')!.addEventListener('click', (e) => {
@@ -446,6 +493,58 @@ async function renderRecipes() {
     $('list').appendChild(b);
     setTimeout(() => b.classList.add('in'), 35 + i * 55);
   });
+}
+
+/* The recipe screen. Every field on it comes straight off the TheMealDB record — the
+   ingredients with their measures, the method as the source wrote it, the video and the
+   original page. No cook time, no difficulty, no serving count: TheMealDB does not
+   publish them, and a computed guess dressed as a fact is the same failure as a fake
+   dish price (§8). */
+function recipe(idx: number) {
+  const m = recipes[idx];
+  if (!m) return;
+  const ing: [string, string][] = [];
+  for (let n = 1; n <= 20; n++) {
+    const name = (m as unknown as Record<string, string>)['strIngredient' + n];
+    const measure = (m as unknown as Record<string, string>)['strMeasure' + n];
+    if (name && name.trim()) ing.push([name.trim(), (measure || '').trim()]);
+  }
+  const steps = (m.strInstructions || '')
+    .split(/\r?\n+/).map((s) => s.replace(/^\s*(STEP\s*)?\d+[.)]?\s*/i, '').trim())
+    .filter((s) => s.length > 1);
+  const tags = (m.strTags ? m.strTags.split(',') : [])
+    .map((t) => t.trim()).filter(Boolean).slice(0, 4);
+
+  $('detail').innerHTML =
+    '<button class="back" id="bk">← Back to ' + esc(label(picked || 'local')) + '</button>'
+    + '<div ' + phAttrs(m.strMealThumb, m.strMeal, 'dhero') + '><div class="in"><h2>' + esc(m.strMeal) + '</h2>'
+      + '<p class="sub">' + esc([m.strArea, m.strCategory].filter(Boolean).join(' · ')) + '</p></div></div>'
+    + (tags.length ? '<div class="rtags">' + tags.map((t) => '<span class="pz">' + esc(t) + '</span>').join('') + '</div>' : '')
+    + '<div class="dgrid"><div>'
+      + (steps.length
+          ? '<h4>Method</h4><ol class="steps">' + steps.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ol>'
+          : '')
+    + '</div><div><div class="side">'
+      + (ing.length
+          ? '<h4 class="sh">Ingredients</h4><div class="ings">' + ing.map(([n2, q]) =>
+              '<div class="ing"><span>' + esc(n2) + '</span><b>' + esc(q) + '</b></div>').join('') + '</div>'
+          : '')
+      + (m.strYoutube
+          ? '<a class="cta" style="text-align:center;text-decoration:none" href="' + esc(m.strYoutube) + '" target="_blank" rel="noopener noreferrer">Watch it made</a>'
+          : '')
+      + (m.strSource
+          ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(m.strSource) + '" target="_blank" rel="noopener noreferrer">Original recipe</a>'
+          : '')
+      + '<button class="cta2" id="sv" aria-pressed="' + isSaved('recipes', m.strMeal) + '">Save</button>'
+    + '</div></div></div>';
+
+  listScrollY = window.scrollY;
+  document.body.dataset.view = 'detail';
+  history.pushState({ wgDetail: true }, '');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  $('bk').onclick = () => history.back();
+  const sv = document.getElementById('sv');
+  if (sv) sv.onclick = () => toggleSave('recipes', m.strMeal, sv);
 }
 
 function venue(idx: number) {
@@ -471,9 +570,9 @@ function venue(idx: number) {
 
   $('detail').innerHTML =
     '<button class="back" id="bk">← Back to ' + esc(label(picked || 'local')) + '</button>'
-    + '<div class="dhero ph' + phStyle(v.photoUrl) + '"><div class="in"><h2>' + esc(v.name) + '</h2>'
+    + '<div ' + phAttrs(v.photoUrl, v.name, 'dhero') + '><div class="in"><h2>' + esc(v.name) + '</h2>'
       + '<p class="sub">' + esc([v.cuisine, v.address].filter(Boolean).join(' · ')) + '</p></div></div>'
-    + (gal.length ? '<div class="gal">' + gal.map((u) => '<div class="ph' + phStyle(u) + '"></div>').join('') + '</div>' : '')
+    + (gal.length ? '<div class="gal">' + gal.map((u) => '<div ' + phAttrs(u, v.name) + '></div>').join('') + '</div>' : '')
     + '<div class="dgrid"><div>'
       + (facts.length ? '<div class="facts">' + facts.map((f) =>
           '<div class="fact"><u>' + esc(f[0]) + '</u><b>' + esc(f[1]) + '</b>'

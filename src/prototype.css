@@ -26,9 +26,19 @@ button,input,select{font-family:inherit}
 /* photography — narrow analogous warm band + grain, stands in for real photos */
 /* image frame — real photography drops in here; neutral until it does */
 .ph{position:relative;overflow:hidden;background:var(--surf2);isolation:isolate}
-.ph::after{content:"Image";position:absolute;inset:0;display:grid;place-items:center;
-  font:600 8.5px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);opacity:.4}
-.tile .ph::after,.dhero.ph::after,.hero.ph::after{align-items:flex-start;padding-top:14px}
+/* The no-photo plate. The word "Image" read as an unfinished build on a live page, and
+   it is a state real venues are in — Google returns plenty with no photograph. So it is
+   composed rather than apologised for: the monogram set large and quiet, a hairline
+   inset frame, and a barely-there tonal wash built from the surface tokens (no hue, no
+   gradient-as-picture — §7). It reads as a plate, not a hole. */
+.ph::after{content:attr(data-mono);position:absolute;inset:0;display:grid;place-items:center;
+  font:280 clamp(26px,17cqw,64px)/1 var(--sans);letter-spacing:.06em;color:var(--ink);opacity:.13}
+.ph:not(.has-photo){container-type:inline-size;
+  background:radial-gradient(120% 100% at 50% 0%,var(--surf) 0%,var(--surf2) 100%)}
+.ph:not(.has-photo)::before{content:"";position:absolute;inset:7px;border:1px solid var(--line);
+  border-radius:inherit;z-index:2;pointer-events:none;opacity:.75}
+.th.ph:not(.has-photo)::before,.gal .ph:not(.has-photo)::before{inset:5px}
+.dhero.ph:not(.has-photo)::after{place-items:start center;padding-top:34px}
 
 header{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:16px}
 .logo{font-size:17px;font-weight:650;letter-spacing:-.03em;white-space:nowrap;line-height:1}
@@ -282,3 +292,53 @@ input[type=range]{height:44px}
    ::before would sit over the text and swallow the caret. Padding, not ink: the pill's
    fill belongs to `.search`, so the input growing 3px changes nothing visible. */
 .search input{padding:13px 0}
+
+/* ── the recipe screen ───────────────────────────────────────────────────────── */
+.rtags{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.steps{margin:10px 0 0;padding:0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;position:relative;padding:0 0 16px 34px;font-size:14px;line-height:1.62;color:var(--ink2)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:22px;height:22px;border-radius:50%;
+  display:grid;place-items:center;font:650 10.5px/1 var(--sans);color:var(--ink3);
+  border:1px solid var(--line);background:var(--surf)}
+.steps li:last-child{padding-bottom:0}
+.side .sh{margin:0 0 10px}
+.ings{border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;margin-bottom:14px}
+.ing{display:flex;justify-content:space-between;gap:14px;padding:10px 13px;font-size:12.5px;
+  border-bottom:1px solid var(--line)}
+.ing:last-child{border-bottom:0}
+.ing span{color:var(--ink2)}
+.ing b{color:var(--ink);font-weight:640;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── entrance: the detail screen composes itself ─────────────────────────────── */
+/* Decoration only. Every fact, name and action is present and legible on first paint —
+   the hero name once shipped stranded at opacity:0 and that must not recur (§8). So the
+   hero is NOT animated; only the secondary bands settle in beneath it. */
+body[data-view="detail"] .gal>*,body[data-view="detail"] .rtags,
+body[data-view="detail"] .dgrid>*{animation:settle .5s cubic-bezier(.22,.8,.3,1) both}
+body[data-view="detail"] .gal>*:nth-child(2){animation-delay:.05s}
+body[data-view="detail"] .gal>*:nth-child(3){animation-delay:.1s}
+body[data-view="detail"] .gal>*:nth-child(4){animation-delay:.15s}
+body[data-view="detail"] .dgrid>*:nth-child(2){animation-delay:.08s}
+@keyframes settle{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* A photograph is not a background — it is a surface with its own tone, and the venue
+   name and its sub-line sit on top of it. Without a scrim the sub-line lands on whatever
+   the photo happens to be (grey ink on a grey bowl, measured unreadable on the Irish stew
+   shot). The scrim is a legibility device, not decoration: it only exists where a photo
+   exists, and the text is forced to a fixed light ink over it in BOTH schemes, because the
+   effective background is the photo, not the page. */
+.dhero.has-photo::before{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;
+  background:linear-gradient(to top,rgba(0,0,0,.80) 0%,rgba(0,0,0,.55) 28%,rgba(0,0,0,.12) 62%,transparent 88%)}
+.dhero.has-photo h2{color:#FFF;text-shadow:0 1px 22px rgba(0,0,0,.35)}
+.dhero.has-photo .sub{color:rgba(255,255,255,.86)}
+
+/* The hero carries the top result's photograph (see prototype.ts). Same scrim contract as
+   the venue hero: the picture is the background, so the type is pinned to a light ink and
+   the wash exists only where a photo does. */
+.hero.has-photo{background-size:cover;background-position:center}
+.hero.has-photo::after{content:none}
+.hero.has-photo::before{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit;
+  background:linear-gradient(to top,rgba(0,0,0,.72) 0%,rgba(0,0,0,.52) 40%,rgba(0,0,0,.34) 100%)}
+.hero.has-photo h1{color:#FFF}
+.hero.has-photo .kick{color:rgba(255,255,255,.78)}
+.hero.has-photo p{color:rgba(255,255,255,.84)}
