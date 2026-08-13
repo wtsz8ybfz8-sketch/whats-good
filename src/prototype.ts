@@ -221,7 +221,14 @@ const label = (k: string) => CITY[city].v[k] || FALL[k] || k;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 
 /** A `.ph` that carries a real photograph, or the prototype's neutral panel if none. */
-const phStyle = (url?: string) => (url ? ' has-photo" style="background-image:url(' + JSON.stringify(url) + ')' : '');
+/* The URL sits inside a double-quoted style attribute, so it MUST be wrapped in single
+   quotes — JSON.stringify used double quotes, which closed the attribute at the first
+   character of the URL. Every photo in the app rendered as an empty grey panel because
+   of it: the class landed (so the "Image" caption was suppressed) but the
+   background-image never did. Percent-encode the two characters that could still break
+   out. */
+const phStyle = (url?: string) =>
+  (url ? " has-photo\" style=\"background-image:url('" + url.replace(/'/g, '%27').replace(/"/g, '%22') + "')" : '');
 
 function tabs() {
   $('tabs').innerHTML = '';
