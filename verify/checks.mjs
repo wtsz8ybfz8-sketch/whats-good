@@ -585,7 +585,8 @@ async function main() {
     return { over: document.body.scrollWidth > innerWidth, miss };
   };
 
-  for (const label of ['Find', 'Stay In', 'Happy Hour', 'Saved']) {
+  // Tab wording follows docs/design/occasion-prototype.html: Eat out / Out / Cook / Saved.
+  for (const label of ['Eat out', 'Out', 'Cook', 'Saved']) {
     // Same two-nav ambiguity as the de-DE check below — target the rendered one.
     await page.locator(`nav[aria-label="Primary"] button:has-text("${label}"):visible`).first().click().catch(() => {});
     await page.waitForTimeout(900);
@@ -706,7 +707,7 @@ async function main() {
        30s and took the whole suite down. This picks whichever nav actually renders at
        the viewport under test, so the check keeps working at every width instead of
        silently depending on DOM order. */
-    await dp.locator('nav[aria-label="Primary"] button:has-text("Stay In"):visible').first().click();
+    await dp.locator('nav[aria-label="Primary"] button:has-text("Cook"):visible').first().click();
     await dp.waitForTimeout(1500);
     const card = dp.locator('[role="button"][aria-label^="View "]:visible').first();
     let chip = null;

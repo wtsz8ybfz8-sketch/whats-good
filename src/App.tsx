@@ -1616,7 +1616,18 @@ export default function App() {
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
- Find
+ Eat out
+ </button>
+ <button
+ onClick={() => handleTabSwitch('happy-hour')}
+ aria-current={activeTab === 'happy-hour' ? 'page' : undefined}
+ className={`desktop-nav-link hit-44 relative rounded-full px-4 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
+ activeTab === 'happy-hour'
+ ? 'bg-[var(--surface-bg)] text-[var(--charcoal)] shadow-sm'
+ : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
+ }`}
+ >
+ <span>Out</span>
  </button>
  <button
  onClick={() => {
@@ -1630,18 +1641,7 @@ export default function App() {
  : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
  }`}
  >
- Stay In
- </button>
- <button
- onClick={() => handleTabSwitch('happy-hour')}
- aria-current={activeTab === 'happy-hour' ? 'page' : undefined}
- className={`desktop-nav-link hit-44 relative rounded-full px-4 py-2 font-sans text-xs font-semibold transition-all duration-200 ease-out cursor-pointer flex items-center gap-1.5 ${
- activeTab === 'happy-hour'
- ? 'bg-[var(--surface-bg)] text-[var(--charcoal)] shadow-sm'
- : 'text-[var(--text-muted)] hover:text-[var(--charcoal)]'
- }`}
- >
- <span>Out</span>
+ Cook
  </button>
  <button
  onClick={() => handleTabSwitch('saved-recipes')}
@@ -1668,9 +1668,9 @@ export default function App() {
  >
  <ul className="flex items-stretch">
  {([
- { tab:'mood' as ActiveTab, label:'Find', Icon: Search },
+ { tab:'mood' as ActiveTab, label:'Eat out', Icon: Search },
  { tab:'happy-hour' as ActiveTab, label:'Out', Icon: Sparkles },
- { tab:'random' as ActiveTab, label:'Stay In', Icon: Dices },
+ { tab:'random' as ActiveTab, label:'Cook', Icon: Dices },
  { tab:'saved-recipes' as ActiveTab, label:'Saved', Icon: Heart },
  ]).map(({ tab, label, Icon }) => {
  const active = activeTab === tab;
@@ -2099,7 +2099,7 @@ export default function App() {
  onClick={() => activeTab ==='saved-recipes' ? handleTabSwitch('mood') : handleTabSwitch('random')}
  className="hit-44 inline-flex items-center gap-2 px-6 py-3 bg-[var(--accent-terracotta)] hover:opacity-90 text-[var(--accent-contrast)] rounded-xl font-sans text-xs font-bold shadow-md transition-all cursor-pointer"
  >
- {activeTab ==='saved-recipes' ?'Find a Place' :'Go to Stay In'}
+ {activeTab ==='saved-recipes' ?'Eat out' :'Go to Cook'}
  </button>
  </div>
 ) : (
