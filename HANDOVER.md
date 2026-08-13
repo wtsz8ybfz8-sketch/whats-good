@@ -2,7 +2,7 @@
 
 ## Status
 
-**`claude/version-prototype-mismatch-fjqtrx` is at `<sha>`, pushed.**
+**`claude/version-prototype-mismatch-fjqtrx` is at `206fe11`, pushed.**
 
 The app IS the prototype. `docs/design/occasion-prototype.html` was transplanted whole and
 wired to live data. The React app is deleted.
