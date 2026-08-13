@@ -1,9 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { Star } from "lucide-react";
 
-import { getVenue } from "@/lib/discovery.functions";
+import { getVenue, venueGuide } from "@/lib/discovery.functions";
 import { priceLabel } from "@/lib/food";
 
 export const Route = createFileRoute("/venue/$id")({
@@ -18,16 +16,22 @@ export const Route = createFileRoute("/venue/$id")({
       },
     ],
   }),
+  loader: async ({ params }) => {
+    const venue = await getVenue({ data: { id: params.id } });
+    if (!venue) return { venue: null, guide: null };
+    // Awaited after the venue resolves, and already guarded to null on failure,
+    // so the page never depends on Wikipedia being up.
+    const guide = await venueGuide({
+      data: { name: venue.name, city: venue.address.split(",").slice(-2)[0]?.trim() ?? "" },
+    });
+    return { venue, guide };
+  },
   component: VenuePage,
 });
 
 function VenuePage() {
-  const { id } = Route.useParams();
-  const fetchVenue = useServerFn(getVenue);
-  const { data: venue, isLoading } = useQuery({
-    queryKey: ["venue", id],
-    queryFn: () => fetchVenue({ data: { id } }),
-  });
+  const { venue, guide } = Route.useLoaderData();
+  const isLoading = useRouterState({ select: (state) => state.isLoading });
 
   if (isLoading) return <p className="mx-auto max-w-3xl px-5 py-16 text-muted-foreground">Loading…</p>;
   if (!venue)
@@ -62,6 +66,34 @@ function VenuePage() {
         </p>
       ) : null}
       <p className="mt-4">{venue.address}</p>
+
+      {guide ? (
+        <section className="mt-8 rounded-2xl border border-border bg-card p-5">
+          {guide.awards.length > 0 ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {guide.awards.map((award) => (
+                <span
+                  key={award}
+                  className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium"
+                >
+                  {award}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <p className="text-[15px] leading-relaxed">{guide.extract}</p>
+          {/* Attributed out loud. This is Wikipedia's writing, not ours, and the
+              awards are Wikidata's structured claims — both checkable. */}
+          <a
+            href={guide.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-3 inline-block text-xs text-muted-foreground underline underline-offset-4"
+          >
+            From Wikipedia — read the full article
+          </a>
+        </section>
+      ) : null}
 
       {venue.hours.length > 0 ? (
         <section className="mt-8">

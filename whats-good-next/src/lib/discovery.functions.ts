@@ -76,6 +76,20 @@ export const getVenue = createServerFn({ method: "GET" })
     return placeDetails(data.id);
   });
 
+/**
+ * Encyclopaedia + guide facts for one venue. Separate from getVenue so a
+ * Wikipedia outage can never take the venue page down with it — this resolves
+ * to null and the page simply shows one section fewer.
+ */
+export const venueGuide = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) =>
+    z.object({ name: z.string().min(1).max(200), city: z.string().max(200).default("") }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { guideFacts } = await import("./guides.server");
+    return guideFacts(data.name, data.city).catch(() => null);
+  });
+
 export const searchRecipes = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ query: z.string().trim().min(1).max(80) }).parse(input),
