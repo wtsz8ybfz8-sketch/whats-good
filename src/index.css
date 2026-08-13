@@ -548,7 +548,7 @@
      doing nothing. Expensive interfaces are mostly one quiet surface, with the
      colour spent on content. One barely-there warm lift, nothing else. */
   --body-gradient:
-    radial-gradient(ellipse 120% 70% at 50% -10%, rgba(198, 160, 130, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgba(200, 55, 28, 0.035) 0%, transparent 60%),
     linear-gradient(#F5F4F2, #F5F4F2);
 }
 
@@ -594,7 +594,7 @@ html.dark {
 
   /* Same restraint on dark — one warm lift over a near-flat near-black. */
   --body-gradient:
-    radial-gradient(ellipse 120% 70% at 50% -10%, rgba(120, 55, 28, 0.16) 0%, transparent 62%),
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgba(255, 90, 60, 0.055) 0%, transparent 62%),
     linear-gradient(#0E0E0D, #0E0E0D);
 }
 
