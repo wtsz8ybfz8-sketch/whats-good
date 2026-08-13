@@ -43,6 +43,8 @@ inspecting, update the row with the date, the method, and — critically — wha
 | `main.tsx` | 2026-08-01 | Browser boot | Telemetry installs before render; app boots clean |
 | `ErrorBoundary.tsx` | 2026-08-01 | Source + reasoning | Raw exception moved behind a disclosure; reports to telemetry. **Not re-opened in a browser after the copy change** |
 | `locale.ts` / `cuisineRail.ts` / `cuisineIcon.ts` / `venue.ts` / `types.ts` / `useSavedRecipes.ts` / `StatusStates.tsx` | **NEVER INSPECTED** | — | Declared so the gate passes. None has been opened in a browser on its own terms. |
+| `happyHourSources.ts` | **NEVER INSPECTED** | — | Added by an earlier session and never registered, which failed the ledger gate on every push until 2026-08-13. Declared here so the gate passes. Not opened, not traced; its data has not been checked against §8's "never invent a restaurant fact". |
+| **Design tokens — palette retune** | 2026-08-13 | Source edit + measured contrast ratios | Cream ground and brown-red accent retired for a true neutral + vermilion (CLAUDE.md §7). Contrast computed for every new tone: all AA. **NOT checked: rendering at any viewport, either scheme, on any device.** |
 | **Real-device iOS** | Partial, 2026-07-27 | `ci/ios-shots` screenshots | At-rest only. Never interacted with. |
 
 ---
