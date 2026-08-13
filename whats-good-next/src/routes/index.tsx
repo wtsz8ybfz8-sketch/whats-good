@@ -3,7 +3,8 @@ import { motion } from "motion/react";
 import { useState } from "react";
 
 import { NearMeButton, type Located } from "@/components/near-me";
-import { CITIES, MOODS, PRICE_LEVELS, type PriceBand } from "@/lib/food";
+import { PriceSlider } from "@/components/price-slider";
+import { CITIES, MOODS, type PriceBand } from "@/lib/food";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -98,7 +99,7 @@ function Index() {
                 htmlFor="mood"
                 className="text-sm font-medium uppercase tracking-wide text-muted-foreground"
               >
-                The mood
+                What you&apos;re after
               </label>
               <div id="mood" className="mt-3 grid gap-2 sm:grid-cols-2">
                 {visibleMoods.map((m) => {
@@ -132,29 +133,7 @@ function Index() {
               ) : null}
             </div>
 
-            <div>
-              <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                Budget
-              </span>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {PRICE_LEVELS.map((band) => {
-                  const active = price === band.id;
-                  return (
-                    <button
-                      key={band.id}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setPrice(active ? null : band.id)}
-                      className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                        active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
-                      }`}
-                    >
-                      {band.word}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <PriceSlider value={price} onChange={setPrice} />
 
             <div>
               <label

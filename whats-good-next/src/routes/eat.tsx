@@ -4,8 +4,9 @@ import { z } from "zod";
 
 import { VenueCard } from "@/components/food-cards";
 import { NearMeButton, type Located } from "@/components/near-me";
+import { PriceSlider } from "@/components/price-slider";
 import { searchVenues } from "@/lib/discovery.functions";
-import { CITIES, GUIDE_PICKS, MOODS, PRICE_LEVELS, type PriceBand } from "@/lib/food";
+import { CITIES, GUIDE_PICKS, MOODS, type PriceBand } from "@/lib/food";
 
 const searchSchema = z.object({
   q: z.string().catch(""),
@@ -189,27 +190,10 @@ function EatPage() {
             </div>
           </div>
 
-          <div>
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Budget</span>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {PRICE_LEVELS.map((band) => {
-                const active = search.price === band.id;
-                return (
-                  <button
-                    key={band.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => go({ price: active ? undefined : (band.id as PriceBand) })}
-                    className={`min-h-[44px] rounded-full border px-4 text-sm transition-colors ${
-                      active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary"
-                    }`}
-                  >
-                    {band.word}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <PriceSlider
+            value={search.price ?? null}
+            onChange={(next) => go({ price: next ?? undefined })}
+          />
 
           <div>
             <span className="text-xs uppercase tracking-wide text-muted-foreground">

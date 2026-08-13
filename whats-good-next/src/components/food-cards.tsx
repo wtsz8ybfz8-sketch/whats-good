@@ -68,6 +68,11 @@ export function VenueCard({ venue }: { venue: Venue }) {
               <span className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
                 <Star className="size-3.5 fill-current text-accent" />
                 {formatRating(venue.rating)}
+                {venue.ratingCount ? (
+                  <span className="text-xs opacity-70">
+                    ({new Intl.NumberFormat().format(venue.ratingCount)})
+                  </span>
+                ) : null}
               </span>
             ) : null}
           </div>
