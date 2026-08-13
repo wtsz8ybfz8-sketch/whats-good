@@ -72,6 +72,7 @@ function EatPage() {
   const [query, setQuery] = useState(search.q);
   const [city, setCity] = useState(search.city);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [allCuisines, setAllCuisines] = useState(false);
 
   const data = result;
   const activeFilters = (search.city ? 1 : 0) + (search.price ? 1 : 0);
@@ -182,8 +183,10 @@ function EatPage() {
         <div className="mt-3 space-y-5 rounded-2xl border border-border bg-card p-4">
           <div>
             <span className="text-xs uppercase tracking-wide text-muted-foreground">Cuisine</span>
+            {/* Six by default. Twelve at once is a wall, and the ones past six
+                are the long tail nobody scans anyway. */}
             <div className="mt-2 flex flex-wrap gap-2">
-              {MOODS.map((cuisine) => {
+              {(allCuisines ? MOODS : MOODS.slice(0, 6)).map((cuisine) => {
                 const active = search.q === cuisine.placeTerms;
                 return (
                   <button
@@ -205,6 +208,13 @@ function EatPage() {
                 );
               })}
             </div>
+            <button
+              type="button"
+              onClick={() => setAllCuisines((open) => !open)}
+              className="mt-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {allCuisines ? "Fewer cuisines" : `All ${MOODS.length} cuisines`}
+            </button>
           </div>
 
           <div>

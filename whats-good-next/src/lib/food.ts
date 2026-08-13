@@ -259,6 +259,11 @@ export type Venue = {
   photoUrl: string | null;
   lat: number | null;
   lng: number | null;
+  /** Google's own editorial description, when it has one. Optional so the
+   *  sample fixtures stay valid without inventing copy for them. */
+  summary?: string | null;
+  /** Confirmed-true attributes only. */
+  attributes?: string[];
 };
 
 export type Recipe = {
