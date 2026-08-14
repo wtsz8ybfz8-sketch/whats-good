@@ -221,10 +221,24 @@ your code. **A timed-out typecheck is not a pass and not a failure — report it
 outcome. Never silently downgrade.
 
 **`npm run build` is `vite build`. It does not run `tsc`, so a Vercel deploy does not
-typecheck your work.** But **GitHub Actions now does** — `.github/workflows/ci.yml` runs
-`tsc --noEmit` plus the build on every push, green in ~30s (first run 2026-07-27). So for
-**anything you have pushed**, read the Actions tab instead of guessing; the local
-"did not complete" caveat applies only to work still sitting in the tree.
+typecheck your work.** `.github/workflows/ci.yml` is supposed to cover that gap — it runs
+`tsc --noEmit`, the build, and the full browser suite on every push. **For anything you
+have pushed, read the Actions tab rather than guessing.** Read it *properly*: open the
+failing job and find which STEP died.
+
+**CI HAD NOT TYPECHECKED OR BUILT ANYTHING FOR AT LEAST TWO DAYS, AND NOTHING SAID SO.**
+On 2026-08-14 every one of the last eight runs on `main` was **red**, going back to
+2026-08-13 — and every one died at the same place: *"Every source file is declared in the
+inspection ledger"*. That step is **second in the workflow**. Typecheck is third, Build is
+fourth, the regression suite is seventh. **None of them ran on any of those pushes.** Four
+source files — including `src/prototype.ts`, which is the entire deployed application —
+had been added without a ledger row.
+
+The lesson is not "declare your files". It is that **a red pipeline reports the FIRST thing
+that broke, and everything after it is silence, not success.** This file asserted for two
+days that CI typechecks every push, while the typecheck step was never reached. If a run is
+red, you know nothing about any step below the failure — say so in those words, and never
+quote an earlier green run as if it covered code that landed after it.
 
 **Never diagnose an external service from inside this container.** The agent proxy returns
 **403 for every outbound URL** — `example.com` included. A 403 from a deployment tells you
