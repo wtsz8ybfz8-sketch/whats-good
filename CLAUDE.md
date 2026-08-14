@@ -174,12 +174,35 @@ handover is the only real failure.
 
 ---
 
-## 4. Git — ask first, every time
+## 4. Git — `main` only. No feature branches.
 
-**Never commit, amend, push, tag, deploy, or delete Git lock files (`.git/*.lock`) unless
-the user explicitly asks in the live conversation.** Deleting a lock file to force a commit
-through is specifically forbidden — it risks the user's repository to save you a step.
-Leaving work uncommitted in the working tree is the correct default.
+**THE WORKFLOW, decided by the owner on 2026-08-14 and not to be re-litigated:**
+
+1. **Work on `main`.** Do not create a feature branch. Do not push one.
+2. **Come back with the preview URL**, not a branch name.
+3. **Commit to `main` and push.** If a branch was unavoidable for some reason, merge it to
+   `main` and **delete it immediately, local and remote**, in the same turn.
+4. **Leave no branches behind.** A branch that outlives its turn is the problem this rule
+   exists to kill.
+
+**Why this replaced "ask first, every time".** Sessions were pushing to
+`claude/<something>-<hash>` branches, and the owner then had no idea which branch held the
+real work, whether `main` had it, or which URL to open. Two sessions in a row shipped to a
+branch while the owner was looking at production and reporting it broken. The confusion
+cost more than the safety was worth. **The deploy that matters is `main` → Vercel
+production.** Anything else is invisible to the person who has to use the app.
+
+**Still forbidden, and this part did not change:** never delete Git lock files
+(`.git/*.lock`). Deleting one to force a commit through risks the owner's repository to
+save you a step. If git is locked, stop and say so.
+
+**Still required:** run the gates before you push (§6, §13.4). "Commit to `main`" is not
+"commit anything to `main`" — it means the verification burden goes UP, because there is no
+branch between your change and the person using it.
+
+**Cloud sessions:** this container is ephemeral and reclaimed after inactivity. Uncommitted
+work dies with it. That is a second reason the old "leave it in the working tree" default
+was wrong here — push, or lose it.
 
 ---
 
