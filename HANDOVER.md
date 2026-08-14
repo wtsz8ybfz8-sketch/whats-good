@@ -2,94 +2,119 @@
 
 ## Status
 
-**`claude/version-prototype-mismatch-fjqtrx` is at `206fe11`, pushed.**
+**`claude/direct-online-work-oec0va` is at `f39c899`, pushed.**
 
-The app IS the prototype. `docs/design/occasion-prototype.html` was transplanted whole and
-wired to live data. The React app is deleted.
+The app is still the prototype and that has not changed. What changed is that the
+project's checks now measure it. Five gates were reporting green over a deleted codebase;
+they are repaired and each was sabotage-tested. One live user-facing bug that they were
+hiding is fixed.
+
+**And the bigger one: CI had not typechecked or built anything since 13 August.** Every one
+of the last eight runs on `main` was red, each dying at the ledger step — which is second
+in the workflow, ahead of Typecheck, Build and the regression suite. None of those ran on
+any of those pushes. Fixed; the local pipeline is green end to end.
+
+`origin/main` was merged in at `26eeb03`, so this branch carries the server-side
+`api/osm.ts` route.
 
 ## Objective
 
-Owner instruction, third time of asking: return the prototype version, every part of it,
-verbatim, keeping the API keys and images, and make it work.
+Reconcile `CLAUDE.md` with the codebase. The owner chose this over further data-layer or
+design work, because sessions kept thrashing against a rulebook that described an app
+deleted in `206fe11`.
 
 ## What changed
 
-- `index.html` body = the prototype's markup, verbatim.
-- `src/prototype.css` = the prototype's `<style>`, verbatim.
-- `src/prototype.ts` = the prototype's `<script>`, verbatim, wired to real data.
-- **Deleted:** `src/App.tsx`, `src/main.tsx`, `src/index.css`, `src/components/**`.
-  `placesService.ts`, `venue.ts`, `locale.ts`, `cuisineRail.ts` stay — they are the data
-  layer the prototype now calls.
-
-Everything the prototype had is present and working: four tabs, three periods per tab,
-six occasions per period, the sliding time pill, the freeform parse line, the area chips,
-the three sliders, the results column, the venue detail (hero, gallery, facts, hours,
-socials), and the Saved email gate.
-
-**Real, not invented:** venues and opening status from Google Places (`fetchVenues`, the
-existing key), photography from Places photos, recipes from TheMealDB.
-
-**Six deliberate departures, all for reasons that outrank pixel-parity:**
-
-1. **"Known for" dishes and "Plan B" render only from confirmed data**, and are omitted
-   when absent. The prototype hardcoded four dishes WITH PRICES and asserted "usually full
-   by 20:00" about restaurants it invented. A fake price sends someone across town.
-2. **Result cards are `<button>`, not `<div>`.** The prototype's clickable divs were
-   unreachable by keyboard or screen reader. Identical rendering.
-3. **44pt touch targets** via invisible boxes — no painted element grew.
-4. **Form fields at 16px.** The selects were 12px, which makes iOS Safari zoom on focus
-   and never zoom back.
-5. **The header wraps.** Logo + two selects + a button exceeds 393px and pushed the
-   right-hand control to 6px from the bezel.
-6. **Platform tags the prototype never had:** `html` background (or the safe areas show
-   through), landscape `safe-area-inset-left/right`, a live `theme-color` prepended to
-   `<head>`, `history.scrollRestoration = 'manual'`, and a history entry for the venue
-   detail so the back gesture closes it and restores the list position.
+- **`src/prototype.ts`** — the distance readout used `(d).toFixed(1) + ' km'`; now
+  `formatDistance()`. The rating and review count used `.toFixed(1)` and raw
+  concatenation; now `formatQuantity()`. Both helpers already existed in `locale.ts`,
+  already tested, and were **imported by nothing**.
+- **`verify/checks.mjs`** — the distance check tested `/toFixed\(1\)\}\s*km/`, which
+  matches only the template-literal spelling while the live bug used concatenation. It
+  now asserts the rule itself — no number formatted by hand outside `locale.ts` — across
+  every `src/*.ts`.
+- **`.github/workflows/ci.yml`** — the `.glass` check and the `toFixed`, hex and
+  `border-black` ratchets all grepped `src/App.tsx`, `src/components/` or
+  `--include='*.tsx'`. None has existed since `206fe11`. Repointed at real files at
+  measured ceilings (`toFixed` 0, hex 4); `.glass` became a `backdrop-filter` ceiling of
+  0; the two Tailwind-syntax ratchets are retired in place with reasons.
+- **`CLAUDE.md`** — new **§0** naming what the codebase is, with a table mapping every
+  stale reference to reality. §7's token table replaced with the real one (`--bg`,
+  `--surf`, `--ink`, `--accent`…). §9 rewritten for vanilla TS. §12 reframed: the
+  filenames are historical, the mechanisms are not. §13 rebuilt entirely from measurement.
 
 ## Customer journey impact
 
-Orient / Express intent / Choose are now exactly the prototype's. Trust holds: nothing
-renders that Places has not confirmed. Recover is weaker — see Known risks.
+**Trust** moved. A user in Berlin or Paris read "0.5 km" where their locale writes "0,5",
+and a user in the US or UK read kilometres. The readout is now correct in both respects.
+No other stage moved; no stage regressed.
 
 ## Verification and actual results
 
-- **`verify/checks.mjs`: 46/46, exit 0, 0 skipped.**
-- **`tsc --noEmit`: exit 0.** It caught a bad `Venue` import, now fixed.
-- **`npm run build`: exit 0.**
-- Rendered and looked at: 390x844 and 1440x900 with Places fixtures and a selected
-  occasion; real venues, open/closed and price bands all rendered.
+- **`verify/checks.mjs`: 46/46, exit 0, 0 failures, 0 skipped.**
+- **`tsc --noEmit`: exit 0, clean.** It *completed* — CLAUDE.md §6's claim that it is
+  pathologically slow on this machine did not hold this session.
+- **`npx esbuild`** on both changed source files: exit 0.
+- **`ci.yml` parses as valid YAML**, and the rewritten ratchet steps were executed
+  locally: `toFixed` 0/0, hex 4/4, `backdrop-filter` absent — step exit 0.
+- **Sabotage-tested, both directions.** The new `checks.mjs` check is GREEN on the fix and
+  **RED** with the old line restored. The CI ratchet is **RED** with a violating file
+  present and GREEN after removal.
+- **Rendered and read in a real browser**, at the `0.5 km` slider stop, four locales:
+  `de-DE` and `fr-FR` → `"0,5 km"`; `en-GB` and `en-US` → `"0.3 mi"`. All four previously
+  read `"0.5 km"`.
 
-**Harness changes, declared because they gate this work:** the suite was written against
-the React DOM. Selectors were retargeted; the fixed-header checks were removed (the
-prototype's header is in normal flow, so the iOS URL-bar strip they mitigated cannot
-open); seven checks asserting React-app features the prototype does not have are marked
-RETIRED and print as such; the three routing checks were removed — see Known risks.
+**NOT verified:** iOS Safari anything; whether venues render on the live URL — this
+container's egress proxy blocks Overpass outright (`EGRESS_BLOCKED` from the fetch tool,
+`000` from curl to all three mirrors), so the OSM path cannot be exercised here by any
+method; deployment reachability; screen reader.
 
-**NOT verified:** iOS Safari anything; real Places responses (fixtures only); screen
-reader; deployment reachability (the proxy 403s everything).
+**Established from outside the container, via the authenticated Vercel API:** `a0f19b7`
+("Fix the fallback that CORS was blocking in production") built clean and reached
+production **READY** at 09:08 on 2026-08-14, and the `whats-good-nu.vercel.app` alias
+serves it. Whether it renders venues is still unconfirmed by anyone.
 
 ## Protected decisions
 
 - The prototype is the product. Do not reintroduce the React UI.
-- Nothing renders that is not confirmed by the data source.
-- Every departure from the prototype is listed above; there are no others.
+- `src/locale.ts` is the only module allowed to format a number for a human.
+- A check whose failure you have never witnessed is a decoration. Sabotage-test, or say
+  the check is unproven.
+- Retire a check in place, with its reason, rather than deleting it or softening it.
 
 ## Next session: first three actions
 
-1. **Restore URL state.** This is the top item. The prototype holds all navigation in
-   local variables: no `?tab=`, no `?city=`, one `document.title` for every screen. So
-   nothing is shareable, bookmarkable, or survives a refresh. The React app did this and
-   it will have to come back.
-2. **Deploy and open it on a real iPhone**, portrait and landscape, light and dark.
-3. **Real geolocation.** The city select is the prototype's fixed four; the previous app
-   resolved any city on earth.
+1. **Open the live URL and tap an occasion, then read the Vercel runtime logs.** Nobody has
+   looked since the fixes deployed. `api/osm.ts` already exists (`26eeb03`), so the Overpass
+   call is same-origin and CORS is gone as a class of bug — and the failure now lands in
+   Vercel runtime logs, which an agent can read directly without the owner acting as
+   messenger. **`api/osm.ts` has never been invoked**, in production or locally (`vite dev`
+   does not serve `/api`), so it is unproven code on the critical path.
+2. **Restore URL state.** Still the largest functional regression from the React app: no
+   `?tab=`, no `?city=`, one `document.title` for every screen, nothing shareable or
+   bookmarkable. The three routing checks were removed rather than softened —
+   `verify/checks.mjs:704` documents the removal in place.
+3. **Decide the typeface, then implement it.** Two Schibsted Grotesk `.woff2` files are
+   preloaded at highest priority on every page load and referenced by no CSS — the app
+   renders in a system stack. Apply the family or drop the preloads; it is a design
+   decision the owner has opinions about, so raise it rather than picking.
 
 ## Known risks and open questions
 
-- **No URL state** (above). The single biggest regression from the React app.
-- **Recover is thinner.** The prototype has one empty state per surface; the React app
-  had a `StatusStates` module distinguishing no-key, no-location, no-results and offline.
-- **The four-city list is fixed.** Someone outside Cape Town / London / Paris / New York
-  cannot search where they are.
-- **The typeface is the prototype's system stack**, not Schibsted Grotesk. Verbatim, as
-  asked; the self-hosted font files and their preloads are still in the repo.
+- **`prototype.ts:809` hardcodes the theme-color tint** (`'#0E0E0D' : '#F5F4F2'`) — the
+  same values as `--bg` in each mode, written again by hand. Change the canvas token and
+  the browser chrome silently keeps the old tint, rebuilding §12's "band of the wrong
+  colour welded to the screen edge" from parts.
+- **`--ink3` has never been contrast-measured on this palette.** The AA figures CLAUDE.md
+  used to quote were measured against the React app's token set. `--ink3` (`#8D8C87` on
+  `#F5F4F2`) is the quietest tone and the most likely to sit under 4.5:1.
+- **The three dark-mode blocks are unchecked.** `prototype.css` declares the palette in
+  `@media (prefers-color-scheme: dark)`, `:root[data-theme="dark"]` and
+  `:root[data-theme="light"]`. A token added to one and not the others renders correctly
+  for whoever tested it and wrongly for everyone else. Nothing compares them.
+- **React, `react-dom`, `lucide-react`, `motion`, `@vitejs/plugin-react` and Tailwind are
+  installed and unused.** Tailwind is still wired into `vite.config.ts` but no stylesheet
+  imports it, so it emits nothing. A real, small cleanup — do it deliberately, not as a
+  side effect.
+- **`CLAUDE.md` §0 is prose, and prose is a claim with an author and a date.** It was
+  written on 2026-08-14 from a tree at `75b3ab8`. Verify before trusting it.
