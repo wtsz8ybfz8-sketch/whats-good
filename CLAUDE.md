@@ -374,6 +374,14 @@ An entire session measured only 390px light and shipped a rail clipped mid-word,
 targets and a duplicated headline to 1440. A viewport you do not measure is a viewport
 you are shipping blind.
 
+**NEVER run an unbounded search, and never leave a long command running.** On 2026-08-14
+a `grep -rl "sb_publishable_" ~/Documents ~/Downloads` — hunting for an API key — never
+finished, was backgrounded, and burned ~5 HOURS of compute, contributing to the user
+nearly exhausting a week's usage. Scope every search to the repo (`git grep`, or
+`grep -r --include=... .`), and cap it. A secret is in the repo, in `vercel env ls`, or in
+a dashboard — widening the radius to the home directory finds nothing and costs everything.
+The same applies to any command you background: bound it, watch it, or do not start it.
+
 **NEVER leave a dev server running, and never start one by hand.** `node verify/serve.mjs up`
 is idempotent — it reuses a healthy server on :3000 and never starts a second — and it
 bakes in `VITE_GOOGLE_PLACES_KEY`, which a bare `npx vite` omits (that omission hid the

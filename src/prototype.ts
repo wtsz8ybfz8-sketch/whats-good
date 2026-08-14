@@ -357,7 +357,12 @@ function build() {
   ($('parsed') as HTMLElement).style.display = '';
   periods();
   picked = null; venues = []; heroPhoto(undefined);
-  if (tab === 'eat' || tab === 'out') heroPreview();
+  /* heroPreview() is DELIBERATELY NOT CALLED ON ARRIVAL any more. It cost one billed
+     Places search per tab switch and per city change, purely to dress the hero before the
+     user had asked for anything — and on 2026-08-14 the project hit
+     "Quota exceeded ... SearchTextRequest per day", which takes the whole app down. A
+     decorative request must never compete with the request the user is waiting for. The
+     hero still takes a photograph, from the results of the search they actually trigger. */
   $('refine').classList.remove('on');
   $('rt').textContent = 'Nothing picked yet';
   $('rc').textContent = '';
@@ -507,9 +512,15 @@ async function render() {
   if (seq !== loadSeq) return;
 
   if (out.status !== 'ok') {
-    $('list').innerHTML = '<p class="empty">' + (out.status === 'unconfigured'
-      ? 'No Places key is configured, so live venues cannot be loaded.'
-      : 'Could not reach Google Places just now. Try again in a moment.') + '</p>';
+    /* A daily quota cap is NOT a transient network blip, and telling someone to "try
+       again in a moment" when the answer is "not until tomorrow" is the Recover stage
+       lying to them (§5). Google returns 429 for it, so it gets its own sentence. */
+    $('list').innerHTML = '<p class="empty">' + (
+      out.status === 'unconfigured'
+        ? 'No Places key is configured, so live venues cannot be loaded.'
+        : out.status === 'http' && out.code === 429
+          ? "Today's Google Places allowance is used up, so venues can't load until it resets. Cook still works."
+          : 'Could not reach Google Places just now. Try again in a moment.') + '</p>';
     return;
   }
   venues = out.venues;
