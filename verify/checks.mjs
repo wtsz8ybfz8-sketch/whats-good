@@ -672,6 +672,60 @@ async function main() {
     check(`${label}: no field under 16px (iOS focus-zoom)`, zoomers.length === 0, zoomers.join(', '));
   }
 
+  /*
+   * PICKING A DIFFERENT OCCASION MUST SEARCH FOR A DIFFERENT THING.
+   *
+   * `fetchVenues` took a `kind`, and for `kind === 'bar'` it threw the query away and
+   * asked for "bars in <city>" no matter what. `BAR_KEYS` covers seven occasions —
+   * Drinks, Happy hour, Cocktails, Live music, Dancing, Quiet drink, Rooftop — which is
+   * every tile on the Out tab. So all seven returned the same twenty venues in the same
+   * order, and the owner reported it exactly as it behaved: "I click on the moods and I
+   * get the same list of restaurants, no difference whatsoever."
+   *
+   * Nothing could have caught that. Every existing check asserted that results RENDER,
+   * and they did — the same results, every time. Rendering is not relevance.
+   *
+   * So this asserts the thing the product actually promises (§5, Express intent): the
+   * request that leaves the browser changes when the occasion changes. It reads the real
+   * `textQuery` off the intercepted Places call, which cannot be satisfied by a component
+   * that merely redraws.
+   */
+  const sentQueries = [];
+  page.on('request', (r) => {
+    if (r.url().includes(':searchText') && r.method() === 'POST') {
+      try { sentQueries.push(JSON.parse(r.postData() || '{}').textQuery); } catch { /* not JSON */ }
+    }
+  });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  /* `:has-text("Out")` is a CASE-INSENSITIVE SUBSTRING match, so it selects "Eat out"
+     first and this check silently measured the wrong tab — it passed on two restaurant
+     occasions, which always differed, while the bar bug it exists for sat untouched.
+     `:text-is()` is the exact match. Caught by reading the check's own output rather
+     than its exit code: it printed "brunch" vs "cafe with wifi", which are Eat-out
+     queries, on a check whose whole subject is the Out tab. */
+  await page.locator('#tabs button:text-is("Out")').first().click();
+  await page.waitForTimeout(500);
+
+  const tiles = page.locator('#grid .tile');
+  sentQueries.length = 0;
+  await tiles.nth(0).click();
+  await page.waitForTimeout(1400);
+  const firstOccasion = sentQueries[0];
+
+  sentQueries.length = 0;
+  await tiles.nth(1).click();
+  await page.waitForTimeout(1400);
+  const secondOccasion = sentQueries[0];
+
+  check(
+    'Out tab: a different occasion searches for a different thing',
+    Boolean(firstOccasion) && Boolean(secondOccasion) && firstOccasion !== secondOccasion,
+    firstOccasion === secondOccasion
+      ? `both occasions sent "${firstOccasion}" — the tile changes nothing`
+      : `"${firstOccasion}" vs "${secondOccasion}"`,
+  );
+
   // --- deep links and titles --------------------------------------------------
   //
   // Nothing was in the URL, so no screen in this product could be shared, bookmarked or

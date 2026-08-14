@@ -512,10 +512,35 @@ export async function fetchVenues(
      * its kind in as a search TERM. Google is forgiving enough that it returned bars, but
      * the word "restaurant" was in there biasing every result toward places that serve
      * food. A bar search now reads like a bar search.
+     *
+     * THE BAR BRANCH THEN THREW THE QUERY AWAY ENTIRELY, AND THAT BROKE THE WHOLE PRODUCT
+     * PROMISE ON THE OUT TAB.
+     *
+     * `BAR_KEYS` covers seven occasions — Drinks, Happy hour, Cocktails, Live music,
+     * Dancing, Quiet drink, Rooftop — which is every tile on the Out tab. All seven
+     * arrived here, hit `kind === 'bar'`, and issued the same two searches: "bars in Cape
+     * Town" and "cocktail bars and pubs in Cape Town". Same query, same twenty venues, in
+     * the same order, every time. The owner reported it exactly as it behaves: "I click on
+     * the moods and I get the same list of restaurants — no difference whatsoever."
+     *
+     * Picking a mood IS the search (§5, Express intent). A tile that changes nothing is
+     * not a slow feature, it is a lie about what the product does.
+     *
+     * The occasion's own phrasing already carries the venue kind — `cocktail bar`,
+     * `rooftop bar`, `nightclub`, `quiet bar` — so it reads correctly with no scaffolding.
+     * Free text typed by the user usually does not ("somewhere quiet for two"), so the
+     * word `bar` is appended only when nothing bar-shaped is present. Without that guard a
+     * typed phrase silently turns a bar search back into a general one.
      */
+    const barShaped = /\b(bar|bars|pub|pubs|club|nightclub|lounge|tavern|taproom|brewery|cantina|speakeasy)\b/i
+      .test(query);
     const queries: string[] =
       kind === 'bar'
-        ? [`bars in ${city}`, `cocktail bars and pubs in ${city}`]
+        ? query
+          ? barShaped
+            ? [`${query} in ${city}`, `best ${query} in ${city}`]
+            : [`${query} bar in ${city}`, `${query} bars and pubs in ${city}`]
+          : [`bars in ${city}`, `cocktail bars and pubs in ${city}`]
         : query
           ? [`${query} restaurant in ${city}`, `best ${query} places to eat in ${city}`]
           : [`best restaurants in ${city}`, `popular local eateries in ${city}`];
