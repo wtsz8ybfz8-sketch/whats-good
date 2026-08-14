@@ -7,6 +7,45 @@ Handovers are a record of what happened, never a mandate for what to do next.
 
 ---
 
+## 0. READ THIS FIRST — what the codebase actually is
+
+**There is no React app. There have been zero `.tsx` files in this repo since `206fe11`,
+"Transplant the prototype: it is now the app".**
+
+The deployed application is **`src/prototype.ts`** — a single ~830-line vanilla TypeScript
+module that renders into the static markup in `index.html`, styled by `src/prototype.css`.
+`index.html` loads it directly: `<script type="module" src="/src/prototype.ts">`.
+
+What that means for anything you are about to read below:
+
+| The document used to say | What is actually there |
+|---|---|
+| `App.tsx`, `EateryView`, `RecipeView`, `HappyHourView`, `Sidebar`, `StatusStates` | **None of these exist.** One module, `prototype.ts` |
+| `src/components/` | **Does not exist** |
+| `src/index.css` with `@theme` tokens | **Does not exist.** Tokens live on `:root` in `prototype.css` |
+| `.glass`, `.surface`, `.page-grid`, `.bleed`, `.hit-44`, `.safe-x`, `--tabbar-h` | **None of these classes or tokens exist** |
+| Tailwind utility classes | **None.** Tailwind is still wired into `vite.config.ts` but no stylesheet imports it, so it emits nothing |
+
+**This section was added on 2026-08-14 because that mismatch had already done real damage.**
+Four CI checks and one regression check were grepping paths that no longer existed —
+`grep` on a missing path prints nothing, `|| true` swallowed the exit code, and every one
+of them reported green while measuring an empty set. Under that cover, a hand-formatted
+distance shipped and read **"2.0 km" to every user who writes "2,0"**, and kilometres to
+every user who thinks in miles.
+
+**The rules in this file are still the rules.** Almost every law below was earned by a real
+defect and still applies — the iOS Safari truths, the honesty contract, the trap register,
+the benchmark law. What changed is the *subject* they apply to. Where a rule names a file
+that no longer exists, the rule survives and the filename does not. Fix the subject; never
+quietly drop the rule.
+
+**What still exists and is still load-bearing:** `placesService.ts` (Places + the OSM
+fallback), `osmFallback.ts`, `locale.ts` (the only module allowed to format for a human),
+`auth.ts`, `savedStore.ts`, `venue.ts`, `happyHourSources.ts`, `cuisineRail.ts`,
+`cuisineIcon.ts`, `recipeUtils.ts`, `telemetry.ts`, and the whole `verify/` harness.
+
+---
+
 ## 1. What this product is
 
 Mood-and-location-driven food discovery: find somewhere to eat, or something to cook,
@@ -476,45 +515,64 @@ Unsplash, chosen deliberately and self-hosted. Occasion imagery is editorial, so
 never fetched dynamically. Never OpenStreetMap or Wikimedia photos: they are documentation
 shots, not food photography.
 
-**Tokens live in `src/index.css`** on `:root` and `html.dark`. Bind to them. Never
-hardcode a hex; never add a colour without adding the token first.
+**Tokens live on `:root` in `src/prototype.css`.** Bind to them. Never hardcode a hex;
+never add a colour without adding the token first. The palette survived the transplant with
+its VALUES intact and its NAMES changed — the hexes below are the same ones the React app
+used, so the design decision is unbroken even though every token identifier moved.
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--bg-warm` | `#F5F4F2` | `#0E0E0D` | Page canvas |
-| `--charcoal` | `#111110` | `#F5F4F2` | Body text |
-| `--heading-color` | `#0B0B0A` | `#FAFAF8` | Headings |
-| `--accent-terracotta` | `#C8371C` | `#FF5A3C` | The single accent |
-| `--accent-tint` | `#FBEEEB` | `rgba(255,90,60,.14)` | Accent-tinted fills |
-| `--accent-tint-border` | `#F2D3CC` | `rgba(255,90,60,.26)` | Borders on tinted fills |
-| `--accent-contrast` | `#FFFFFF` | `#170502` | Text/icons **on** the accent |
-| `--text-muted` | `#5C5B57` | `#A8A7A2` | Metadata, captions |
-| `--text-subtle` | `#6B6A66` | `#96958F` | Small labels |
-| `--rule` / `--row-border` | `#E3E2DE` / `#EDECE9` | white @ .10 / .06 | Rules / list rows |
-| `--border-color` | `rgba(17,17,16,.08)` | `rgba(255,255,255,.07)` | Hairlines |
+| `--bg` | `#F5F4F2` | `#0E0E0D` | Page canvas |
+| `--surf` | `#FFFFFF` | `#181817` | Raised surfaces — cards, sheets |
+| `--surf2` | `#ECEBE8` | `#222220` | Recessed surfaces — quiet controls |
+| `--ink` | `#111110` | `#F5F4F2` | Body text and headings |
+| `--ink2` | `#5C5B57` | `#A8A7A2` | Metadata, captions |
+| `--ink3` | `#8D8C87` | `#787771` | Small labels — the quietest readable tone |
+| `--line` | `#E3E2DE` | `#282826` | Hairlines and rules |
+| `--line2` | `#CAC9C4` | `#3B3B38` | Stronger borders |
+| `--accent` | `#C8371C` | `#FF5A3C` | The single accent |
+| `--on-accent` | `#FFFFFF` | `#170502` | Text/icons **on** the accent |
+| `--r` / `--r2` / `--r3` | `20px` / `14px` / `999px` | same | Corner radii |
+| `--grain` | `.05` | `.07` | Grain overlay opacity |
+| `--sans` | system stack | same | The only font family |
 
-Measured contrast on `--bg-warm`: `--text-muted` 6.2:1 light / 7.7:1 dark, `--text-subtle`
-4.97:1 / 6.1:1, accent 5.8:1 / 6.1:1, `--accent-contrast` on accent 5.8:1 / 6.3:1. All AA.
+**Dark mode is declared THREE times and all three must agree** — `@media
+(prefers-color-scheme: dark)`, `:root[data-theme="dark"]`, and `:root[data-theme="light"]`.
+The media query serves the default "follow the system" state; the two attribute selectors
+serve the manual toggle and must win in both directions. **A token added to only one of the
+three blocks is the bug this structure exists to prevent**: it renders correctly for
+whichever state you happened to test and wrongly for the other two. Nothing checks this
+today (§13.2).
 
-**Type:** one family, Schibsted Grotesk. All three `@theme` font tokens point at it.
-Hierarchy comes from weight, size and colour — never from switching typeface. Headings are
-`600` (`700` only to shout), set globally in `@layer base`. The font is `preload`ed in
-`index.html`; never reintroduce an `@import`.
+**Contrast is not carried over — it must be re-measured.** The AA figures this file used to
+quote were measured against the React app's token set. `--ink2` and `--ink3` are new names
+at values that were never all verified together on this canvas. **`--ink3` (`#8D8C87` on
+`#F5F4F2`) is the one to check first** — it is the quietest tone in the palette and the most
+likely to sit under 4.5:1. Measure, don't assume, and don't repeat the old numbers as if
+they were about these tokens (§11.7).
 
-**Surfaces:** `.glass` is on exactly **two** chrome surfaces — the fixed header and the
-mobile CTA bar. Everything holding content uses `.surface`; small recessed controls use
-`.surface-quiet`; hover lift is opt-in via `.surface-hover`. **Never put `.glass` back on a
-card** — that's the regression these classes exist to prevent, and it puts backdrop-filter
-cost on every card in a scrolling list.
+**Type: the app currently renders in a SYSTEM font stack** — `--sans` is
+`-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Inter, system-ui`.
+Schibsted Grotesk is **not** applied anywhere: no `@font-face` declares it and no rule
+references it. But `index.html` still `preload`s two of its `.woff2` files at highest
+priority on every single page load, so the browser fetches them, blocks bandwidth on the
+critical path for them, and never draws a glyph with them. That is a live performance bug
+on the exact device this app is for — a mid-range phone on a street (§13.3).
 
-**Layout:** `.page-grid` / `.bleed` in `src/index.css` is the full-bleed primitive. A
-`.bleed` child spans the physical viewport (`x === 0`, `width === scrollWidth`) at every
-width. Gutters are `minmax(0,1fr)` because each child owns its own horizontal padding.
-Never reintroduce negative-margin breakouts, `w-screen` + `-translate-x-1/2`, or
-`overflow-x-hidden` on `<main>`.
+Either apply the face or drop the preloads. **Do not do it silently**: the typeface is a
+design decision the owner has opinions about, and a system stack was explicitly criticised
+as feeling generic. Raise it, decide it, then implement it.
 
-**Dark mode is class-based** (`html.dark`) and **the user likes it as it is** — check both
-modes, change neither the dark palette nor the font without being asked.
+**Surfaces:** there is no `.glass`. Translucent chrome does not exist in this codebase and
+`backdrop-filter` appears zero times — CI now holds that at zero (§13.1), because the cost
+of translucency on a scrolling list is the reason the rule was written. Content sits on
+`--surf`; recessed controls on `--surf2`.
+
+**Layout:** there is no `.page-grid` and no `.bleed`. `prototype.css` lays out with a
+`.wrap` container and a `.stage` grid that changes composition between mobile and desktop.
+The durable rule survives its primitives: **never reintroduce negative-margin breakouts,
+`w-screen` + `-translate-x-1/2`, or `overflow-x-hidden`** — the last of these silently ate
+a Back button's left overhang once already (§12).
 
 ---
 
@@ -550,15 +608,30 @@ animate; identity, facts and actions must be present on first paint.
 
 ## 9. Stack
 
-- **React 19** + **TypeScript 5.8** + **Vite 6** — `npm run dev`, port 3000.
-- **Tailwind v4** via `@tailwindcss/vite`. **There is no `tailwind.config.js`** and never
-  will be; v4 is CSS-first and all theme config lives in `src/index.css` under `@theme`.
-- **lucide-react** for icons. Never emoji-as-icon, never inline hand-drawn SVG paths.
-- **motion** v12 — import from `motion/react`.
-- No test runner. No backend; `src/placesService.ts` handles external data.
+- **Vanilla TypeScript 5.8** + **Vite 6** — `npm run dev`, port 3000. **No framework.**
+- **The whole UI is `src/prototype.ts`** (~830 lines) rendering into the static markup in
+  `index.html`, styled by `src/prototype.css`. There are no components and no component
+  files. Structure comes from functions inside that one module.
+- **Icons are inline SVG path strings** in a constant map at the top of `prototype.ts`
+  (`glass`, `note2`, …). That is the deliberate choice for this codebase — it ships no
+  icon library and no runtime cost. Never emoji-as-icon.
+- **No test runner.** The `verify/` harness is the test suite: `verify/checks.mjs` drives a
+  real Chromium over the app at four viewports in both colour schemes.
+- **No backend of our own.** `src/placesService.ts` fetches Google Places and falls back to
+  `src/osmFallback.ts` (OpenStreetMap via Overpass) when Places refuses. `api/log.ts` is
+  the one Vercel function; production deploys report `lambdaRuntimeStats: {"nodejs":1}`, so
+  serverless functions do work here if a task needs one.
+- **`src/locale.ts` is the only module allowed to format a number, date or distance.**
+  Import `formatDistance` / `formatQuantity`; never call `toFixed` anywhere else.
+
+**Dead weight, deliberately recorded rather than silently removed:** `react`, `react-dom`,
+`lucide-react`, `motion`, `@vitejs/plugin-react` and `@tailwindcss/vite` are all still in
+`package.json`, and Tailwind is still wired into `vite.config.ts` — but nothing imports any
+of them and no stylesheet imports Tailwind, so they contribute nothing to the bundle.
+Removing them is a real, small cleanup; do it deliberately as its own change, and re-run
+the build, rather than as a side effect of unrelated work.
+
 - Don't add dependencies without saying why. The list is small on purpose.
-- Components: `EateryView`, `RecipeView`, `HappyHourView`, `Sidebar`, `StatusStates`.
-  **Reuse `StatusStates.tsx`** for loading/empty/error — don't write new ones.
 
 ---
 
@@ -615,9 +688,18 @@ commit, so the hash names the state the handover actually describes.
 
 ## 12. Traps already sprung — do not re-enter
 
-- **`position: fixed` does not work inside tab content.** The tab-transition wrapper
-  carries a `transform`, making it the containing block. **Portal overlays to
-  `document.body`** (`createPortal`), as `FilterSheet` does.
+**Most of these were sprung on the React app (§0). The FILENAMES below are historical; the
+MECHANISMS are not.** Every one is a browser or platform behaviour that does not care which
+framework is on top, and several would re-appear identically in `prototype.ts`. Read each
+for the mechanism, map it onto the current code yourself, and do not dismiss one because it
+names a file that is gone — that reasoning is what let the checks in 13.1 rot.
+
+- **A `transform` on an ancestor makes it the containing block, so `position: fixed`
+  stops being fixed to the viewport.** In the React app this was the tab-transition
+  wrapper, and the fix was portalling the overlay to `document.body`. There is no portal
+  API here, so the equivalent is simpler and stricter: **any fixed overlay must be a direct
+  child of `<body>`, never nested inside an animated container.** The trap is the CSS, not
+  React.
 - **Never let an entrance `transform` position an overlay.** The filter sheet once shipped
   stuck on its keyframe's `from` state — mounted, scroll-locked, unreachable. Opacity fails
   safe; transform strands the user.
@@ -668,21 +750,40 @@ flatly.
 | Rule | Enforced by | Fails when |
 |---|---|---|
 | `viewport-fit=cover` in the meta tag | `checks.mjs` | Tag edited or dropped |
-| No `100vh` / `min-h-screen` | `checks.mjs` | Either appears in CSS or TSX |
+| No bare `vh` / `min-h-screen` (use `dvh`) | `checks.mjs` | Either appears in CSS or TS |
 | `html` canvas is painted | `checks.mjs` | `html` has no background |
 | No `background-attachment: fixed` | `checks.mjs` | It reappears in CSS |
-| Two `theme-color` tags with `media=` + a live one | `checks.mjs` | Back to one hardcoded tint |
+| Two `theme-color` tags with `media=` + a live one that **wins** | `checks.mjs` | Back to one tint, or the live tag stops being first in `<head>` |
 | `color-scheme` declared (meta + CSS) | `checks.mjs` | Either half missing |
-| Action bar flush on the tab bar, incl. a simulated 34px inset | `checks.mjs` | A hardcoded offset drifts from `--tabbar-h` |
-| `history.scrollRestoration === 'manual'` | `checks.mjs` | Browser back resets scroll again |
-| `?tab=` / `?city=` deep links, `document.title` per screen | `checks.mjs` | Navigation returns to pure state |
-| No horizontal overflow, hit targets ≥44pt — **390×844, 844×390, 1440×900, light + dark** | `checks.mjs` | Any of the six combinations regresses |
-| Locale: comma decimals, 24h rewrite, non-Latin day labels | `checks.mjs` | A locale assumption returns |
+| No third-party font request | `checks.mjs` | A webfont host reappears |
+| `history.scrollRestoration === 'manual'`, and back restores list scroll | `checks.mjs` | Browser back resets scroll again |
+| No horizontal overflow + hit targets ≥44pt + no field under 16px — on **all four tabs**, at **393×852, 430×932, 844×390, 1440×900**, light and dark | `checks.mjs` | Any combination regresses |
+| Locale: comma decimals, 24h rewrite, non-Latin day labels, `de-DE` distance | `checks.mjs` | A locale assumption returns |
+| **No number formatted by hand outside `locale.ts`** | `checks.mjs` **and** CI ratchet | `toFixed` appears in any `src/*.ts` but `locale.ts` |
+| No hardcoded `languageCode` in the Places request | `checks.mjs` | A language is pinned |
+| Venue truthfulness: no Call action without a phone, no star without a rating, no hours module without hours, no "at a glance" label over an empty value | `checks.mjs` | A module renders over absent data |
+| A Maps fallback is not labelled "Official website" | `checks.mjs` | The link lies about its destination |
+| Out tab queries the selected city | `checks.mjs` | A hardcoded city dataset returns |
 | No Vite error overlay | `checks.mjs` | Runtime error on load |
 | Types | GH Actions `tsc --noEmit` | Any type error |
 | Bundling | GH Actions `vite build` | Bad import / asset path |
-| `.glass` on ≤2 surfaces | GH Actions grep | A third surface gets it |
+| No `backdrop-filter` anywhere in `src/` | GH Actions grep | Translucent chrome drifts back in |
+| Hardcoded hex outside token definitions ≤ **4** | GH Actions ratchet | A colour is written instead of tokenised |
 | No `vite-plugin-pwa` wired in | GH Actions grep | The invisible-deploy bug returns |
+| Handover names a real, current commit | GH Actions | The stamped SHA is not an ancestor of HEAD |
+| Every source file declared in the inspection ledger | GH Actions | A new file is added without a coverage entry |
+
+**On 2026-08-14 four of these rows were fiction and one was actively harmful.** The
+`.glass` check, and the `toFixed`, hex and `border-black` ratchets, all grepped
+`src/App.tsx`, `src/components/` or `--include='*.tsx'`. None has existed since `206fe11`.
+`grep` on a missing path prints nothing, `|| true` swallowed the exit code, the count came
+back `0`, and every one reported green forever. The `checks.mjs` distance check was worse
+than absent: it tested `/toFixed\(1\)\}\s*km/`, which matches only the template-literal
+spelling, while the live bug was written with string concatenation — so it printed a green
+tick directly over the line it existed to catch, and **"2.0 km" shipped to every locale
+that writes "2,0"**. All five are repaired and each was sabotage-tested to confirm it now
+goes red. **The lesson is the row, not the fix: a check whose failure you have never
+witnessed is a decoration.**
 
 **Never state a check count in prose.** This file and `qa-gate/SKILL.md` have each carried
 a hardcoded count ("11", then "18", then "31") and each has drifted, because checks are
@@ -694,67 +795,78 @@ Quote what it printed on the run you actually did, or say nothing.
 Every one of these is stated as an absolute above and nothing on any machine can fail it.
 Treat each as unverified on every change until you have checked it by hand and said so.
 
-- **Bottom offsets from `--tabbar-h`, never a number** (§6). `checks.mjs` measures the
-  *one* action bar it knows about. Three other hardcoded offsets exist (13.3).
-- **`openNow` compared against `undefined`, never truthiness** (§8.3). Nothing greps for it.
-- **No number, date or distance formatted by hand** (§6). `checks.mjs` covers `locale.ts`;
-  nothing covers `toFixed` called anywhere else.
-- **Colour from tokens, never a hex** (§7). CI counts and reports; it does not fail, and it
-  does not ratchet — the count can climb back to its worst-ever value silently.
+- **`openNow` compared against `undefined`, never truthiness** (§8.3). Nothing greps for it,
+  and nothing should — see the worked false positive in 13.3.
+- **Every screen needs a URL and a title** (§6). **This is now a live regression, not a
+  theoretical gap.** The prototype holds all navigation in local variables: no `?tab=`, no
+  `?city=`, no `replaceState`, one `document.title` for every screen. Nothing is
+  shareable, bookmarkable or survives a refresh. The three routing checks were removed
+  from `checks.mjs` rather than softened, and the removal is documented in place at
+  `verify/checks.mjs:704`.
+- **The three dark-mode blocks agree** (§7). A token added to `@media (prefers-color-scheme:
+  dark)` but not to `:root[data-theme="dark"]` renders correctly for whoever tested it and
+  wrongly for everyone else. Nothing compares the three blocks.
+- **Contrast** (§11.7). No check measures a ratio. `--ink3` on `--bg` is the one most likely
+  to fail AA and has not been measured on this palette.
 - **Never invent a restaurant fact; no placeholder content** (§8). Unfalsifiable by machine.
   This is the rule with the highest cost of failure in the entire document.
 - **Primary content never depends on an animation** (§8). A headless render at default
   settings can pass while `opacity: 0` strands the venue name on a real device.
-- **No `.glass` on a card** is enforced only as a *count* — swapping the header's `.glass`
-  onto a card keeps the count at 1 and passes.
-- **`position: fixed` inside tab content** (§12). Portalling is prose only.
-- **44pt targets via invisible boxes, never grown ink** (§11.3). The probe proves the
+- **44pt targets via invisible boxes, never grown ink** (§11.3). `checks.mjs` proves the
   target is live; nothing proves the *ink* did not grow to get there.
-- **iOS Safari behaviour of any kind.** Headless Chromium at 390px reports every
+- **iOS Safari behaviour of any kind.** Headless Chromium reports every
   `env(safe-area-inset-*)` as 0, which is also the correct value here. A green safe-area
   result on this machine is not evidence about iOS. It never has been.
-- **Reachability of any deployment.** The agent proxy 403s every outbound URL (§6). There
-  is no check, and there must not be one. Real device or nothing.
+- **Reachability of any deployment, and the OSM fallback end to end.** This container's
+  egress proxy blocks Overpass outright — `EGRESS_BLOCKED` from the fetch tool, `000` from
+  curl to all three mirrors (measured 2026-08-14). The OSM path cannot be exercised here by
+  any method: not curl, not Chromium, not the dev server. Real device, or the Vercel
+  runtime logs, or nothing.
 
-### 13.3 Open violations found by this audit — live in `src/` today
+### 13.3 Open items — the state of `src/` on 2026-08-14
 
-Found by grep against the rules in this file, on the commit that introduced this section.
-None of them fail any existing gate. They are recorded here rather than fixed in the same
-pass, so that the ledger and the fix are separately reviewable.
+The audit that produced §0 and rewrote 13.1. Everything below was measured on this tree,
+not inferred from a rule.
 
-1. ~~**`openNow` truthiness.**~~ **FALSE POSITIVE — the code was already correct.**
-   All four sites sit inside an outer `rawEatery.openNow !== undefined` guard; the grep
-   saw the inner ternary and not the guard. **Left unchanged, and no ratchet was added**,
-   because no grep can tell a guarded ternary from a bare one — it would have fired on
-   correct code forever. This is now the worked example for §13.2: read the site before
-   you believe the check.
-2. ~~Hardcoded bottom offsets.~~ **FIXED.** `EateryView.tsx` and `RecipeView.tsx` (×2)
-   now use `bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))]`, and `App.tsx`'s
-   content clearance derives from the same token. The safe-area inset lives in the
-   *offset* only — EateryView's own `paddingBottom` inset was removed, since counting it
-   in both places doubles it. `index.css:207` was a third false positive: the string
-   `bottom-[64px]` there is inside the comment explaining the original bug. Ratchet is
-   now **0**, with comment lines excluded so the docs don't count as violations.
-3. ~~Hand-formatted numbers.~~ **FIXED.** New `formatQuantity()` in `locale.ts` (Intl,
-   `maximumFractionDigits`) replaces both `toFixed` calls in `RecipeView.tsx`. Ingredient
-   quantities and the plate multiplier now read "0,5" and "x1,5" where that is correct.
-   `Intl` drops trailing zeros itself, so the `.replace(/\.0$/,'')` hacks are gone.
-   Ratchet is now **0** for `toFixed` in `src/**/*.tsx`.
-4. **Hardcoded hex: 211 → 203.** The Scaled chip's three hardcoded values
-   (`#7C2D12`/`#fca5a5`/`#FAF2F0`) and the toast's now use `--accent-terracotta`,
-   `--accent-tint`, `--accent-tint-border`, `--charcoal` and `--bg-warm`. The toast also
-   gains a real dark mode: it was `bg-[#1A1A1A] dark:bg-[#2a2a2a] text-white`, i.e. dark
-   grey on dark with white text; the tokens invert it correctly in both schemes.
-   **Ratchet lowered to 203 — the remainder is Phase 2 and is still open.**
-5. **Doc drift on `.glass` — still open.** §7 says two surfaces; there is exactly one
-   (`App.tsx:890`, the header). The mobile CTA bar dropped it (see `index.css:124`).
-   The CI ceiling of 2 therefore still permits one card to take it silently.
-6. **`pushState` at `App.tsx:831`** — the code is right; §6's rule was written too
-   broadly. Fixed by the clarification in this file, not by a code change.
+**Fixed in the same pass, because leaving them would have made the repaired checks red:**
 
-**Three of the six were false positives.** That is the finding, not a footnote: a grep
-written from a rule catches the shape of a violation, never the fact of one. Every ratchet
-in `ci.yml` is a tripwire that tells you where to *look*; none of them is a verdict.
+1. ~~**Hand-formatted distance.**~~ **FIXED.** `prototype.ts:488` read
+   `(d as number).toFixed(1) + ' km'` — the slider readout said "2.0 km" to every reader
+   who writes "2,0", and said kilometres to everyone who thinks in miles. It now calls
+   `formatDistance()`, which was already in `locale.ts`, already tested, and **imported by
+   nothing**. That is the whole anatomy of the bug: the correct code existed and the call
+   site never reached for it.
+2. ~~**Hand-formatted rating.**~~ **FIXED.** `prototype.ts:683` used `.toFixed(1)` for the
+   rating and raw concatenation for the review count. Both now go through
+   `formatQuantity()`, so a four-figure count gets its locale's grouping separator.
+
+**Open, and each one is a real defect with a named cost:**
+
+3. **Two font files are preloaded and never used.** `index.html` preloads
+   `schibsted-grotesk-latin-wght-normal.woff2` and `…-italic.woff2` at highest priority on
+   every page load. No `@font-face` declares Schibsted Grotesk and no rule references it —
+   `--sans` is a system stack. So every visitor pays two high-priority font fetches on the
+   critical path and sees not one glyph rendered in that face. Fix by applying the family
+   or dropping the preloads; it is a design decision, so raise it rather than picking (§7).
+4. **`prototype.ts:809` hardcodes the theme-color tint**, `'#0E0E0D' : '#F5F4F2'` — the same
+   two values as `--bg` in each mode, written again by hand. Change the canvas token and the
+   browser chrome keeps the old tint, which rebuilds from parts the exact "band of the wrong
+   colour welded to the screen edge" bug in §12. Read the token, don't restate it.
+5. **`prototype.css:337,347` use `color:#FFF`** for headings over photo heroes. Should be a
+   token; there is no `--on-photo`.
+6. **Nothing is addressable** — see the routing entry in 13.2. This is the largest
+   functional regression from the React app and it is not tracked anywhere else.
+7. **Tailwind, React, `react-dom`, `lucide-react`, `motion` and `@vitejs/plugin-react` are
+   installed and unused.** Tailwind is still wired into `vite.config.ts`, but no stylesheet
+   imports it, so it emits nothing. Dead weight in `package.json` and in every install.
+
+**The false positive worth keeping, because it is the lesson:** an earlier audit flagged
+four `openNow` truthiness violations. All four sat inside an outer
+`openNow !== undefined` guard — the grep saw the inner ternary and not the guard. **No
+ratchet was added**, because no grep can tell a guarded ternary from a bare one; it would
+have fired on correct code forever. A grep written from a rule catches the *shape* of a
+violation, never the *fact* of one. Every ratchet in `ci.yml` is a tripwire that tells you
+where to look; none of them is a verdict. **Read the site before you believe the check.**
 
 ### 13.4 The honesty contract for reporting
 

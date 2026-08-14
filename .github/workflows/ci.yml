@@ -141,31 +141,33 @@ jobs:
       # broken on a tired afternoon. Each one below has actually been violated in this
       # repo's history, which is why it earned a check rather than a paragraph.
 
-      # §7: .glass belongs on CHROME ONLY — the fixed header and the mobile CTA bar,
-      # both of which live in App.tsx. On a card it puts backdrop-filter cost on every
-      # row of a scrolling list, the exact regression the .surface classes were added to
-      # prevent.
+      # §7: translucent chrome is expensive and belongs on chrome only. On a card it puts
+      # backdrop-filter cost on every row of a scrolling list, which is the regression the
+      # old .surface classes existed to prevent.
       #
-      # This used to count occurrences and cap them at 2, which could not fail the thing
-      # the rule is about: moving .glass off the header and onto a card keeps the count
-      # at 1 and passed. It now checks PLACEMENT — no .glass anywhere in components/,
-      # which is where every card lives — and caps App.tsx's chrome at 2.
-      # `.glass-range` is a different class (the Sidebar slider) and is excluded.
-      - name: .glass stays off cards (placement, not count)
+      # THIS CHECK USED TO GREP src/components AND src/App.tsx. Neither has existed since
+      # 206fe11 ("Transplant the prototype: it is now the app") deleted the React tree.
+      # grep on a missing path prints nothing, `|| true` swallowed the exit code, the
+      # count came back 0, and the step reported "OK — .glass on 0 chrome surface(s)" on
+      # every run. It was green because it was looking at nothing.
+      #
+      # `.glass` has no successor class in prototype.css, and the bare word `glass` now
+      # means something else entirely — it is the wine-glass ICON path for the cocktails
+      # occasion (prototype.ts:66). Repointing the old grep at src/ would have fired on an
+      # icon and taught everyone to ignore the step.
+      #
+      # So the SUBJECT changes and the RULE survives: the cost this rule was always about
+      # is backdrop-filter, and prototype.css currently uses it zero times. Ceiling 0 —
+      # translucency comes back only as a deliberate decision, never by drift.
+      - name: No backdrop-filter drift (§7)
         run: |
-          cards=$(grep -rnE '\bglass\b' src/components --include='*.tsx' | grep -v 'glass-range' || true)
-          if [ -n "$cards" ]; then
-            echo "$cards"
-            echo "::error::.glass appears in src/components — that is a card, not chrome. Only the header and mobile CTA bar in App.tsx may use it (§7)."
+          hits=$(grep -rnE 'backdrop-filter' src || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
+            echo "::error::backdrop-filter appeared in src/. It is chrome-only and costs a repaint on every row of a scrolling list (§7). If this is deliberate chrome, raise the ceiling in this step and say why."
             exit 1
           fi
-          chrome=$(grep -nE '\bglass\b' src/App.tsx | grep -v 'glass-range' | grep -c . || true)
-          if [ "$chrome" -gt 2 ]; then
-            grep -nE '\bglass\b' src/App.tsx | grep -v 'glass-range'
-            echo "::error::.glass on $chrome surfaces in App.tsx; §7 allows two (header, mobile CTA bar)."
-            exit 1
-          fi
-          echo "OK — .glass on $chrome chrome surface(s), 0 in components/"
+          echo "OK — no backdrop-filter in src/"
 
       # §12: vite-plugin-pwa precached index.html, so three sessions of work deployed and
       # were invisible on the live URL. public/sw.js is now a self-destructing kill switch
@@ -209,37 +211,54 @@ jobs:
           # bare one, so this rule stays agent-discipline only (§13.2) rather than
           # shipping a check that fires on correct code.
 
-          # §6 — bottom chrome derives from --tabbar-h, never a number. A guessed offset
-          # is how 7px of scrolling page ended up visible between two opaque bars.
-          # All five real sites were migrated on 2026-07-27, so the ceiling is 0: any
-          # hit is a new violation.
-          # Comment lines are excluded: index.css, EateryView and App all QUOTE the old
-          # values while explaining the bug, and a check that counts its own
-          # documentation as a violation trains people to raise the baseline.
-          c=$(grep -rnE '(bottom|pb)-\[[0-9]+px\]' src \
-                | grep -vE ':[[:space:]]*(\*|//|\{?/\*)' | grep -c . || true)
-          ratchet "hardcoded bottom-chrome offsets (§6)" 0 "$c"
+          # EVERY RATCHET BELOW USED TO READ --include='*.tsx'. There have been ZERO .tsx
+          # files in this repo since 206fe11 transplanted the prototype over the React
+          # app. grep matched nothing, `|| true` swallowed it, every count came back 0,
+          # and all four ratchets reported green for weeks while measuring an empty set.
+          # Meanwhile a real hand-formatted distance shipped and was read by users as
+          # "2.0 km" in locales that write "2,0". The ceilings below are measured against
+          # the files that actually exist.
 
           # §6 — src/locale.ts is the ONLY module allowed to format for a human reader.
-          # toFixed elsewhere writes "1.5" to everyone who reads "1,5". Both call sites
-          # moved to formatQuantity() on 2026-07-27, so the ceiling is 0.
-          c=$(grep -rnoE 'toFixed\(' src --include='*.tsx' | grep -c . || true)
+          # toFixed is a serialiser: it always emits "." and always pads. Ceiling 0, and
+          # verify/checks.mjs asserts the same rule independently so it holds with or
+          # without a browser. locale.ts is exempt — the Intl calls and their fallbacks
+          # live there.
+          c=$(grep -rnoE '\.toFixed\(' src --include='*.ts' \
+                | grep -v '^src/locale.ts' | grep -c . || true)
           ratchet "hand-formatted numbers outside locale.ts (§6)" 0 "$c"
 
-          # §7 — colour comes from tokens in index.css. Reported as 233, drifted down to
-          # 211 unnoticed, then 203, then 81 after collapsing every light/dark hex PAIR
-          # onto its token, now 71 with the black borders bound to --rule. A ceiling left
-          # above the real count is not a ratchet — it is free regressions. Lower it every time.
-          c=$(grep -rnoE '#[0-9a-fA-F]{3,8}\b' src --include='*.tsx' | grep -c . || true)
-          ratchet "hardcoded hex (§7)" 71 "$c"
+          # §7 — colour comes from the tokens on :root in prototype.css. The count only
+          # means anything if token DEFINITIONS are excluded, or the palette scores as its
+          # own worst violation and the ceiling gets raised to hide it. sed strips the
+          # `--name:#hex` pairs, then what remains is a genuine hardcode.
+          #
+          # The 4 that remain are worth naming, because two of them are a live trap:
+          #   prototype.css:337,347  color:#FFF on a photo hero — should be a token
+          #   prototype.ts:809       the theme-color meta tint, hardcoded #0E0E0D/#F5F4F2
+          # Those last two DUPLICATE the --bg token's value in each mode. Change the
+          # canvas token and the browser chrome silently keeps the old tint — which is
+          # precisely the "band of the wrong colour welded to the screen edge" bug in
+          # CLAUDE.md's trap register, rebuilt from parts.
+          c=0
+          for f in src/prototype.css src/prototype.ts; do
+            n=$(sed -E 's/--[a-zA-Z0-9-]+:[[:space:]]*#[0-9a-fA-F]{3,8}//g' "$f" \
+                  | grep -oE '#[0-9a-fA-F]{3,8}\b' | grep -c . || true)
+            c=$((c + n))
+          done
+          ratchet "hardcoded hex outside token definitions (§7)" 4 "$c"
 
-          # §7 — `border-black` is a 100%-opacity rule. On warm off-white paper it reads
-          # as a hard printed line and out-shouts the heading it sits under. This was
-          # fixed once, on the Saved screen (9de1226), and left in 10 other places for
-          # months — the whole recipe detail page was framed in it. --rule is the token
-          # for this weight. Opacity variants (border-black/5, /10) are real hairlines
-          # and are excluded by the lookahead.
-          c=$(grep -rnoP 'border-black(?![-/\w])' src --include='*.tsx' | grep -c . || true)
-          ratchet "full-strength black borders (§7)" 0 "$c"
+          # RETIRED, deliberately, rather than left green over nothing:
+          #
+          # - "hardcoded bottom-chrome offsets" matched the Tailwind form `bottom-[64px]`
+          #   and derived from --tabbar-h. The prototype has no fixed bottom chrome and no
+          #   --tabbar-h token; its tab strip sits in flow at the top. No subject.
+          # - "full-strength black borders" matched the Tailwind class `border-black`.
+          #   prototype.css has zero of those and zero #000 borders. No subject.
+          #
+          # Both rules were about Tailwind utilities. Tailwind is still wired into
+          # vite.config.ts but NO stylesheet imports it, so it emits nothing — see the
+          # open questions in CLAUDE.md §13.3. Re-add these the day a utility layer
+          # returns; do not leave a grep running against a syntax the codebase dropped.
 
           exit $fail

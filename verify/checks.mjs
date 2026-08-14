@@ -152,10 +152,35 @@ function staticChecks() {
     !/languageCode:\s*'[a-z]{2}/.test(readFileSync(resolve(ROOT, 'src/placesService.ts'), 'utf8')),
     'a hardcoded language is the same class of bug as a hardcoded country',
   );
+  /*
+   * NO NUMBER FORMATTED BY HAND, ANYWHERE EXCEPT locale.ts.
+   *
+   * This check used to read `/toFixed\(1\)\}\s*km/` — a regex that only matches the
+   * TEMPLATE-LITERAL spelling, `${d.toFixed(1)} km`. The live code was written with
+   * string concatenation, `d.toFixed(1) + ' km'`, which has no closing brace. So the
+   * check reported green over the exact line it existed to catch, and the distance under
+   * the slider read "2.0 km" to every reader who writes "2,0" — and read kilometres to
+   * everyone who thinks in miles — for as long as the check has existed. It was a check
+   * that could not fail, which CLAUDE.md §6 names as the thing to hunt for.
+   *
+   * A rule shaped like ONE SPELLING of a bug only ever catches that spelling. The actual
+   * rule is "locale.ts is the only module allowed to know how the user reads", so that is
+   * what is asserted now: every source file, every spelling, nowhere to hide. locale.ts
+   * is exempt because it is where the Intl calls and their last-resort fallbacks live.
+   *
+   * A comment containing `.toFixed(` would trip this. That is deliberate — a false RED is
+   * cheap to see and cheap to fix, and it is the failure this project can afford. A false
+   * GREEN is the one that ships.
+   */
+  const handFormatted = readdirSync(resolve(ROOT, 'src'))
+    .filter((f) => f.endsWith('.ts') && f !== 'locale.ts')
+    .filter((f) => /\.toFixed\(/.test(readFileSync(resolve(ROOT, 'src', f), 'utf8')));
   check(
-    'no toFixed() used to format a distance',
-    !/toFixed\(1\)\}\s*km/.test(readFileSync(resolve(ROOT, 'src/prototype.ts'), 'utf8')),
-    'half the world writes 1,4 km — Intl knows which half',
+    'no number formatted by hand outside locale.ts',
+    handFormatted.length === 0,
+    handFormatted.length
+      ? `toFixed() still in ${handFormatted.join(', ')} — use formatDistance/formatQuantity`
+      : 'toFixed serialises, it does not format — locale.ts owns every Intl call',
   );
 
   /* The Out tab must query the SELECTED city, never fall back to a hardcoded one. The

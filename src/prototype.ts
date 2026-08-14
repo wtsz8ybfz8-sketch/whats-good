@@ -27,6 +27,16 @@
  */
 import './prototype.css';
 import { fetchVenues } from './placesService';
+/*
+ * The app reads numbers to a person, so it never serialises one by hand.
+ *
+ * `toFixed` is a serialiser: it always emits a `.` and always pads to a fixed width.
+ * The distance readout under the slider said "2.0 km" to every reader on earth,
+ * including the half who write "2,0", and it said kilometres to readers who think in
+ * miles. Both of these helpers already existed in locale.ts, fully tested — nothing
+ * imported them, which is the only reason the bug survived (CLAUDE.md §6).
+ */
+import { formatDistance, formatQuantity } from './locale';
 import {
   isAuthConfigured, sendMagicLink, captureSessionFromUrl, restoreSession, signOut,
   type AuthSession,
@@ -485,7 +495,7 @@ async function render() {
   if (!picked) return;
   const areas = [...document.querySelectorAll('.chip[aria-pressed="true"]')].map((c) => c.textContent!);
   const { d, p, party } = sliderState();
-  $('o-dist').textContent = d === 'any' ? 'anywhere' : (d as number).toFixed(1) + ' km';
+  $('o-dist').textContent = d === 'any' ? 'anywhere' : formatDistance(d as number);
   $('o-price').textContent = p;
   $('o-party').textContent = party === 8 ? '8+' : String(party);
   const typedNow = ($('q') as HTMLInputElement).value.trim();
@@ -680,7 +690,8 @@ function venue(idx: number) {
     v.openNow === undefined ? null : ['Today', v.openNow ? 'Open' : 'Closed', v.hoursToday || ''],
     typeof v.priceTier === 'number' ? ['Spend', PR[v.priceTier - 1], 'per head'] : null,
     typeof v.rating === 'number'
-      ? ['Rating', v.rating.toFixed(1), v.userRatingCount ? v.userRatingCount + ' ratings' : '']
+      ? ['Rating', formatQuantity(v.rating, 1),
+        v.userRatingCount ? formatQuantity(v.userRatingCount, 0) + ' ratings' : '']
       : null,
     v.cuisine ? ['Kind', v.cuisine, ''] : null,
   ].filter(Boolean) as [string, string, string][];
