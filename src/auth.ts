@@ -19,8 +19,19 @@
  * rows. That is a console-side switch, not something this file can enforce.
  */
 
-const URL_BASE = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+/* This project's Supabase instance already exists — it was created by the Lovable build
+ * (project ref `jpgycbnpfckabkjhyzbk`, see the vendored `supabase/config.toml` in commit
+ * 44b5f5d) and it already carries the `saved_items` table and its RLS policy. So the URL
+ * has a default and only the browser key has to be supplied.
+ *
+ * Two names for that key, because Supabase renamed it mid-flight: the legacy anon JWT is
+ * `VITE_SUPABASE_ANON_KEY`, the current opaque `sb_publishable_…` string is
+ * `VITE_SUPABASE_PUBLISHABLE_KEY` — which is what the Lovable export used. Accept either
+ * rather than making the deployment guess which era it is in. */
+const DEFAULT_URL = 'https://jpgycbnpfckabkjhyzbk.supabase.co';
+const URL_BASE = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || DEFAULT_URL;
+const ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)
+  || (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
 
 const TOKEN_KEY = 'wg.auth.token';
 const EMAIL_KEY = 'wg.auth.email';

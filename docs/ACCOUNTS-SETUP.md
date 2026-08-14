@@ -1,71 +1,78 @@
-# Accounts — what's built, and the four things only you can do
+# Accounts — what already exists, and the one thing still missing
 
-The app ships with real email sign-in wired end to end: `src/auth.ts` (Supabase magic
-link, no SDK, no passwords), `src/savedStore.ts` (saved list per account), and the Saved
-tab, which shows one of three honest states depending on what is configured.
+## The correction that produced this file
 
-Until the two environment variables below exist, the app runs in device-only mode and
-**says so on screen** — it never claims an account it does not have. Nothing else about
-the app depends on this; venues, recipes and saving all work today.
+An earlier pass in this session said "there is no Supabase project, create one, here is
+the SQL for a new table". **Both halves were wrong**, and the user was right to push back.
 
-## 1. Create the Supabase project
+What is actually true, established by reading the repo rather than assuming:
 
-<https://supabase.com> → new project. Free tier is enough. You have to do this part —
-creating accounts is not something I can do on your behalf.
+- **The project exists.** Ref `jpgycbnpfckabkjhyzbk`, created by the Lovable build, still
+  vendored at `whats-good-next/supabase/config.toml` in commit `44b5f5d`.
+- **It is alive.** `GET https://jpgycbnpfckabkjhyzbk.supabase.co/auth/v1/health` answers
+  `401 {"message":"No API key found in request"}` — a live instance refusing an
+  unauthenticated caller, not a dead host.
+- **The table exists**, from migration `20260810153321`:
+  `public.saved_items (user_id, kind CHECK IN ('venue','recipe'), ref_id, title, subtitle,
+  image_url)`, unique on `(user_id, kind, ref_id)`, RLS on, one policy —
+  *"Users manage their own saved items"*, `auth.uid() = user_id`.
+- So does `api_cache`, `api_budget` and a `consume_api_budget()` function — a whole caching
+  and rate-limit layer that already exists and this app is not yet using.
 
-## 2. Run this SQL (SQL Editor → New query → Run)
+`src/savedStore.ts` had invented a *second* schema (`kind IN ('places','recipes')`, a
+`name` column). It would have failed the CHECK constraint on the very first insert. It now
+writes the columns that are really there, mapping the app's words onto them:
+`places → 'venue'`, `recipes → 'recipe'`, the name in both `ref_id` and `title`.
 
-Row-level security is the whole security model here: the anon key sits in the browser by
-design, and these policies are what stop it reading anyone else's rows.
+## What is still missing: one value
 
-```sql
-create table public.saved_items (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users on delete cascade default auth.uid(),
-  kind       text not null check (kind in ('places', 'recipes')),
-  name       text not null,
-  created_at timestamptz not null default now(),
-  unique (user_id, kind, name)
-);
+The browser key for that project. It is not in this repo (`.env*` is gitignored, correctly),
+not in either Vercel project's environment variables (checked with `vercel env ls` on
+`whats-good` and `whats-good-624c8eea`), and not in the Downloads clone.
 
-alter table public.saved_items enable row level security;
+Get it from **Supabase → Project Settings → API**, or from the Lovable project that
+created it. It is the *publishable* / *anon* key — the one meant to sit in a browser
+bundle. **Never the `service_role` key.**
 
-create policy "own rows: read"   on public.saved_items for select using (auth.uid() = user_id);
-create policy "own rows: insert" on public.saved_items for insert with check (auth.uid() = user_id);
-create policy "own rows: delete" on public.saved_items for delete using (auth.uid() = user_id);
+Then, locally in `.env.local` and in Vercel → Settings → Environment Variables (all three
+environments), set one of:
+
+```
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…     # current-era key
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJI…               # legacy JWT key
 ```
 
-The `unique` constraint is what makes a double-tap on Save harmless — the client sends
-`Prefer: resolution=ignore-duplicates`.
+The code accepts either name, because Supabase renamed this key mid-flight and the Lovable
+export used `PUBLISHABLE`. `VITE_SUPABASE_URL` is optional — it defaults to the project
+above; set it only to point at a different instance.
 
-## 3. Allow the redirect URL
+## One console-side switch
 
-Authentication → URL Configuration → Redirect URLs, add both:
+Supabase → Authentication → URL Configuration → Redirect URLs must list both:
 
 ```
 https://whats-good-nu.vercel.app
 http://localhost:5199
 ```
 
-Without this the emailed link lands on "requested path is invalid".
+Without it the emailed link lands on "requested path is invalid".
 
-## 4. Set the two variables
-
-Locally in `.env.local`, and in Vercel under Settings → Environment Variables (all three
-environments), then redeploy:
-
-```
-VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<the anon/public key from Project Settings → API>
-```
-
-Both are public by design — the anon key is meant to be in a browser bundle, and the RLS
-policies above are what make that safe. Never put the **service_role** key here.
-
-## What happens once those are set
+## What happens the moment the key is set
 
 - Saved tab offers "Email me a link". No password, nothing to reset, nothing to leak.
 - Following the link on any device signs that device in.
 - Anything saved before signing in is merged up, not discarded.
 - Saves are optimistic: the button flips immediately, the account catches up.
 - Signing out leaves the list on the device — it is still on the account too.
+
+## Not yet verified, and it cannot be from here
+
+No link has been sent, no row has been written, no second device has been signed in. That
+needs the key. Everything up to that point — the three UI states, the failure path, the
+schema mapping — has been read, typechecked and rendered in a browser.
+
+## Worth knowing: the caching layer already paid for
+
+`api_cache` + `api_budget` + `consume_api_budget()` exist in that same project and are
+unused. CLAUDE.md 7 says to cache resolved Places photo URLs in Supabase; the table for it
+is already sitting there. That is a separate piece of work, and it would cut Places spend.

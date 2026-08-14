@@ -16,8 +16,18 @@
  */
 import type { AuthSession } from './auth';
 
-const URL_BASE = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const URL_BASE = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
+  || 'https://jpgycbnpfckabkjhyzbk.supabase.co';
+const ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)
+  || (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
+
+/* The table is NOT ours to design — `public.saved_items` already exists in this project,
+   created by the Lovable build's migration (20260810153321). Its columns are
+   `kind ('venue'|'recipe')`, `ref_id`, `title`, `subtitle`, `image_url`, and its unique
+   key is (user_id, kind, ref_id). An earlier pass here invented a second schema
+   (`kind ('places'|'recipes')`, `name`) which would have failed the CHECK constraint on
+   the first insert. This maps the app's own words onto the columns that are really there. */
+const KIND: Record<SavedKind, string> = { places: 'venue', recipes: 'recipe' };
 
 export type SavedKind = 'places' | 'recipes';
 export interface SavedList { places: string[]; recipes: string[] }
@@ -37,6 +47,15 @@ export function writeLocal(list: SavedList): void {
   try { localStorage.setItem(LOCAL_KEY, JSON.stringify(list)); } catch { /* private mode */ }
 }
 
+/** The user's id, decoded from the access token's payload — no extra round trip. */
+function userId(session: AuthSession): string {
+  try {
+    return JSON.parse(atob(session.accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub;
+  } catch {
+    return '';
+  }
+}
+
 function restHeaders(session: AuthSession): Record<string, string> {
   return {
     'Content-Type': 'application/json',
@@ -49,27 +68,33 @@ function restHeaders(session: AuthSession): Record<string, string> {
 export async function fetchRemote(session: AuthSession): Promise<SavedList | null> {
   try {
     const res = await fetch(
-      `${URL_BASE}/rest/v1/saved_items?select=kind,name&order=created_at.desc`,
+      `${URL_BASE}/rest/v1/saved_items?select=kind,title&order=created_at.desc`,
       { headers: restHeaders(session) },
     );
     if (!res.ok) return null;
-    const rows = (await res.json()) as { kind: SavedKind; name: string }[];
+    const rows = (await res.json()) as { kind: string; title: string }[];
     return {
-      places: rows.filter((r) => r.kind === 'places').map((r) => r.name),
-      recipes: rows.filter((r) => r.kind === 'recipes').map((r) => r.name),
+      places: rows.filter((r) => r.kind === KIND.places).map((r) => r.title),
+      recipes: rows.filter((r) => r.kind === KIND.recipes).map((r) => r.title),
     };
   } catch {
     return null;
   }
 }
 
-/** `user_id` is filled by a column default of `auth.uid()`, so the client never sets it. */
+/* `user_id` has no default on this table — the migration declares it NOT NULL with only
+   an RLS check — so the client sends it, read from the JWT's `sub`. The RLS policy still
+   refuses anything that is not the caller's own id.
+   `ref_id` is the venue/recipe name: Places ids are not stable across queries (CLAUDE.md
+   6), so the name is the only key that survives a re-search. */
 export async function addRemote(session: AuthSession, kind: SavedKind, name: string): Promise<boolean> {
   try {
     const res = await fetch(`${URL_BASE}/rest/v1/saved_items`, {
       method: 'POST',
       headers: { ...restHeaders(session), Prefer: 'resolution=ignore-duplicates' },
-      body: JSON.stringify({ kind, name }),
+      body: JSON.stringify({
+        user_id: userId(session), kind: KIND[kind], ref_id: name, title: name,
+      }),
     });
     return res.ok;
   } catch {
@@ -80,7 +105,8 @@ export async function addRemote(session: AuthSession, kind: SavedKind, name: str
 export async function removeRemote(session: AuthSession, kind: SavedKind, name: string): Promise<boolean> {
   try {
     const res = await fetch(
-      `${URL_BASE}/rest/v1/saved_items?kind=eq.${encodeURIComponent(kind)}&name=eq.${encodeURIComponent(name)}`,
+      `${URL_BASE}/rest/v1/saved_items?kind=eq.${encodeURIComponent(KIND[kind])}`
+        + `&ref_id=eq.${encodeURIComponent(name)}`,
       { method: 'DELETE', headers: restHeaders(session) },
     );
     return res.ok;
