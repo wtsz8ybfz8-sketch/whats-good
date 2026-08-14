@@ -189,29 +189,23 @@ function toVenue(el: OsmElement): Venue | null {
  * the caller is already in a failure path and a second exception helps nobody.
  */
 export async function fetchOsmVenues(city: string, kind: 'restaurant' | 'bar'): Promise<Venue[]> {
-  const q = encodeURIComponent(query(city, kind));
+  /*
+   * THROUGH OUR OWN ENDPOINT, NOT STRAIGHT AT OVERPASS.
+   *
+   * Both browser-side attempts were blocked in production — a POST tripped a preflight
+   * Overpass would not answer, and a plain GET came back 403 with no CORS headers at all.
+   * `api/osm.ts` makes the same call server-side, where CORS does not apply, and caches
+   * the answer at the edge. The direct call stays as a second attempt purely so the dev
+   * server (which serves no /api) can still exercise this path.
+   */
+  const routes = [
+    `/api/osm?city=${encodeURIComponent(city)}&kind=${encodeURIComponent(kind)}`,
+    ...ENDPOINTS.map((e) => `${e}?data=${encodeURIComponent(query(city, kind))}`),
+  ];
 
-  for (const endpoint of ENDPOINTS) {
+  for (const url of routes) {
     try {
-      /*
-       * GET, NOT POST — and this is the whole reason the fallback failed in production
-       * while passing on localhost.
-       *
-       * A POST with a Content-Type header is not a CORS "simple request", so the browser
-       * sends a preflight OPTIONS first. Overpass answered that preflight without an
-       * `Access-Control-Allow-Origin` header from the deployed origin, so every call was
-       * blocked before it left the browser:
-       *   "Access to fetch at 'https://overpass-api.de/api/interpreter' from origin
-       *    'https://whats-good-nu.vercel.app' has been blocked by CORS policy"
-       * The dev server never saw it. A GET with no custom headers skips the preflight
-       * entirely and Overpass returns the data with CORS open.
-       *
-       * The timeout matters too: one mirror hung for 32 SECONDS before the browser gave
-       * up, which is indistinguishable from a dead app. 20s, then move to the next mirror.
-       */
-      const res = await fetch(`${endpoint}?data=${q}`, {
-        signal: AbortSignal.timeout(20_000),
-      });
+      const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
       if (!res.ok) continue;
       const data = (await res.json()) as { elements?: OsmElement[] };
       const venues = (data.elements || []).map(toVenue).filter((v): v is Venue => v !== null);
@@ -223,7 +217,7 @@ export async function fetchOsmVenues(city: string, kind: 'restaurant' | 'bar'): 
         return venues.sort((a, b) => rank(a) - rank(b)).slice(0, 20);
       }
     } catch {
-      /* Try the next mirror. */
+      /* Try the next route. */
     }
   }
   return [];
