@@ -528,7 +528,12 @@ async function render() {
     $('list').innerHTML = '<p class="empty">Nothing came back for that in ' + esc(city) + '. Try another occasion, or widen the spend.</p>';
     return;
   }
-  $('rc').textContent = venues.length + (kind === 'bar' ? ' bars' : ' places');
+  /* Say where the list came from when it is NOT Google. The user is owed the provenance:
+     these cards have no photographs and no ratings for a reason, and "from OpenStreetMap"
+     explains it in three words instead of looking like a broken page. */
+  const fromOsm = venues[0]?.id.startsWith('osm-');
+  $('rc').textContent = venues.length + (kind === 'bar' ? ' bars' : ' places')
+    + (fromOsm ? ' · from OpenStreetMap' : '');
   /* The hero was a flat panel on every screen — the single largest surface in the app,
      carrying no photograph, on a product whose selling point is photography. It now
      borrows the top result's own Places photo: real, already fetched for the card below

@@ -4,6 +4,7 @@
  */
 
 import { Venue } from './venue';
+import { fetchOsmVenues } from './osmFallback';
 import { localiseHours, placesLanguageCode, stripDayPrefix, venueDayIndex } from './locale';
 
 const PLACES_BASE = 'https://places.googleapis.com/v1';
@@ -493,7 +494,12 @@ export async function fetchVenues(
 ): Promise<VenueSearchResult> {
   const key = getGooglePlacesKey();
 
-  if (!key) return { status: 'unconfigured' };
+  /* No key at all is the same situation as a spent one, from the user's side of the
+     screen: they asked where to eat. Try the open map before apologising. */
+  if (!key) {
+    const osm = await fetchOsmVenues(city, kind);
+    return osm.length ? { status: 'ok', venues: osm } : { status: 'unconfigured' };
+  }
 
   const controller = new AbortController();
   const abortSignal = signal ?? controller.signal;
@@ -549,9 +555,28 @@ export async function fetchVenues(
     // nothing came back at all, and report the most actionable one.
     if (succeeded.length === 0) {
       const failures = outcomes as VenueSearchFailure[];
-      return failures.reduce((worst, f) =>
-        FAILURE_RANK[f.status] > FAILURE_RANK[worst.status] ? f : worst,
+      const worst = failures.reduce((w, f) =>
+        FAILURE_RANK[f.status] > FAILURE_RANK[w.status] ? f : w,
       );
+      /*
+       * GOOGLE IS NOT THE ONLY SOURCE OF A RESTAURANT'S NAME AND ADDRESS.
+       *
+       * When Places fails — the daily quota running out (429), the key being rejected,
+       * the network being down — the app used to show an apology and nothing else. On
+       * 2026-08-14 that meant one console-side number took the entire discovery half of
+       * the product offline for a day.
+       *
+       * OpenStreetMap answers the same question with no key and no quota. The venues it
+       * returns carry no photograph and no rating, so those modules simply do not render
+       * — but the names, addresses, cuisines, phone numbers and published hours are real,
+       * and a real list beats a real apology. `aborted` is excluded: a superseded search
+       * must stay silent, not race a fallback onto the screen.
+       */
+      if (worst.status !== 'aborted') {
+        const osm = await fetchOsmVenues(city, kind);
+        if (osm.length) return { status: 'ok', venues: osm };
+      }
+      return worst;
     }
 
     const seen = new Set<string>();

@@ -1,0 +1,215 @@
+/*
+ * The answer when Google says no.
+ *
+ * On 2026-08-14 the Places project hit its daily cap — `429 RESOURCE_EXHAUSTED, quota
+ * metric SearchTextRequest ... per day` — and the entire discovery half of the app died
+ * with it. One console-side number, and the product is a blank column. That is an
+ * unacceptable single point of failure for the thing the app is FOR.
+ *
+ * So: OpenStreetMap via the Overpass API. No key, no billing, no account. It publishes
+ * exactly the fields the result cards need — name, address parts, cuisine, opening_hours,
+ * phone, website — for real venues, in any city.
+ *
+ * What it deliberately does NOT do:
+ *
+ * - **No photographs.** OSM imagery is documentation, not food photography, and it was
+ *   rejected by name (CLAUDE.md 7). These venues render on the monogram plate instead.
+ * - **No invented facts.** No rating, no price tier, no wait estimate — OSM does not
+ *   publish them, so the cards simply omit those modules (CLAUDE.md 8).
+ * - **No pretending to be Google.** `openNow` is computed only from a published
+ *   `opening_hours` tag we can actually parse, and left undefined otherwise, so the card
+ *   says nothing rather than guessing.
+ *
+ * It is a fallback, not a replacement: Places is still tried first, because its data is
+ * richer and it carries the photography this product is built on.
+ */
+import type { Venue } from './venue';
+
+const ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+
+interface OsmElement {
+  type: string;
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+}
+
+/** Which OSM amenities answer this app's two venue kinds. */
+const AMENITY: Record<'restaurant' | 'bar', string> = {
+  restaurant: 'restaurant|cafe|fast_food|ice_cream',
+  bar: 'bar|pub|biergarten|nightclub',
+};
+
+/*
+ * A RADIUS, NOT AN AREA NAME.
+ *
+ * The first version of this asked Overpass for
+ * `area["name"="Cape Town"]["boundary"="administrative"]`. It returned zero elements —
+ * verified by curl, not assumed — because that city's administrative relation does not
+ * carry the plain name as an exact match. An area lookup that silently resolves to
+ * nothing is the worst kind of failure: the fallback reports "no venues" and looks like
+ * the fallback is broken.
+ *
+ * A bounding radius around the city centre cannot fail that way. The coordinates are the
+ * four cities this app ships, so no geocoder is called — one fewer service to be rate
+ * limited by. An unknown city falls back to a name search, which is imperfect but is the
+ * only honest option without geocoding.
+ */
+const CENTRES: Record<string, [number, number]> = {
+  'Cape Town': [-33.9249, 18.4241],
+  London: [51.5072, -0.1276],
+  Paris: [48.8566, 2.3522],
+  'New York': [40.7128, -74.0060],
+};
+
+function query(city: string, kind: 'restaurant' | 'bar'): string {
+  const centre = CENTRES[city];
+  const filter = `["amenity"~"^(${AMENITY[kind]})$"]["name"]`;
+  if (centre) {
+    /* 6km covers a city's eating districts without pulling in a whole metro area. */
+    const around = `(around:6000,${centre[0]},${centre[1]})`;
+    return `[out:json][timeout:25];
+(
+  node${filter}${around};
+  way${filter}${around};
+);
+out center tags 60;`;
+  }
+  const safe = city.replace(/["\\]/g, '');
+  return `[out:json][timeout:25];
+area["name"="${safe}"]->.a;
+(
+  node${filter}(area.a);
+  way${filter}(area.a);
+);
+out center tags 60;`;
+}
+
+/**
+ * Is the venue open right now, per its published `opening_hours`?
+ *
+ * Only the common grammar is handled — `Mo-Fr 08:00-22:00; Sa 10:00-16:00`, `24/7`, and
+ * comma-separated day lists. Anything with holidays, months, sunset offsets or `off`
+ * rules returns **undefined**, which renders as no status at all. A half-understood
+ * opening rule presented as "Open now" is exactly the kind of confident wrong answer this
+ * codebase refuses to ship (CLAUDE.md 8).
+ */
+export function openFromOsm(spec: string | undefined, now = new Date()): boolean | undefined {
+  if (!spec) return undefined;
+  const s = spec.trim();
+  if (/^24\/7$/.test(s)) return true;
+  if (/PH|SH|sunset|sunrise|off|week|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(s)) return undefined;
+
+  const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const today = now.getDay();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  let understood = false;
+
+  for (const rule of s.split(';')) {
+    const m = rule.trim().match(/^([A-Za-z,\-]+)\s+(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+    if (!m) continue;
+    understood = true;
+
+    const applies = m[1].split(',').some((part) => {
+      const range = part.split('-');
+      const from = DAYS.indexOf(range[0]);
+      if (from < 0) return false;
+      if (range.length === 1) return from === today;
+      const to = DAYS.indexOf(range[1]);
+      if (to < 0) return false;
+      /* A range can wrap the week — Fr-Mo is Friday, Saturday, Sunday, Monday. */
+      return from <= to ? today >= from && today <= to : today >= from || today <= to;
+    });
+    if (!applies) continue;
+
+    const open = +m[2] * 60 + +m[3];
+    let close = +m[4] * 60 + +m[5];
+    /* 18:00-02:00 closes after midnight; treat it as the next day. */
+    if (close <= open) close += 24 * 60;
+    if (minutes >= open && minutes <= close) return true;
+    if (minutes + 24 * 60 >= open && minutes + 24 * 60 <= close) return true;
+  }
+  return understood ? false : undefined;
+}
+
+function address(tags: Record<string, string>): string {
+  const line = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
+  return [line, tags['addr:suburb'] || tags['addr:city'], tags['addr:postcode']]
+    .filter(Boolean).join(', ');
+}
+
+/** `cuisine=italian;pizza` → "Italian · Pizza". */
+function cuisine(tags: Record<string, string>): string {
+  const raw = tags.cuisine;
+  if (!raw) return '';
+  return raw.split(';').slice(0, 2)
+    .map((c) => c.replace(/_/g, ' ').replace(/^./, (ch) => ch.toUpperCase()))
+    .join(' · ');
+}
+
+function toVenue(el: OsmElement): Venue | null {
+  const tags = el.tags || {};
+  if (!tags.name) return null;
+  const lat = el.lat ?? el.center?.lat;
+  const lon = el.lon ?? el.center?.lon;
+
+  return {
+    id: `osm-${el.type}-${el.id}`,
+    name: tags.name,
+    address: address(tags),
+    cuisine: cuisine(tags),
+    vibeMatch: '',
+    fallbackDistance: '',
+    signatureOrder: '',
+    signatureDescription: '',
+    signatureIngredients: [],
+    digestiveNote: '',
+    externalLink: tags.website || tags['contact:website']
+      || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tags.name)}`,
+    hasOwnWebsite: Boolean(tags.website || tags['contact:website']),
+    latitude: lat,
+    longitude: lon,
+    phone: tags.phone || tags['contact:phone'] || '',
+    estimatedWait: '',
+    openNow: openFromOsm(tags.opening_hours),
+    hoursToday: tags.opening_hours,
+    /* No photoUrl, no rating, no priceTier — OSM publishes none of them, so nothing is
+       set and every render site already omits what is absent. */
+  };
+}
+
+/**
+ * Venues for a city from OpenStreetMap. Returns an empty array rather than throwing —
+ * the caller is already in a failure path and a second exception helps nobody.
+ */
+export async function fetchOsmVenues(city: string, kind: 'restaurant' | 'bar'): Promise<Venue[]> {
+  const body = 'data=' + encodeURIComponent(query(city, kind));
+
+  for (const endpoint of ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { elements?: OsmElement[] };
+      const venues = (data.elements || []).map(toVenue).filter((v): v is Venue => v !== null);
+      if (venues.length) {
+        /* Open venues first — the app's whole question is "what's good RIGHT NOW" — then
+           the ones whose hours are unknown, then the closed. Within a group, OSM's own
+           order stands; there is no rating to sort by and inventing one is forbidden. */
+        const rank = (v: Venue) => (v.openNow === true ? 0 : v.openNow === undefined ? 1 : 2);
+        return venues.sort((a, b) => rank(a) - rank(b)).slice(0, 20);
+      }
+    } catch {
+      /* Try the next mirror. */
+    }
+  }
+  return [];
+}
