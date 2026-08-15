@@ -269,7 +269,32 @@ export type VenueSearchFailure =
   /** Superseded by a newer search before it finished. Never user-visible. */
   | { status: 'aborted' };
 
-export type VenueSearchResult = { status: 'ok'; venues: Venue[] } | VenueSearchFailure;
+/**
+ * WHERE THE LIST CAME FROM, CARRIED WITH THE LIST.
+ *
+ * Every OSM fallback and every Places success used to return the same bare
+ * `{ status: 'ok', venues }`, so by the time the render site had it, the single most
+ * important fact about that list — that Google never answered — was gone. The render
+ * site recovered it by sniffing `venues[0].id.startsWith('osm-')`, which is a guess
+ * about a string, not a fact about a request, and it says nothing about WHY.
+ *
+ * That gap is why the owner reported "the restaurants aren't working and they're not
+ * showing pics" and nobody could tell them which of four different things had happened.
+ * An unset key, a rejected key, a spent daily quota and a dead network all collapsed
+ * into one indistinguishable screen: real venue names, no photographs, and an occasion
+ * filter that silently did nothing. `reason` is the difference between a diagnosis and
+ * another session of guessing.
+ */
+export type VenueSearchResult =
+  | {
+      status: 'ok';
+      venues: Venue[];
+      /** 'osm' means Google did not answer — no photographs, no ratings, coarse filtering. */
+      source: 'places' | 'osm';
+      /** Why Places was abandoned. Only ever set when `source` is 'osm'. */
+      reason?: Exclude<VenueSearchFailure['status'], 'aborted'>;
+    }
+  | VenueSearchFailure;
 
 type PlacesFetch = { status: 'ok'; places: Place[] } | VenueSearchFailure;
 
@@ -497,8 +522,10 @@ export async function fetchVenues(
   /* No key at all is the same situation as a spent one, from the user's side of the
      screen: they asked where to eat. Try the open map before apologising. */
   if (!key) {
-    const osm = await fetchOsmVenues(city, kind);
-    return osm.length ? { status: 'ok', venues: osm } : { status: 'unconfigured' };
+    const osm = await fetchOsmVenues(city, kind, query);
+    return osm.length
+      ? { status: 'ok', venues: osm, source: 'osm', reason: 'unconfigured' }
+      : { status: 'unconfigured' };
   }
 
   const controller = new AbortController();
@@ -598,8 +625,8 @@ export async function fetchVenues(
        * must stay silent, not race a fallback onto the screen.
        */
       if (worst.status !== 'aborted') {
-        const osm = await fetchOsmVenues(city, kind);
-        if (osm.length) return { status: 'ok', venues: osm };
+        const osm = await fetchOsmVenues(city, kind, query);
+        if (osm.length) return { status: 'ok', venues: osm, source: 'osm', reason: worst.status };
       }
       return worst;
     }
@@ -615,7 +642,7 @@ export async function fetchVenues(
       });
 
     // A real, sourced "nothing matched that combination" — not a failure.
-    if (places.length === 0) return { status: 'ok', venues: [] };
+    if (places.length === 0) return { status: 'ok', venues: [], source: 'places' };
 
     const venues = places.map((place, index): Venue => {
       const name = place.displayName?.text ?? 'Restaurant';
@@ -702,7 +729,7 @@ export async function fetchVenues(
       };
     });
 
-    return { status: 'ok', venues };
+    return { status: 'ok', venues, source: 'places' };
   } catch (err) {
     // Reached only if the mapping above throws — the fetches classify their own
     // failures. Previously this swallowed everything into `[]`, which is how a broken

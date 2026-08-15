@@ -195,6 +195,12 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radiu
   font:600 11px/1 var(--sans);padding:7px 12px;border-radius:var(--r3);cursor:pointer}
 .savebtn[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .empty{color:var(--ink3);font-size:13.5px;line-height:1.55}
+/* Degraded-source notice. Recessed surface, --ink2 not --ink3: it is an explanation the
+   user needs to actually read, not a caption, and --ink3 is the quietest tone in the
+   palette (CLAUDE.md §7 flags it as the one most likely to miss AA). No accent — the
+   accent is spent on selection and live state, and this is neither. */
+.srcnote{background:var(--surf2);border-radius:var(--r2);padding:10px 12px;margin-bottom:12px;
+  color:var(--ink2);font-size:12.5px;line-height:1.5}
 
 /* venue detail */
 .detail{display:none}

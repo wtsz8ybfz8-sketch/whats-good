@@ -506,6 +506,11 @@ async function render() {
 
   const seq = ++loadSeq;
   $('rc').textContent = '';
+  /* Cleared with the list, not after it. A stale "came from OpenStreetMap" sitting over
+     a fresh Google result set would be a confident false statement about provenance —
+     the one thing this note exists to prevent. */
+  $('srcnote').textContent = '';
+  ($('srcnote') as HTMLElement).style.display = 'none';
   $('list').innerHTML = '<p class="empty">Looking…</p>';
 
   const kind = BAR_KEYS.has(picked) ? 'bar' : 'restaurant';
@@ -538,12 +543,36 @@ async function render() {
     $('list').innerHTML = '<p class="empty">Nothing came back for that in ' + esc(city) + '. Try another occasion, or widen the spend.</p>';
     return;
   }
-  /* Say where the list came from when it is NOT Google. The user is owed the provenance:
-     these cards have no photographs and no ratings for a reason, and "from OpenStreetMap"
-     explains it in three words instead of looking like a broken page. */
-  const fromOsm = venues[0]?.id.startsWith('osm-');
+  /* Say where the list came from when it is NOT Google, and SAY WHY.
+     The provenance used to be sniffed off `venues[0].id`, which could report the source
+     but never the cause — so an unset key, a rejected key, a spent daily quota and a dead
+     network all produced one identical screen: real names, no photographs, and an
+     occasion filter that barely bit. The owner saw "the restaurants aren't working and
+     they're not showing pics" and had no way to tell anyone which of the four it was.
+     The reason now travels with the result, so the next diagnosis is a readout. */
+  const fromOsm = out.source === 'osm';
   $('rc').textContent = venues.length + (kind === 'bar' ? ' bars' : ' places')
     + (fromOsm ? ' · from OpenStreetMap' : '');
+  const note = $('srcnote');
+  if (fromOsm) {
+    /* Each sentence is the truth about a DIFFERENT thing, and the user acts on each
+       differently: the first two are the owner's console, the third is a wait, the
+       fourth is a retry. Merging them into "something went wrong" is what cost two
+       sessions of guessing. */
+    const why = out.reason === 'unconfigured'
+      ? 'No Google Places key is set on this deployment'
+      : out.reason === 'denied'
+        ? 'Google rejected the Places key — check its API and referrer restrictions'
+        : out.reason === 'quota'
+          ? "Today's Google Places allowance is used up"
+          : 'Google Places could not be reached just now';
+    note.textContent = why + ', so these came from OpenStreetMap instead — real places, '
+      + 'but no photos, no ratings, and the occasion only filters on cuisine.';
+    note.style.display = '';
+  } else {
+    note.textContent = '';
+    note.style.display = 'none';
+  }
   /* The hero was a flat panel on every screen — the single largest surface in the app,
      carrying no photograph, on a product whose selling point is photography. It now
      borrows the top result's own Places photo: real, already fetched for the card below

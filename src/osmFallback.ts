@@ -188,7 +188,68 @@ function toVenue(el: OsmElement): Venue | null {
  * Venues for a city from OpenStreetMap. Returns an empty array rather than throwing —
  * the caller is already in a failure path and a second exception helps nobody.
  */
-export async function fetchOsmVenues(city: string, kind: 'restaurant' | 'bar'): Promise<Venue[]> {
+/*
+ * Words that describe the OCCASION rather than the food, plus the scaffolding every
+ * query carries. Matching on these would match everything — `restaurant` appears in the
+ * phrasing of every single Eat-tab search — so narrowing on them is the same as not
+ * narrowing at all, while looking like it worked.
+ */
+const NOT_A_CUISINE = new Set([
+  'restaurant', 'restaurants', 'bar', 'bars', 'pub', 'pubs', 'place', 'places', 'eat',
+  'in', 'the', 'a', 'and', 'best', 'popular', 'local', 'good', 'great', 'near', 'me',
+  'with', 'for', 'to', 'food', 'spot', 'spots', 'night', 'out', 'somewhere', 'venue',
+]);
+
+/**
+ * Narrow an OSM result set by what the user actually asked for.
+ *
+ * THE PROBLEM THIS SOLVES. `fetchOsmVenues` took only a city and a kind, so on the
+ * fallback path EVERY occasion issued the same Overpass query and got the same sixty
+ * venues in the same order. Tapping "Coffee & a laptop", "Braai" and "With the kids"
+ * produced three identical lists. That is the exact defect the owner reported twice —
+ * "I click on the moods and I get the same list of restaurants, no difference
+ * whatsoever" — and the previous fix only ever touched the Google path, which in
+ * production was not the path being taken.
+ *
+ * WHAT THIS DOES AND DOES NOT DO. It matches the query's meaningful words against the
+ * `cuisine` tag and the venue name that OSM already returned. It invents nothing and
+ * fetches nothing extra. It is genuinely weaker than a Places text search: OSM publishes
+ * a cuisine tag, not a notion of "romantic" or "good for kids", so an occasion with no
+ * food word in it cannot be narrowed at all.
+ *
+ * WHEN NOTHING MATCHES, THE FULL LIST STANDS. A narrowed-to-empty screen would be a
+ * worse answer than a broad one — the user asked where to eat, and "nothing" is not a
+ * more honest reply than "here is everything open nearby". The caller says which of the
+ * two happened, so the screen never implies a filter that did not run.
+ */
+export function narrowByQuery(elements: OsmElement[], query: string): OsmElement[] {
+  const words = query.toLowerCase().split(/[^a-z]+/)
+    .filter((w) => w.length > 2 && !NOT_A_CUISINE.has(w));
+  if (!words.length) return elements;
+
+  const matches = elements.filter((el) => {
+    const t = el.tags || {};
+    /* `amenity` is in the haystack because it is the only tag that answers the
+       occasions phrased as a venue type rather than a food. "Coffee & a laptop" asks
+       for `cafe with wifi`, and a cafe's cuisine tag is `coffee_shop` — the two strings
+       share no substring, so matching on cuisine and name alone silently returned the
+       unfiltered list. The amenity vocabulary is not guessed: it is the same set this
+       file already sends to Overpass in AMENITY above. */
+    const hay = [t.cuisine, t.name, t.amenity].filter(Boolean).join(' ')
+      .toLowerCase().replace(/_/g, ' ');
+    return words.some((w) => hay.includes(w));
+  });
+  return matches.length ? matches : elements;
+}
+
+/* NOT named `query`: this module already has a top-level `query(city, kind)` that builds
+   the Overpass request, and a parameter of that name shadows it inside this function —
+   which is a call to a string, caught by tsc, not by esbuild. */
+export async function fetchOsmVenues(
+  city: string,
+  kind: 'restaurant' | 'bar',
+  terms = '',
+): Promise<Venue[]> {
   /*
    * THROUGH OUR OWN ENDPOINT, NOT STRAIGHT AT OVERPASS.
    *
@@ -208,7 +269,10 @@ export async function fetchOsmVenues(city: string, kind: 'restaurant' | 'bar'): 
       const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
       if (!res.ok) continue;
       const data = (await res.json()) as { elements?: OsmElement[] };
-      const venues = (data.elements || []).map(toVenue).filter((v): v is Venue => v !== null);
+      /* Narrowed on the RAW TAGS, before mapping: `amenity` is the tag that answers
+         type-shaped occasions and it is deliberately not carried onto Venue. */
+      const venues = narrowByQuery(data.elements || [], terms)
+        .map(toVenue).filter((v): v is Venue => v !== null);
       if (venues.length) {
         /* Open venues first — the app's whole question is "what's good RIGHT NOW" — then
            the ones whose hours are unknown, then the closed. Within a group, OSM's own

@@ -158,6 +158,15 @@
           </div>
           <div class="res">
             <div class="rhead"><b id="rt">Nothing picked yet</b><span id="rc"></span></div>
+            <!--
+              Why a list is not what it should be. Empty and display:none until a search
+              actually falls back off Google Places, at which point it names the cause —
+              unset key, rejected key, spent quota, unreachable — because those are four
+              different problems with four different fixes, and collapsing them into one
+              silent screen is what left "the restaurants aren't working and they're not
+              showing pics" undiagnosable for two sessions.
+            -->
+            <p class="srcnote" id="srcnote" style="display:none"></p>
             <div id="list"><p class="empty">Pick an occasion, or just type what you're after.</p></div>
           </div>
         </div>
