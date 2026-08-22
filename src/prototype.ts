@@ -924,6 +924,7 @@ function venue(idx: number) {
   $('bk').onclick = () => history.back();
   const sv = document.getElementById('sv');
   if (sv) sv.onclick = () => toggleSave('places', v.name, sv);
+  void venueFacts(v);
 
   /* What gets shared is the venue as a human would write it, plus a maps link that opens
      for the recipient whatever they use. Not a link back into this app: there is no route
@@ -955,6 +956,64 @@ function venue(idx: number) {
     try { await navigator.clipboard.writeText(v.address || v.name); flash(cp, 'Copied'); }
     catch { flash(cp, 'Copy failed'); }
   };
+}
+
+/* ── what OpenStreetMap knows and Google will not say ─────────────────────────
+   The venue page was thin because it only ever showed what Places returns, and Places
+   answers "is it open, is it good, what does it cost". It does not readily answer the
+   questions that decide whether a place works for the person asking: can the kitchen do
+   vegan, does the door take a wheelchair, is there a table outside, will they do it to
+   take away. OSM holds exactly those, recorded by people who walked in.
+
+   It is free, it needs no key, and the same server endpoint that already proxies Overpass
+   for the city sweep answers a 60m lookup around one venue. Failure is silent on purpose:
+   a venue nobody has tagged yet must look like a venue with no extra facts, never like a
+   broken page. */
+const OSM_FACTS: [string, (t: Record<string, string>) => string | null][] = [
+  ['Vegan', (t) => (t['diet:vegan'] === 'only' ? 'Only vegan' : t['diet:vegan'] === 'yes' ? 'Yes' : null)],
+  ['Vegetarian', (t) => (t['diet:vegetarian'] === 'only' ? 'Only vegetarian' : t['diet:vegetarian'] === 'yes' ? 'Yes' : null)],
+  ['Halal', (t) => (t['diet:halal'] === 'yes' || t['diet:halal'] === 'only' ? 'Yes' : null)],
+  ['Gluten free', (t) => (t['diet:gluten_free'] === 'yes' ? 'Yes' : null)],
+  ['Step-free', (t) => (t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'limited' ? 'Limited' : null)],
+  ['Outside', (t) => (t.outdoor_seating === 'yes' ? 'Tables outside' : null)],
+  ['Takeaway', (t) => (t.takeaway === 'yes' ? 'Yes' : t.takeaway === 'only' ? 'Takeaway only' : null)],
+  ['Delivery', (t) => (t.delivery === 'yes' ? 'Yes' : null)],
+  ['Wi-Fi', (t) => (t.internet_access === 'wlan' || t.internet_access === 'yes' ? 'Yes' : null)],
+  ['Dogs', (t) => (t.dog === 'yes' ? 'Welcome' : null)],
+  ['Cards', (t) => (t['payment:cards'] === 'yes' || t['payment:visa'] === 'yes' ? 'Accepted' : null)],
+];
+
+async function venueFacts(v: Venue) {
+  if (!v.latitude || !v.longitude) return;
+  let tags: Record<string, string> | null = null;
+  try {
+    const r = await fetch(`/api/osm?lat=${v.latitude}&lon=${v.longitude}`);
+    if (!r.ok) return;
+    const data = await r.json() as { elements?: { tags?: Record<string, string> }[] };
+    const list = (data.elements || []).filter((e) => e.tags && e.tags.name);
+    /* Prefer the element whose name matches the venue we are showing. Without that check
+       a busy street corner hands back the bar next door and the page states, confidently,
+       facts about the wrong building. */
+    const wanted = v.name.toLowerCase();
+    const hit = list.find((e) => (e.tags!.name || '').toLowerCase() === wanted)
+      || list.find((e) => (e.tags!.name || '').toLowerCase().includes(wanted.slice(0, 12)));
+    tags = hit?.tags || null;
+  } catch { return; }
+  if (!tags) return;
+
+  const found = OSM_FACTS
+    .map(([labelText, read]) => [labelText, read(tags as Record<string, string>)] as const)
+    .filter((x): x is readonly [string, string] => !!x[1]);
+  if (!found.length) return;
+
+  const host = document.getElementById('detail');
+  if (!host || document.body.dataset.view !== 'detail') return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = '<h4>Good to know</h4><div class="facts">'
+    + found.map(([k, val]) => '<div class="fact"><u>' + esc(k) + '</u><b>' + esc(val) + '</b></div>').join('')
+    + '</div><p class="src">From OpenStreetMap contributors</p>';
+  const col = host.querySelector('.dgrid > div');
+  if (col) col.appendChild(wrap);
 }
 
 /* ── verbatim: the parse line ────────────────────────────────────────────────── */

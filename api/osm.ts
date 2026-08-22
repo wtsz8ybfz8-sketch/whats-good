@@ -59,14 +59,30 @@ interface Res {
 const one = (v: string | string[] | undefined): string =>
   (Array.isArray(v) ? v[0] : v) ?? '';
 
+/* A second mode: the TAGS OpenStreetMap holds for one venue, looked up by position.
+ *
+ * This is the part Google will not tell you and OSM will, for free, because volunteers
+ * walked in and recorded it: whether the kitchen does vegan, whether the door takes a
+ * wheelchair, whether there is a table outside, whether they do takeaway. 60 metres is
+ * tight enough that a match is the same building rather than its neighbour. */
+function factsQuery(lat: number, lon: number): string {
+  const filter = '["amenity"~"^(restaurant|cafe|fast_food|bar|pub|ice_cream|biergarten)$"]["name"]';
+  return `[out:json][timeout:20];\n(\n  node${filter}(around:60,${lat},${lon});\n  way${filter}(around:60,${lat},${lon});\n);\nout tags center 8;`;
+}
+
 export default async function handler(req: Req, res: Res): Promise<void> {
   const city = one(req.query?.city);
   const kind = one(req.query?.kind) || 'restaurant';
+  const lat = Number(one(req.query?.lat));
+  const lon = Number(one(req.query?.lon));
 
-  const query = buildQuery(city, kind);
+  /* Coordinates take precedence: this is the single-venue lookup, not the city sweep. */
+  const query = Number.isFinite(lat) && Number.isFinite(lon) && (lat !== 0 || lon !== 0)
+    ? factsQuery(lat, lon)
+    : buildQuery(city, kind);
   /* An unknown city is a client bug, not a server error, and it must not be cached. */
   if (!query) {
-    res.status(400).json({ error: 'Unknown city or kind' });
+    res.status(400).json({ error: 'Unknown city or kind, and no coordinates given' });
     return;
   }
 
