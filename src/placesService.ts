@@ -7,7 +7,11 @@ import { Venue } from './venue';
 import { fetchOsmVenues } from './osmFallback';
 import { localiseHours, placesLanguageCode, stripDayPrefix, venueDayIndex } from './locale';
 
-const PLACES_BASE = 'https://places.googleapis.com/v1';
+/* The browser no longer holds the key, so it no longer talks to Google directly. Every
+   Places call goes through this app's own function, which spends a server-side
+   GOOGLE_PLACES_KEY. See api/places.ts for why a billed credential cannot live in a
+   bundle the public can read. */
+const PLACES_BASE = '/api/places';
 
 interface PlacePhoto {
   name: string;
@@ -83,16 +87,11 @@ export interface DetectedLocality {
  * deserves the real one: the app's primary tab promised "real places near you" and
  * then rendered a generic empty state, with no way forward (§5, Recover).
  */
+/* There is nothing for the client to check any more: whether Places is usable is a
+   property of the deployment, not of the bundle. The proxy answers 503 when it holds no
+   key, and that travels the normal error path like any other upstream failure. */
 export function isPlacesConfigured(): boolean {
-  return getGooglePlacesKey().length > 0;
-}
-
-function getGooglePlacesKey(): string {
-  return (
-    (import.meta.env.VITE_GOOGLE_PLACES_KEY as string | undefined) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) ||
-    ''
-  );
+  return true;
 }
 
 /**
@@ -210,8 +209,7 @@ function isClosingSoon(
  * is not done here.
  */
 export function getPlacePhotoUrl(photoName: string): string {
-  const key = getGooglePlacesKey();
-  return `${PLACES_BASE}/${photoName}/media?maxWidthPx=800&key=${key}`;
+  return `${PLACES_BASE}?photo=${encodeURIComponent(photoName)}&w=800`;
 }
 
 /** Maps a price tier (1-4) to the Places API priceLevels filter. */
@@ -312,19 +310,17 @@ const FAILURE_RANK: Record<VenueSearchFailure['status'], number> = {
 };
 
 async function searchTextOnce(
-  key: string,
   textQuery: string,
   priceLevels: string[] | undefined,
   signal: AbortSignal,
 ): Promise<PlacesFetch> {
   let response: Response;
   try {
-    response = await fetch(`${PLACES_BASE}/places:searchText`, {
+    response = await fetch(`${PLACES_BASE}?path=searchText`, {
     signal,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Goog-Api-Key': key,
       'X-Goog-FieldMask': [
         'places.id',
         'places.displayName',
@@ -437,7 +433,6 @@ function remember(cacheKey: string, value: PlacesFetch) {
  * another caller is still waiting on.
  */
 function searchTextShared(
-  key: string,
   textQuery: string,
   priceLevels: string[] | undefined,
   signal: AbortSignal,
@@ -457,7 +452,7 @@ function searchTextShared(
       waiters: 0,
       promise: Promise.resolve({ status: 'aborted' } as PlacesFetch),
     };
-    created.promise = searchTextOnce(key, textQuery, priceLevels, controller.signal)
+    created.promise = searchTextOnce(textQuery, priceLevels, controller.signal)
       .then((r) => {
         remember(cacheKey, r);
         return r;
@@ -517,17 +512,10 @@ export async function fetchVenues(
   signal?: AbortSignal,
   kind: VenueKind = 'restaurant',
 ): Promise<VenueSearchResult> {
-  const key = getGooglePlacesKey();
-
-  /* No key at all is the same situation as a spent one, from the user's side of the
-     screen: they asked where to eat. Try the open map before apologising. */
-  if (!key) {
-    const osm = await fetchOsmVenues(city, kind, query);
-    return osm.length
-      ? { status: 'ok', venues: osm, source: 'osm', reason: 'unconfigured' }
-      : { status: 'unconfigured' };
-  }
-
+  /* A deployment with no key configured is the same situation as a spent one, from the
+     user's side of the screen: they asked where to eat. The proxy answers 503 and that
+     travels the normal upstream-failure path, which already tries the open map before
+     apologising — so there is nothing to check here first. */
   const controller = new AbortController();
   const abortSignal = signal ?? controller.signal;
 
@@ -583,7 +571,7 @@ export async function fetchVenues(
      * never going to reach the bottom of that list. So: fire one, and only reach for the
      * second when the first genuinely underdelivers.
      */
-    const first = await searchTextShared(key, queries[0], priceLevels, abortSignal).catch(
+    const first = await searchTextShared(queries[0], priceLevels, abortSignal).catch(
       (): PlacesFetch => ({ status: 'network' }),
     );
 
@@ -593,7 +581,7 @@ export async function fetchVenues(
     const outcomes: PlacesFetch[] = needsMore
       ? [
           first,
-          await searchTextShared(key, queries[1], priceLevels, abortSignal).catch(
+          await searchTextShared(queries[1], priceLevels, abortSignal).catch(
             (): PlacesFetch => ({ status: 'network' }),
           ),
         ]
@@ -747,15 +735,11 @@ export async function detectCityFromCoords(
   latitude: number,
   longitude: number,
 ): Promise<DetectedLocality | null> {
-  const key = getGooglePlacesKey();
-  if (!key) return null;
-
   try {
-    const response = await fetch(`${PLACES_BASE}/places:searchNearby`, {
+    const response = await fetch(`${PLACES_BASE}?path=searchNearby`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': key,
         'X-Goog-FieldMask': 'places.displayName,places.addressComponents',
       },
       body: JSON.stringify({
