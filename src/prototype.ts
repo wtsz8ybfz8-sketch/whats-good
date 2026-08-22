@@ -16,7 +16,8 @@
  * 2. Photographs are REAL. `.ph` panels were procedural gradients standing in for
  *    photography. They now carry Places photos, and fall back to the prototype's own
  *    neutral panel when Google has no image for a venue.
- * 3. Recipes are REAL, from TheMealDB, which this project already integrates.
+ * 3. Recipes are REAL, lifted server-side from publishers' own schema.org Recipe JSON-LD
+ *    (see api/recipes.ts) — keyless, unlimited, with the publisher's own photography.
  * 4. Two invented-fact blocks are rendered ONLY from confirmed data, and omitted
  *    entirely when it is absent, rather than being filled in: the "Known for" dish list
  *    (the prototype hardcoded four dishes WITH PRICES) and the "Plan B" line (the
@@ -138,11 +139,6 @@ const QUERY: Record<string, string> = {
 
 /** Which occasions are bars rather than restaurants — drives `fetchVenues`' phrasing. */
 const BAR_KEYS = new Set(['drinks', 'happy', 'cocktails', 'live', 'dance', 'quietdrink', 'roof']);
-
-/** Cook occasions → a TheMealDB search term. Replaces the prototype's six fake recipes. */
-const COOK_QUERY: Record<string, string> = {
-  quick30: 'chicken', onepot: 'stew', pantry: 'pasta', veg: 'vegetarian', batch: 'curry', baking: 'cake',
-};
 
 /* ── verbatim: tabs, their heroes, their periods and their occasions ─────────── */
 const TABS = [
@@ -288,13 +284,16 @@ async function locateMe() {
 
 /** Live venues for the current query. The prototype's `NAMES`/`BLURB` arrays are gone. */
 let venues: Venue[] = [];
-/** The TheMealDB records behind the cards on screen — search.php returns the full
- *  record, so opening one costs no second request. */
-interface Meal {
-  strMeal: string; strMealThumb: string; strCategory: string; strArea: string;
-  strInstructions?: string; strTags?: string; strYoutube?: string; strSource?: string;
+/** The recipes behind the cards on screen. `/api/recipes` assembles these server-side from
+ *  publishers' own schema.org Recipe JSON-LD (see api/recipes.ts), so opening a card costs
+ *  no second request — the full recipe is already in hand. Mirrors the endpoint's `Recipe`
+ *  shape; kept local so src/ takes no build-time dependency on api/. */
+interface Recipe {
+  title: string; image: string; source: string; publisher: string;
+  cuisine?: string; category?: string; timeLabel?: string;
+  ingredients: string[]; steps: string[]; tags: string[]; video?: string;
 }
-let recipes: Meal[] = [];
+let recipes: Recipe[] = [];
 let loadSeq = 0;
 
 /* ── any city, not the four that shipped ──────────────────────────────────────
@@ -813,81 +812,67 @@ async function render() {
 async function renderRecipes() {
   const seq = ++loadSeq;
   $('list').innerHTML = '<p class="empty">Looking…</p>';
-  let meals: Meal[] = [];
+  let list: Recipe[] = [];
   try {
-    const res = await fetch('https://www.themealdb.com/api/json/v1/1/search.php?s='
-      + encodeURIComponent(COOK_QUERY[picked!] || picked!));
-    meals = res.ok ? ((await res.json()).meals || []) : [];
-  } catch { meals = []; }
+    const res = await fetch('/api/recipes?occasion=' + encodeURIComponent(picked!));
+    list = res.ok ? ((await res.json()).recipes || []) : [];
+  } catch { list = []; }
   if (seq !== loadSeq) return;
-  if (!meals.length) {
+  if (!list.length) {
     $('list').innerHTML = '<p class="empty">No recipes came back for that. Try another kind of effort.</p>';
     return;
   }
-  meals = meals.slice(0, 6);
-  recipes = meals;
-  heroPhoto(meals.find((m) => m.strMealThumb)?.strMealThumb);
-  $('rc').textContent = meals.length + ' recipes';
+  recipes = list;
+  heroPhoto(list.find((m) => m.image)?.image);
+  $('rc').textContent = list.length + ' recipes';
   $('list').innerHTML = '';
-  meals.forEach((m, i) => {
+  list.forEach((m, i) => {
     const b = document.createElement('button');
     b.className = 'rc'; b.type = 'button';
-    b.setAttribute('aria-label', 'Open ' + m.strMeal);
-    /* The card was a <button> that did nothing: six recipes you could look at and not
+    b.setAttribute('aria-label', 'Open ' + m.title);
+    /* The card was a <button> that did nothing: recipes you could look at and not
        open. Cook was the only tab with no second screen. */
     b.addEventListener('click', () => recipe(i));
-    b.innerHTML = '<div ' + phAttrs(m.strMealThumb, m.strMeal) + '></div><div class="bd2"><h3>' + esc(m.strMeal) + '</h3>'
-      + '<p>' + esc([m.strArea, m.strCategory].filter(Boolean).join(' · ')) + '</p>'
-      + '<div class="meta"><button class="savebtn" aria-pressed="' + isSaved('recipes', m.strMeal) + '">Save</button></div></div>';
+    b.innerHTML = '<div ' + phAttrs(m.image, m.title) + '></div><div class="bd2"><h3>' + esc(m.title) + '</h3>'
+      + '<p>' + esc([m.publisher, m.cuisine || m.category, m.timeLabel].filter(Boolean).join(' · ')) + '</p>'
+      + '<div class="meta"><button class="savebtn" aria-pressed="' + isSaved('recipes', m.title) + '">Save</button></div></div>';
     b.querySelector('.savebtn')!.addEventListener('click', (e) => {
-      e.stopPropagation(); toggleSave('recipes', m.strMeal, e.currentTarget as HTMLElement);
+      e.stopPropagation(); toggleSave('recipes', m.title, e.currentTarget as HTMLElement);
     });
     $('list').appendChild(b);
     setTimeout(() => b.classList.add('in'), 35 + i * 55);
   });
 }
 
-/* The recipe screen. Every field on it comes straight off the TheMealDB record — the
-   ingredients with their measures, the method as the source wrote it, the video and the
-   original page. No cook time, no difficulty, no serving count: TheMealDB does not
-   publish them, and a computed guess dressed as a fact is the same failure as a fake
-   dish price (§8). */
+/* The recipe screen. Every field comes straight off the publisher's own schema.org Recipe
+   JSON-LD (api/recipes.ts) — the ingredients as listed, the method as written, the cook
+   time the publisher declared, and a link back to the page it came from. Nothing is
+   computed or guessed: a made-up cook time is the same failure as a fake dish price (§8),
+   so a field the source omitted is simply absent. */
 function recipe(idx: number) {
   const m = recipes[idx];
   if (!m) return;
-  const ing: [string, string][] = [];
-  for (let n = 1; n <= 20; n++) {
-    const name = (m as unknown as Record<string, string>)['strIngredient' + n];
-    const measure = (m as unknown as Record<string, string>)['strMeasure' + n];
-    if (name && name.trim()) ing.push([name.trim(), (measure || '').trim()]);
-  }
-  const steps = (m.strInstructions || '')
-    .split(/\r?\n+/).map((s) => s.replace(/^\s*(STEP\s*)?\d+[.)]?\s*/i, '').trim())
-    .filter((s) => s.length > 1);
-  const tags = (m.strTags ? m.strTags.split(',') : [])
-    .map((t) => t.trim()).filter(Boolean).slice(0, 4);
+  const sub = [m.publisher, m.cuisine || m.category, m.timeLabel].filter(Boolean).join(' · ');
 
   $('detail').innerHTML =
     '<button class="back" id="bk">← Back to ' + esc(label(picked || 'local')) + '</button>'
-    + '<div ' + phAttrs(m.strMealThumb, m.strMeal, 'dhero') + '><div class="in"><h2>' + esc(m.strMeal) + '</h2>'
-      + '<p class="sub">' + esc([m.strArea, m.strCategory].filter(Boolean).join(' · ')) + '</p></div></div>'
-    + (tags.length ? '<div class="rtags">' + tags.map((t) => '<span class="pz">' + esc(t) + '</span>').join('') + '</div>' : '')
+    + '<div ' + phAttrs(m.image, m.title, 'dhero') + '><div class="in"><h2>' + esc(m.title) + '</h2>'
+      + (sub ? '<p class="sub">' + esc(sub) + '</p>' : '') + '</div></div>'
+    + (m.tags.length ? '<div class="rtags">' + m.tags.map((t) => '<span class="pz">' + esc(t) + '</span>').join('') + '</div>' : '')
     + '<div class="dgrid"><div>'
-      + (steps.length
-          ? '<h4>Method</h4><ol class="steps">' + steps.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ol>'
+      + (m.steps.length
+          ? '<h4>Method</h4><ol class="steps">' + m.steps.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ol>'
           : '')
     + '</div><div><div class="side">'
-      + (ing.length
-          ? '<h4 class="sh">Ingredients</h4><div class="ings">' + ing.map(([n2, q]) =>
-              '<div class="ing"><span>' + esc(n2) + '</span><b>' + esc(q) + '</b></div>').join('') + '</div>'
+      + (m.ingredients.length
+          ? '<h4 class="sh">Ingredients</h4><div class="ings">' + m.ingredients.map((n2) =>
+              '<div class="ing"><span>' + esc(n2) + '</span></div>').join('') + '</div>'
           : '')
-      + (m.strYoutube
-          ? '<a class="cta" style="text-align:center;text-decoration:none" href="' + esc(m.strYoutube) + '" target="_blank" rel="noopener noreferrer">Watch it made</a>'
+      + (m.video
+          ? '<a class="cta" style="text-align:center;text-decoration:none" href="' + esc(m.video) + '" target="_blank" rel="noopener noreferrer">Watch it made</a>'
           : '')
-      + (m.strSource
-          ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(m.strSource) + '" target="_blank" rel="noopener noreferrer">Original recipe</a>'
-          : '')
-      + '<button class="cta2" id="sv" aria-pressed="' + isSaved('recipes', m.strMeal) + '">Save</button>'
+      + '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(m.source) + '" target="_blank" rel="noopener noreferrer">Full recipe at ' + esc(m.publisher) + '</a>'
+      + '<button class="cta2" id="sv" aria-pressed="' + isSaved('recipes', m.title) + '">Save</button>'
     + '</div></div></div>';
 
   listScrollY = window.scrollY;
@@ -896,7 +881,7 @@ function recipe(idx: number) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   $('bk').onclick = () => history.back();
   const sv = document.getElementById('sv');
-  if (sv) sv.onclick = () => toggleSave('recipes', m.strMeal, sv);
+  if (sv) sv.onclick = () => toggleSave('recipes', m.title, sv);
 }
 
 function venue(idx: number) {
