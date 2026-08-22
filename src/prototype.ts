@@ -373,6 +373,7 @@ async function heroPreview() {
   const urls = out.venues.map((v) => v.photoUrl).filter((u): u is string => !!u);
   if (!urls.length) return;
   heroCache[k] = urls;
+  savePhotos(k, urls);
   /* Only if the user has not since picked an occasion — its own photo outranks this one. */
   if (!picked) heroPhoto(urls[0]);
   dressTiles(urls);
@@ -513,6 +514,14 @@ function build() {
      dressed. Re-apply from cache so switching tab or city does not drop back to grey. */
   const pk = city + '|' + tab;
   dressTiles(heroCache[pk] || loadPhotos(pk));
+  /* heroPreview() was disabled because it cost a billed Places search per tab switch and
+     per city change, and that took the app down with "Quota exceeded ... SearchTextRequest
+     per day". That reason is now gone: the search runs through api/places, which caches a
+     successful response at the edge for an hour. The first visitor to a city in an hour
+     spends one upstream call; everyone after is served by Vercel for free. So the grid can
+     be alive on arrival — the thing a photography-led product should never fail at — with
+     one shared call per city per hour instead of one per user per switch. */
+  if (!heroCache[pk]) void heroPreview();
   /* Neighbourhood chips are hand-picked per city. For a city we hold none for, hide the
      whole Nearby block — an empty row under a heading reads as a broken feature. */
   const nw = document.getElementById('nearbywrap');

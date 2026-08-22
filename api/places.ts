@@ -122,6 +122,14 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       signal: AbortSignal.timeout(20_000),
     });
     const data = await upstream.json();
+    /* Cache successful searches at the EDGE. This is what makes an arrival-time search
+       affordable again: the first visitor to a city in an hour spends one upstream call
+       and every visitor after that is served by Vercel for nothing. Restaurants do not
+       move hourly. Errors are never cached — a 429 pinned for an hour would take the app
+       down exactly like the quota incident it exists to prevent. */
+    if (upstream.ok) {
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+    }
     res.status(upstream.status).json(data);
   } catch {
     res.status(504).json({ error: 'Places timed out' });
