@@ -620,15 +620,31 @@ async function render() {
     c.setAttribute('aria-label', 'View ' + v.name);
     /* openNow is compared against undefined, never truthiness: `false` is a real answer
        and a truthy check swallows it (CLAUDE.md §8.3). */
+    /* "Open now" on a place that shuts in fifteen minutes is technically true and
+       practically a wasted journey. closingSoon is already computed from the hours the
+       search returned, so say the more useful thing when it applies. */
     const status = v.openNow === undefined
       ? ''
       : v.openNow
-        ? '<span class="st"><i></i>Open now</span>'
+        ? (v.closingSoon
+            ? '<span class="st w"><i></i>Closing soon</span>'
+            : '<span class="st"><i></i>Open now</span>')
         : '<span class="st w"><i></i>Closed</span>';
-    const meta = [v.fallbackDistance, typeof v.priceTier === 'number' ? PR[v.priceTier - 1] : null]
+    /* The rating leads the meta line. It is the one signal people actually choose on, it
+       is already in the field mask (same Enterprise SKU as the search itself, so it costs
+       nothing extra), and it was being fetched and thrown away. Count rides with it
+       because a 4.9 from three people is not a 4.9 — the average alone is a half-truth. */
+    const stars = typeof v.rating === 'number'
+      ? v.rating.toFixed(1) + '★' + (v.userRatingCount ? ' (' + v.userRatingCount.toLocaleString() + ')' : '')
+      : null;
+    const meta = [stars, v.fallbackDistance, typeof v.priceTier === 'number' ? PR[v.priceTier - 1] : null]
       .filter(Boolean).join(' · ');
+    /* Type AND neighbourhood, not one or the other. "Italian" alone does not tell you
+       whether it is worth the trip; "Italian · Sea Point" does, and both were already
+       loaded. Falls back cleanly when Google gives us only one of them. */
+    const sub = [v.cuisine, v.address].filter(Boolean).join(' · ');
     c.innerHTML = '<div ' + phAttrs(v.photoUrl, v.name, 'th') + '></div><div style="min-width:0;flex:1">'
-      + '<h3>' + esc(v.name) + '</h3><p>' + esc(v.cuisine || v.address) + '</p><div class="exit">'
+      + '<h3>' + esc(v.name) + '</h3><p>' + esc(sub) + '</p><div class="exit">'
       + status
       + (meta ? '<span class="mt">' + esc(meta) + '</span>' : '')
       + '<button class="savebtn" aria-pressed="' + isSaved('places', v.name) + '">Save</button></div>'
@@ -640,6 +656,12 @@ async function render() {
     $('list').appendChild(c);
     setTimeout(() => c.classList.add('in'), 35 + i * 58);
   });
+  /* Dress the occasion tiles from the search the user just ran. heroPreview() is
+     deliberately never called on arrival — it cost a billed Places search per tab and per
+     city change and took the app down with "Quota exceeded ... SearchTextRequest per day"
+     on 2026-08-14 — so the tiles cannot be filled before the first search without
+     reintroducing exactly that. These photographs are already paid for and in memory. */
+  dressTiles(venues.map((v) => v.photoUrl).filter((u): u is string => !!u));
 }
 
 async function renderRecipes() {
