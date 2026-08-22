@@ -236,7 +236,39 @@ interface Meal {
 let recipes: Meal[] = [];
 let loadSeq = 0;
 
-Object.keys(CITY).forEach((c) => { const o = document.createElement('option'); o.textContent = c; $('city').appendChild(o); });
+/* ── any city, not the four that shipped ──────────────────────────────────────
+   CITY is no longer the list of cities the app supports. It is the list of cities the
+   app has LOCAL KNOWLEDGE about — the neighbourhood chips and the words ("Braai" in Cape
+   Town, "Sunday roast" in London). Everything else already worked anywhere: Places is
+   asked for "<terms> in <city>" as plain text and geocodes the name itself, and
+   osmFallback already falls back to a name search when it holds no centre point. The only
+   thing making this a four-city app was the <select> that could not express a fifth.
+   So: a free-text field, curated cities as suggestions, and a graceful degrade to generic
+   English plus no chips for anywhere we have not written words for. */
+const BLANK_CITY = { tz: '', areas: [] as string[], v: {} as Record<string, string> };
+const cityMeta = (c: string) => CITY[c] || BLANK_CITY;
+
+/** Cities the user has typed, kept so their own list grows instead of resetting. */
+const RECENT_KEY = 'wg.cities';
+function recentCities(): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') as string[]; } catch { return []; }
+}
+function rememberCity(c: string) {
+  if (!c || CITY[c]) return;
+  const next = [c, ...recentCities().filter((x) => x !== c)].slice(0, 12);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  citySuggestions();
+}
+function citySuggestions() {
+  const dl = document.getElementById('citylist');
+  if (!dl) return;
+  dl.innerHTML = '';
+  [...recentCities(), ...Object.keys(CITY)].forEach((c) => {
+    const o = document.createElement('option'); o.value = c; dl.appendChild(o);
+  });
+}
+citySuggestions();
+($('city') as HTMLInputElement).value = city;
 for (let h = 0; h < 24; h++) {
   const o = document.createElement('option');
   o.value = String(h);
@@ -254,7 +286,7 @@ const FALL: Record<string, string> = {
   quick30: 'Under 30 min', onepot: 'One pot', pantry: 'Pantry raid', veg: 'Vegetarian', batch: 'Batch cook', baking: 'Baking',
   recent: 'Recent', loved: 'Loved', lists: 'Lists', been: 'Been',
 };
-const label = (k: string) => CITY[city].v[k] || FALL[k] || k;
+const label = (k: string) => cityMeta(city).v[k] || FALL[k] || k;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 
 /** A `.ph` that carries a real photograph, or the prototype's neutral panel if none. */
@@ -365,17 +397,20 @@ function periods() {
 }
 
 function build() {
-  const t = T(), C = CITY[city], P2 = t.per.find((p) => p.k === period) || t.per[0];
+  const t = T(), C = cityMeta(city), P2 = t.per.find((p) => p.k === period) || t.per[0];
   document.body.dataset.view = 'browse';
   /* Two clocks used to disagree on screen: the header select said 23:00 while this line
      said 23:24 — because it spliced the SELECTED hour onto the LIVE minutes. Now it is one
      or the other, and it says which: the live time when the app set the period itself, and
      an explicit "planning for" when the hour was chosen by hand. */
   const nowT = new Date();
+  /* The timezone abbreviation is curated knowledge, so a city we have not written words
+     for has none. Print the clock without it rather than a trailing gap. */
+  const tz = C.tz ? ' ' + C.tz : '';
   $('ctx').textContent = manual
-    ? city + ' · planning for ' + String(hour).padStart(2, '0') + ':00 ' + C.tz
+    ? city + ' · planning for ' + String(hour).padStart(2, '0') + ':00' + tz
     : city + ' · ' + String(nowT.getHours()).padStart(2, '0') + ':'
-      + String(nowT.getMinutes()).padStart(2, '0') + ' ' + C.tz;
+      + String(nowT.getMinutes()).padStart(2, '0') + tz;
   $('h1').innerHTML = t.h;
   $('hsub').textContent = t.s;
   $('why').textContent = manual ? 'you chose this' : 'set by the clock';
@@ -417,6 +452,10 @@ function build() {
      dressed. Re-apply from cache so switching tab or city does not drop back to grey. */
   const cached = heroCache[city + '|' + tab];
   if (cached) dressTiles(cached);
+  /* Neighbourhood chips are hand-picked per city. For a city we hold none for, hide the
+     whole Nearby block — an empty row under a heading reads as a broken feature. */
+  const nw = document.getElementById('nearbywrap');
+  if (nw) (nw as HTMLElement).style.display = C.areas.length ? '' : 'none';
   const A = $('areas'); A.innerHTML = '';
   C.areas.forEach((a) => {
     const c = document.createElement('button');
@@ -857,7 +896,20 @@ setInterval(() => {
 $('go').onclick = parse;
 $('q').addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') parse(); });
 ['dist', 'price', 'party'].forEach((id) => $(id).addEventListener('input', () => { void render(); }));
-($('city') as HTMLSelectElement).onchange = (e) => { city = (e.target as HTMLSelectElement).value; build(); };
+/* Commit on change or Enter, not on every keystroke — a search per character typed would
+   be a billed Places call per character. Blank input falls back to the last good city
+   rather than searching for "". */
+const commitCity = () => {
+  const el = $('city') as HTMLInputElement;
+  const next = el.value.trim();
+  if (!next) { el.value = city; return; }
+  if (next === city) return;
+  city = next; rememberCity(city); build();
+};
+($('city') as HTMLInputElement).onchange = commitCity;
+($('city') as HTMLInputElement).addEventListener('keydown', (e) => {
+  if ((e as KeyboardEvent).key === 'Enter') { (e.target as HTMLInputElement).blur(); }
+});
 ($('hour') as HTMLSelectElement).onchange = (e) => {
   hour = +(e.target as HTMLSelectElement).value;
   if (!manual) period = auto(hour);
