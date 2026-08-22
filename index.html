@@ -116,7 +116,8 @@
       <header>
         <span class="logo">What's Good</span>
         <div class="hctrl">
-          <select class="sel" id="city" aria-label="City"></select>
+          <input class="sel" id="city" list="citylist" aria-label="City" autocomplete="off" spellcheck="false" placeholder="Any city" />
+          <datalist id="citylist"></datalist>
           <select class="sel" id="hour" aria-label="Hour"></select>
           <button class="icb" id="t" title="Theme" aria-label="Switch colour theme"><svg id="tico" viewBox="0 0 24 24"></svg></button>
         </div>
@@ -152,7 +153,7 @@
                 <div class="sl"><label for="party"><b>Table for</b><span id="o-party">2</span></label>
                   <input type="range" id="party" min="1" max="8" step="1" value="2"></div>
               </div>
-              <div style="margin-top:24px"><p class="lbl"><b>Nearby</b><span id="geo"></span></p>
+              <div style="margin-top:24px" id="nearbywrap"><p class="lbl"><b>Nearby</b><span id="geo"></span></p>
                 <div class="chips" id="areas"></div></div>
             </div>
           </div>
