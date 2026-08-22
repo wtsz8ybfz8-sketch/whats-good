@@ -282,18 +282,26 @@ const monogram = (name?: string) => (name || '')
    one once results arrived, so the first impression of a product whose whole pitch is
    photography was a flat dark box. One Places search per city, cached for the session, is
    enough to dress it: a real place in the city you are actually in, not stock. */
-const heroCache: Record<string, string> = {};
+/* The same search dresses the occasion tiles. Those plates used to hold a monogram until
+   the user picked something, so the first thing anyone saw on a photography-led product
+   was a grid of grey boxes — the monogram is the no-photo fallback, and it was being used
+   as the default state. Reusing this one response costs no extra Places call, so the grid
+   is alive on arrival for the price we were already paying for the hero. */
+const heroCache: Record<string, string[]> = {};
 async function heroPreview() {
   const k = city + '|' + tab;
-  if (heroCache[k]) { heroPhoto(heroCache[k]); return; }
+  if (heroCache[k]) { heroPhoto(heroCache[k][0]); dressTiles(heroCache[k]); return; }
   const out = await fetchVenues(
     tab === 'out' ? 'popular bar' : 'well reviewed restaurant',
     city, undefined, undefined, tab === 'out' ? 'bar' : 'restaurant',
   );
   if (out.status !== 'ok') return;
-  const url = out.venues.find((v) => v.photoUrl)?.photoUrl;
+  const urls = out.venues.map((v) => v.photoUrl).filter((u): u is string => !!u);
+  if (!urls.length) return;
+  heroCache[k] = urls;
   /* Only if the user has not since picked an occasion — its own photo outranks this one. */
-  if (url && !picked) { heroCache[k] = url; heroPhoto(url); }
+  if (!picked) heroPhoto(urls[0]);
+  dressTiles(urls);
 }
 
 /** Dresses the hero with a photograph, or returns it to its plain plate. */
@@ -306,6 +314,22 @@ function heroPhoto(url?: string) {
     h.classList.remove('has-photo');
     h.style.backgroundImage = '';
   }
+}
+
+/* Paints the occasion tiles from photographs we already hold. Skips any plate that has
+   its own picture, and leaves the monogram in place when we have nothing — the fallback
+   stays a fallback. Cycles the list so a short response still fills the grid. */
+function dressTiles(urls: string[]) {
+  if (!urls.length) return;
+  const plates = [...document.querySelectorAll('#grid .tile .ph')] as HTMLElement[];
+  plates.forEach((p, i) => {
+    if (p.classList.contains('has-photo')) return;
+    const u = urls[i % urls.length];
+    if (!u) return;
+    p.classList.add('has-photo');
+    p.style.backgroundImage = "url('" + u.replace(/'/g, '%27') + "')";
+    p.removeAttribute('data-mono');
+  });
 }
 
 /** Every `.ph` panel in the app: a real photograph, or its monogram plate. */
@@ -389,6 +413,10 @@ function build() {
     $('grid').appendChild(b);
     setTimeout(() => b.classList.add('in'), 60 + i * 44);
   });
+  /* The grid is rebuilt on every idle render, which throws away the plates heroPreview
+     dressed. Re-apply from cache so switching tab or city does not drop back to grey. */
+  const cached = heroCache[city + '|' + tab];
+  if (cached) dressTiles(cached);
   const A = $('areas'); A.innerHTML = '';
   C.areas.forEach((a) => {
     const c = document.createElement('button');
