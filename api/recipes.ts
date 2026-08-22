@@ -309,8 +309,16 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   const urls = SOURCES[occasion];
   if (!urls) { res.status(400).json({ error: 'Unknown occasion' }); return; }
 
-  const results = await Promise.all(urls.map(fetchRecipe));
-  const recipes = results.filter((x): x is Recipe => x !== null);
+  /* Fetch a few at a time, not all at once. Firing every URL concurrently from one
+     Fluid Compute instance made the publisher throttle the burst, so a different (roughly
+     half) random subset dropped on every cold run. A small concurrency window keeps the
+     host happy and the result complete; the 6h edge cache pays the latency once. */
+  const recipes: Recipe[] = [];
+  const CONCURRENCY = 3;
+  for (let i = 0; i < urls.length; i += CONCURRENCY) {
+    const batch = await Promise.all(urls.slice(i, i + CONCURRENCY).map(fetchRecipe));
+    for (const r of batch) if (r) recipes.push(r);
+  }
 
   if (recipes.length) {
     /* Recipe pages are effectively static — cache the assembled list hard so an occasion
