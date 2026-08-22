@@ -39,6 +39,7 @@ import { fetchVenues, detectCityFromCoords } from './placesService';
 import { formatDistance, formatQuantity } from './locale';
 import {
   isAuthConfigured, sendMagicLink, captureSessionFromUrl, restoreSession, signOut,
+  signInWithGoogle,
   type AuthSession,
 } from './auth';
 import {
@@ -585,8 +586,14 @@ function renderSaved() {
     : isAuthConfigured()
       ? '<div class="who"><b>Kept on this device</b>'
           + '<span>' + total + ' saved · sign in to carry them to your phone</span>'
+          /* One tap with an identity you already have, and the email link kept underneath
+             for anyone who would rather not hand over a provider account. Typing an
+             address and going to fetch a mail is three chances to lose someone. */
+          + '<button id="goog" class="gbtn" type="button">'
+          + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + GM + '"/></svg>'
+          + 'Continue with Google</button>'
           + '<form id="sif" class="siform"><input id="em" type="email" required '
-          + 'placeholder="you@email.com" autocomplete="email" aria-label="Email address">'
+          + 'placeholder="or your email address" autocomplete="email" aria-label="Email address">'
           + '<button id="si" type="submit">Email me a link</button></form>'
           + '<span id="simsg" class="simsg" role="status"></span></div>'
       : '<div class="who"><b>Kept on this device</b>'
@@ -602,6 +609,8 @@ function renderSaved() {
       : '<p class="empty">Nothing saved under ' + savedSeg + ' yet. Tap Save on anything and it lands here.</p>');
   h.querySelectorAll('.seg').forEach((b) => { (b as HTMLElement).onclick = () => { savedSeg = (b as HTMLElement).dataset.s as 'places' | 'recipes'; renderSaved(); }; });
 
+  const goog = document.getElementById('goog');
+  if (goog) goog.onclick = () => signInWithGoogle();
   const form = document.getElementById('sif') as HTMLFormElement | null;
   if (form) {
     form.onsubmit = async (e) => {
@@ -923,9 +932,11 @@ function venue(idx: number) {
     /* The gallery was six dead squares. A photograph the reader can see but not open is a
        control that looks interactive and is not, so each one is now a real link to the
        full-size image. */
-    + (gal.length ? '<div class="gal">' + gal.map((u) =>
-        '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" aria-label="Open photo of ' + esc(v.name) + '" '
-        + phAttrs(u, v.name) + '></a>').join('') + '</div>' : '')
+    /* Opening a photograph in a new tab throws the reader out of the app to look at one
+       picture, and back is then the browser's problem, not ours. It opens in place. */
+    + (gal.length ? '<div class="gal">' + gal.map((u, gi) =>
+        '<button type="button" class="galb" data-gi="' + gi + '" aria-label="View photo ' + (gi + 1)
+        + ' of ' + esc(v.name) + '" ' + phAttrs(u, v.name) + '></button>').join('') + '</div>' : '')
     + '<div class="dgrid"><div>'
       + (facts.length ? '<div class="facts">' + facts.map((f) =>
           '<div class="fact"><u>' + esc(f[0]) + '</u><b>' + esc(f[1]) + '</b>'
@@ -970,6 +981,16 @@ function venue(idx: number) {
   const sv = document.getElementById('sv');
   if (sv) sv.onclick = () => toggleSave('places', v.name, sv);
   void venueFacts(v);
+
+  /* A viewer, in the page. Escape and a click outside both close it, and focus returns to
+     the thumbnail that opened it so a keyboard does not lose its place. */
+  const shots = [v.photoUrl, ...gal].filter(Boolean) as string[];
+  document.querySelectorAll<HTMLElement>('.galb').forEach((b) => {
+    b.onclick = () => {
+      const start = Number(b.dataset.gi || '0') + (v.photoUrl ? 1 : 0);
+      openViewer(shots, start, b);
+    };
+  });
 
   /* What gets shared is the venue as a human would write it, plus a maps link that opens
      for the recipient whatever they use. Not a link back into this app: there is no route
@@ -1059,6 +1080,48 @@ async function venueFacts(v: Venue) {
     + '</div><p class="src">From OpenStreetMap contributors</p>';
   const col = host.querySelector('.dgrid > div');
   if (col) col.appendChild(wrap);
+}
+
+/** A photograph, full size, without leaving the page. */
+function openViewer(urls: string[], index: number, returnTo: HTMLElement) {
+  if (!urls.length) return;
+  let i = Math.max(0, Math.min(index, urls.length - 1));
+  const box = document.createElement('div');
+  box.className = 'viewer';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', 'Photo viewer');
+  const paint = () => {
+    box.innerHTML = '<button class="vclose" type="button" aria-label="Close photo">Close</button>'
+      + '<img src="' + esc(urls[i]) + '" alt="">'
+      + (urls.length > 1
+        ? '<button class="vnav vprev" type="button" aria-label="Previous photo">‹</button>'
+          + '<button class="vnav vnext" type="button" aria-label="Next photo">›</button>'
+          + '<span class="vcount">' + (i + 1) + ' / ' + urls.length + '</span>'
+        : '');
+    (box.querySelector('.vclose') as HTMLElement).onclick = close;
+    const prev = box.querySelector('.vprev') as HTMLElement | null;
+    const next = box.querySelector('.vnext') as HTMLElement | null;
+    if (prev) prev.onclick = (e) => { e.stopPropagation(); i = (i - 1 + urls.length) % urls.length; paint(); };
+    if (next) next.onclick = (e) => { e.stopPropagation(); i = (i + 1) % urls.length; paint(); };
+  };
+  function close() {
+    document.removeEventListener('keydown', onKey);
+    box.remove();
+    document.body.style.overflow = '';
+    returnTo.focus();
+  }
+  function onKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') close();
+    if (e.key === 'ArrowLeft' && urls.length > 1) { i = (i - 1 + urls.length) % urls.length; paint(); }
+    if (e.key === 'ArrowRight' && urls.length > 1) { i = (i + 1) % urls.length; paint(); }
+  }
+  box.onclick = (e) => { if (e.target === box) close(); };
+  document.addEventListener('keydown', onKey);
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(box);
+  paint();
+  (box.querySelector('.vclose') as HTMLElement).focus();
 }
 
 /* ── verbatim: the parse line ────────────────────────────────────────────────── */

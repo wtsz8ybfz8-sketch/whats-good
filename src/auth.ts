@@ -149,6 +149,21 @@ export async function restoreSession(): Promise<AuthSession | null> {
   return session;
 }
 
+/**
+ * Sends the browser to Supabase's own OAuth entry point. There is no SDK in this app, and
+ * none is needed: the provider handshake is a redirect, and the session comes back in the
+ * URL fragment that captureSessionFromUrl() already reads for magic links.
+ *
+ * Passwordless email is defensible, but it asks someone to leave the page, open a mail
+ * client and come back — three chances to lose them, on a page whose whole job is a
+ * single decision. A provider button is one tap and identity people already trust.
+ */
+export function signInWithGoogle(): void {
+  const back = window.location.origin + window.location.pathname;
+  window.location.href = URL_BASE + '/auth/v1/authorize?provider=google&redirect_to='
+    + encodeURIComponent(back);
+}
+
 export function signOut(): void {
   try {
     localStorage.removeItem(TOKEN_KEY);
