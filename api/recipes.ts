@@ -269,11 +269,14 @@ function normalise(node: Json, url: string): Recipe | null {
   };
 }
 
-const LD_RE = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-
 function extract(html: string, url: string): Recipe | null {
+  /* A fresh regex per call, never a shared module-level one. A global-flagged regex keeps
+     its `lastIndex` on the object between calls, and `extract` runs concurrently across a
+     batch — a shared instance let those calls corrupt each other's position, so a random
+     ~half of pages parsed as if they had no JSON-LD at all. That was the whole bug. */
+  const ldRe = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let m: RegExpExecArray | null;
-  while ((m = LD_RE.exec(html))) {
+  while ((m = ldRe.exec(html))) {
     let parsed: unknown;
     try { parsed = JSON.parse(m[1].trim()); } catch { continue; }
     const nodes: Json[] = [];
@@ -285,9 +288,7 @@ function extract(html: string, url: string): Recipe | null {
   return null;
 }
 
-interface FetchResult { recipe: Recipe | null; status: number | string; bytes: number; }
-
-async function fetchRecipe(url: string): Promise<FetchResult> {
+async function fetchRecipe(url: string): Promise<Recipe | null> {
   try {
     const r = await fetch(url, {
       headers: {
@@ -299,10 +300,9 @@ async function fetchRecipe(url: string): Promise<FetchResult> {
       },
       signal: AbortSignal.timeout(15_000),
     });
-    if (!r.ok) return { recipe: null, status: r.status, bytes: 0 };
-    const html = await r.text();
-    return { recipe: extract(html, url), status: r.status, bytes: html.length };
-  } catch (e) { return { recipe: null, status: String((e as Error)?.name || 'err'), bytes: 0 }; }
+    if (!r.ok) return null;
+    return extract(await r.text(), url);
+  } catch { return null; }
 }
 
 export default async function handler(req: Req, res: Res): Promise<void> {
@@ -318,18 +318,11 @@ export default async function handler(req: Req, res: Res): Promise<void> {
      half) random subset dropped on every cold run. A small concurrency window keeps the
      host happy and the result complete; the 6h edge cache pays the latency once. */
   const recipes: Recipe[] = [];
-  const diag: Array<{ url: string; status: number | string; bytes: number; ok: boolean }> = [];
   const CONCURRENCY = 3;
   for (let i = 0; i < urls.length; i += CONCURRENCY) {
-    const slice = urls.slice(i, i + CONCURRENCY);
-    const batch = await Promise.all(slice.map(fetchRecipe));
-    batch.forEach((res, j) => {
-      if (res.recipe) recipes.push(res.recipe);
-      diag.push({ url: slice[j], status: res.status, bytes: res.bytes, ok: !!res.recipe });
-    });
+    const batch = await Promise.all(urls.slice(i, i + CONCURRENCY).map(fetchRecipe));
+    for (const res of batch) if (res) recipes.push(res);
   }
-
-  if (one(req.query?.debug)) { res.status(200).json({ count: recipes.length, diag }); return; }
 
   if (recipes.length) {
     /* Recipe pages are effectively static — cache the assembled list hard so an occasion
