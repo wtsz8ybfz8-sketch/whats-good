@@ -169,7 +169,17 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radiu
 .chip:hover{border-color:var(--line2);color:var(--ink)}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 
-@media(min-width:960px){.res{border-left:1px solid var(--line);padding-left:26px;position:sticky;top:20px}}
+/*
+  The sticky rail had no height limit, so once the results list grew taller than the
+  viewport its bottom was simply unreachable: sticky pins the box, the page has nothing
+  left to scroll, and the last recipes sat below the fold with no way to get to them. It
+  looked like a short list rather than a broken one, which is why it survived.
+
+  A sticky element that can overflow MUST own its own scroll. max-height ties it to the
+  viewport and overflow-y gives it back the scroll the page can no longer provide.
+*/
+@media(min-width:960px){.res{border-left:1px solid var(--line);padding-left:26px;position:sticky;top:20px;
+  max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain}}
 @media(max-width:959px){.res{border-top:1px solid var(--line);padding:24px 0 0}}
 .rhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:14px}
 .rhead b{font-size:15px;font-weight:650;letter-spacing:-.025em}

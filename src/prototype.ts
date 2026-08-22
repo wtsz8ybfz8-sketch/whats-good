@@ -1023,41 +1023,41 @@ function venue(idx: number) {
    broken page. */
 const OSM_FACTS: [string, (t: Record<string, string>) => string | null][] = [
   /* Dietary and access first — these decide whether a place is possible at all. */
-  ['🌱 Vegan', (t) => (t['diet:vegan'] === 'only' ? 'Entirely vegan' : t['diet:vegan'] === 'yes' ? 'Options on the menu' : null)],
-  ['🥗 Vegetarian', (t) => (t['diet:vegetarian'] === 'only' ? 'Entirely vegetarian' : t['diet:vegetarian'] === 'yes' ? 'Options on the menu' : null)],
-  ['🕌 Halal', (t) => (t['diet:halal'] === 'only' ? 'Fully halal' : t['diet:halal'] === 'yes' ? 'Options on the menu' : null)],
-  ['✡️ Kosher', (t) => (t['diet:kosher'] === 'only' ? 'Fully kosher' : t['diet:kosher'] === 'yes' ? 'Options on the menu' : null)],
-  ['🌾 Gluten free', (t) => (t['diet:gluten_free'] === 'yes' ? 'Options on the menu' : null)],
-  ['♿ Step-free', (t) => (t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'limited' ? 'Limited' : t.wheelchair === 'no' ? 'No' : null)],
-  ['🚻 Accessible loo', (t) => (t['toilets:wheelchair'] === 'yes' ? 'Yes' : null)],
+  ['Vegan', (t) => (t['diet:vegan'] === 'only' ? 'Entirely vegan' : t['diet:vegan'] === 'yes' ? 'Options on the menu' : null)],
+  ['Vegetarian', (t) => (t['diet:vegetarian'] === 'only' ? 'Entirely vegetarian' : t['diet:vegetarian'] === 'yes' ? 'Options on the menu' : null)],
+  ['Halal', (t) => (t['diet:halal'] === 'only' ? 'Fully halal' : t['diet:halal'] === 'yes' ? 'Options on the menu' : null)],
+  ['Kosher', (t) => (t['diet:kosher'] === 'only' ? 'Fully kosher' : t['diet:kosher'] === 'yes' ? 'Options on the menu' : null)],
+  ['Gluten free', (t) => (t['diet:gluten_free'] === 'yes' ? 'Options on the menu' : null)],
+  ['Step-free', (t) => (t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'limited' ? 'Limited' : t.wheelchair === 'no' ? 'No' : null)],
+  ['Accessible loo', (t) => (t['toilets:wheelchair'] === 'yes' ? 'Yes' : null)],
   /* Then the things that change what an evening feels like. */
-  ['📅 Serving since', (t) => {
+  ['Serving since', (t) => {
     const y = (t.start_date || '').slice(0, 4);
     return /^\d{4}$/.test(y) ? y : null;
   }],
-  ['🏛 Heritage listed', (t) => (t.heritage || t.historic ? 'The building is listed' : null)],
-  ['🍺 Brews its own', (t) => (t.microbrewery === 'yes' ? 'Microbrewery on site' : t.brewery ? 'House beer: ' + t.brewery : null)],
-  ['🎶 Live music', (t) => (t.live_music === 'yes' || t['music:live'] === 'yes' ? 'Yes' : null)],
-  ['💃 Dancing', (t) => (t['dance:teaching'] === 'yes' || t.dance === 'yes' ? 'Yes' : null)],
-  ['🌿 Organic', (t) => (t.organic === 'only' ? 'Entirely organic' : t.organic === 'yes' ? 'Some organic' : null)],
-  ['🤝 Fair trade', (t) => (t.fair_trade === 'yes' || t.fair_trade === 'only' ? 'Yes' : null)],
-  ['🪑 Outside', (t) => (t.outdoor_seating === 'yes' ? 'Tables outside' : null)],
-  ['🔥 Smoking', (t) => (t.smoking === 'outside' ? 'Outside only' : t.smoking === 'no' ? 'Non-smoking' : t.smoking === 'yes' ? 'Permitted' : null)],
-  ['❄️ Air conditioned', (t) => (t.air_conditioning === 'yes' ? 'Yes' : null)],
-  ['📖 Booking', (t) => (t.reservation === 'required' ? 'Required' : t.reservation === 'recommended' ? 'Recommended' : t.reservation === 'no' ? 'Walk-ins only' : null)],
-  ['👥 Seats', (t) => (/^\d+$/.test(t.capacity || '') ? t.capacity : null)],
-  ['🥐 Breakfast', (t) => (t.breakfast === 'yes' ? 'Served' : null)],
-  ['🥡 Takeaway', (t) => (t.takeaway === 'only' ? 'Takeaway only' : t.takeaway === 'yes' ? 'Yes' : null)],
-  ['🛵 Delivery', (t) => (t.delivery === 'yes' ? 'Yes' : null)],
-  ['🚗 Drive-through', (t) => (t.drive_through === 'yes' ? 'Yes' : null)],
-  ['📶 Wi-Fi', (t) => (t.internet_access === 'wlan' || t.internet_access === 'yes'
+  ['Heritage listed', (t) => (t.heritage || t.historic ? 'The building is listed' : null)],
+  ['Brews its own', (t) => (t.microbrewery === 'yes' ? 'Microbrewery on site' : t.brewery ? 'House beer: ' + t.brewery : null)],
+  ['Live music', (t) => (t.live_music === 'yes' || t['music:live'] === 'yes' ? 'Yes' : null)],
+  ['Dancing', (t) => (t['dance:teaching'] === 'yes' || t.dance === 'yes' ? 'Yes' : null)],
+  ['Organic', (t) => (t.organic === 'only' ? 'Entirely organic' : t.organic === 'yes' ? 'Some organic' : null)],
+  ['Fair trade', (t) => (t.fair_trade === 'yes' || t.fair_trade === 'only' ? 'Yes' : null)],
+  ['Outside', (t) => (t.outdoor_seating === 'yes' ? 'Tables outside' : null)],
+  ['Smoking', (t) => (t.smoking === 'outside' ? 'Outside only' : t.smoking === 'no' ? 'Non-smoking' : t.smoking === 'yes' ? 'Permitted' : null)],
+  ['Air conditioned', (t) => (t.air_conditioning === 'yes' ? 'Yes' : null)],
+  ['Booking', (t) => (t.reservation === 'required' ? 'Required' : t.reservation === 'recommended' ? 'Recommended' : t.reservation === 'no' ? 'Walk-ins only' : null)],
+  ['Seats', (t) => (/^\d+$/.test(t.capacity || '') ? t.capacity : null)],
+  ['Breakfast', (t) => (t.breakfast === 'yes' ? 'Served' : null)],
+  ['Takeaway', (t) => (t.takeaway === 'only' ? 'Takeaway only' : t.takeaway === 'yes' ? 'Yes' : null)],
+  ['Delivery', (t) => (t.delivery === 'yes' ? 'Yes' : null)],
+  ['Drive-through', (t) => (t.drive_through === 'yes' ? 'Yes' : null)],
+  ['Wi-Fi', (t) => (t.internet_access === 'wlan' || t.internet_access === 'yes'
     ? (t['internet_access:fee'] === 'no' ? 'Free' : 'Yes') : null)],
-  ['🐕 Dogs', (t) => (t.dog === 'yes' ? 'Welcome' : t.dog === 'leashed' ? 'On a lead' : null)],
-  ['👶 High chairs', (t) => (t.highchair === 'yes' ? 'Yes' : null)],
-  ['💳 Cards', (t) => (t['payment:cards'] === 'yes' || t['payment:visa'] === 'yes' ? 'Accepted' : null)],
-  ['📱 Contactless', (t) => (t['payment:contactless'] === 'yes' ? 'Accepted' : null)],
-  ['💵 Cash only', (t) => (t['payment:cash'] === 'only' ? 'Yes' : null)],
-  ['🔞 Over 18s', (t) => (t.min_age ? t.min_age + '+' : null)],
+  ['Dogs', (t) => (t.dog === 'yes' ? 'Welcome' : t.dog === 'leashed' ? 'On a lead' : null)],
+  ['High chairs', (t) => (t.highchair === 'yes' ? 'Yes' : null)],
+  ['Cards', (t) => (t['payment:cards'] === 'yes' || t['payment:visa'] === 'yes' ? 'Accepted' : null)],
+  ['Contactless', (t) => (t['payment:contactless'] === 'yes' ? 'Accepted' : null)],
+  ['Cash only', (t) => (t['payment:cash'] === 'only' ? 'Yes' : null)],
+  ['Over 18s', (t) => (t.min_age ? t.min_age + '+' : null)],
 ];
 
 /* Wikipedia, free and key-less, with CORS open to anyone. If a venue has an article it is
@@ -1155,7 +1155,7 @@ async function venueFacts(v: Venue) {
   const host = document.getElementById('detail');
   if (!host || document.body.dataset.view !== 'detail') return;
   const wrap = document.createElement('div');
-  wrap.innerHTML = '<h4>✨ Good to know</h4><div class="facts">'
+  wrap.innerHTML = '<h4>Good to know</h4><div class="facts">'
     + found.map(([k, val]) => '<div class="fact"><u>' + esc(k) + '</u><b>' + esc(val) + '</b></div>').join('')
     + '</div><p class="src">From OpenStreetMap contributors</p>';
   const col = host.querySelector('.dgrid > div');
@@ -1175,7 +1175,7 @@ async function venueStory(v: Venue) {
      article in the link is the whole correction: the reader can see it says Kloof, or
      Gardens, or the building next door, before they believe a word of it. */
   const heading = note.aboutVenue ? 'The story' : 'Around here';
-  wrap.innerHTML = '<h4>📖 ' + heading + '</h4><p class="story">' + esc(note.text) + '</p>'
+  wrap.innerHTML = '<h4>' + heading + '</h4><p class="story">' + esc(note.text) + '</p>'
     + '<p class="src"><a href="' + esc(note.url) + '" target="_blank" rel="noopener noreferrer">'
     + esc(note.title) + ' on Wikipedia</a> · CC BY-SA</p>';
   const col = host.querySelector('.dgrid > div');
