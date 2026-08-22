@@ -39,6 +39,7 @@ const ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | unde
   || (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
 
 const TOKEN_KEY = 'wg.auth.token';
+const REFRESH_KEY = 'wg.auth.refresh';
 const EMAIL_KEY = 'wg.auth.email';
 
 export interface AuthSession {
@@ -96,8 +97,37 @@ export async function sendMagicLink(email: string): Promise<{ ok: boolean; error
  * token in the URL, which is the normal case on every ordinary page load.
  */
 export async function captureSessionFromUrl(): Promise<AuthSession | null> {
-  if (!isAuthConfigured() || !window.location.hash) return null;
+  if (!isAuthConfigured()) return null;
 
+  const clean = () =>
+    window.history.replaceState({}, '', window.location.pathname);
+
+  /* A provider sign-in can come back two ways. The implicit flow puts the tokens in the
+     fragment, which is what the magic link does and what this only used to read. The PKCE
+     flow — Supabase's newer default — comes back as ?code= in the QUERY string instead,
+     and reading only the fragment meant Google reported a perfectly successful sign-in
+     while the app quietly stayed signed out and saved to this device. Handle both. */
+  const query = new URLSearchParams(window.location.search);
+  const code = query.get('code');
+  if (code) {
+    clean();
+    try {
+      const res = await fetch(`${URL_BASE}/auth/v1/token?grant_type=pkce`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ auth_code: code }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.access_token) {
+          const session = await verify(data.access_token);
+          if (session) { persist(session, data.refresh_token); return session; }
+        }
+      }
+    } catch { /* fall through to the fragment */ }
+  }
+
+  if (!window.location.hash) return null;
   const params = new URLSearchParams(window.location.hash.slice(1));
   const accessToken = params.get('access_token');
   if (!accessToken) return null;
@@ -106,7 +136,7 @@ export async function captureSessionFromUrl(): Promise<AuthSession | null> {
   window.history.replaceState({}, '', window.location.pathname + window.location.search);
 
   const session = await verify(accessToken);
-  if (session) persist(session);
+  if (session) persist(session, params.get('refresh_token'));
   return session;
 }
 
@@ -123,10 +153,13 @@ async function verify(accessToken: string): Promise<AuthSession | null> {
   }
 }
 
-function persist(session: AuthSession): void {
+function persist(session: AuthSession, refreshToken?: string | null): void {
   try {
     localStorage.setItem(TOKEN_KEY, session.accessToken);
     localStorage.setItem(EMAIL_KEY, session.email);
+    /* Access tokens last about an hour. Without the refresh token beside it, a session
+       simply died mid-use and the UI dropped to signed-out with no explanation. */
+    if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
   } catch {
     /* Private mode: the session is session-only, which is still correct behaviour. */
   }
@@ -150,8 +183,34 @@ export async function restoreSession(): Promise<AuthSession | null> {
   if (!token) return null;
 
   const session = await verify(token);
-  if (!session) signOut();
-  return session;
+  if (session) return session;
+
+  /* Expired rather than revoked, most of the time. Spend the refresh token before
+     throwing the user out — signing someone out because an hour passed is a bug, not
+     security. */
+  const refreshed = await refresh();
+  if (refreshed) return refreshed;
+  signOut();
+  return null;
+}
+
+async function refresh(): Promise<AuthSession | null> {
+  let token: string | null = null;
+  try { token = localStorage.getItem(REFRESH_KEY); } catch { return null; }
+  if (!token) return null;
+  try {
+    const res = await fetch(`${URL_BASE}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ refresh_token: token }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.access_token) return null;
+    const session = await verify(data.access_token);
+    if (session) persist(session, data.refresh_token);
+    return session;
+  } catch { return null; }
 }
 
 /**
@@ -172,6 +231,7 @@ export function signInWithGoogle(): void {
 export function signOut(): void {
   try {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(EMAIL_KEY);
   } catch {
     /* Nothing stored, nothing to clear. */
