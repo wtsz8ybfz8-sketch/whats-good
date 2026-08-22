@@ -294,7 +294,7 @@ async function fetchRecipe(url: string): Promise<Recipe | null> {
         'User-Agent': 'Mozilla/5.0 (compatible; WhatsGood/1.0; +https://whats-good-nu.vercel.app)',
         Accept: 'text/html',
       },
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(15_000),
     });
     if (!r.ok) return null;
     return extract(await r.text(), url);
