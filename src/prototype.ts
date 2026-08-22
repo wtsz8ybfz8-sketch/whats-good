@@ -902,6 +902,13 @@ function venue(idx: number) {
       + (v.phone ? '<a class="cta2" style="text-align:center;text-decoration:none" href="tel:' + esc(v.phone) + '">Call</a>' : '')
       + (v.externalLink ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(v.externalLink) + '" target="_blank" rel="noopener noreferrer">Menu &amp; details</a>' : '')
       + '<button class="cta2" id="sv" aria-pressed="' + isSaved('places', v.name) + '">Save</button>'
+      /* Sharing a place is the single most common thing anyone does with a restaurant,
+         and there was no way to do it. navigator.share is the 2024+ answer: it opens the
+         real OS sheet, so the venue goes to WhatsApp or Messages in one tap on a phone.
+         Desktop browsers mostly lack it, so the same button copies to the clipboard and
+         says so — never a dead control. No API, no key, no cost. */
+      + '<button class="cta2" id="sh">Share</button>'
+      + '<button class="cta2" id="cp">Copy address</button>'
       + ((v.hoursWeekly && v.hoursWeekly.length)
           ? '<div class="hours">' + v.hoursWeekly.map((h, i) =>
               '<div' + (i === 0 ? ' class="now"' : '') + '><span>' + esc(h) + '</span></div>').join('') + '</div>'
@@ -917,6 +924,37 @@ function venue(idx: number) {
   $('bk').onclick = () => history.back();
   const sv = document.getElementById('sv');
   if (sv) sv.onclick = () => toggleSave('places', v.name, sv);
+
+  /* What gets shared is the venue as a human would write it, plus a maps link that opens
+     for the recipient whatever they use. Not a link back into this app: there is no route
+     to a single venue yet, so a self-link would open the home screen and look broken. */
+  const shareText = [v.name, [v.cuisine, v.address].filter(Boolean).join(' · ')]
+    .filter(Boolean).join('\n');
+  const shareUrl = soc[2][2]!;
+  const flash = (el: HTMLElement, msg: string) => {
+    const was = el.textContent;
+    el.textContent = msg;
+    setTimeout(() => { el.textContent = was; }, 1600);
+  };
+  const sh = document.getElementById('sh');
+  if (sh) sh.onclick = async () => {
+    const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+    if (nav.share) {
+      /* A cancelled share sheet rejects. That is the user deciding, not a failure, so it
+         must not fall through to copying something they chose not to send. */
+      try { await nav.share({ title: v.name, text: shareText, url: shareUrl }); } catch { /* dismissed */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(shareText + '\n' + shareUrl);
+      flash(sh, 'Copied');
+    } catch { flash(sh, 'Copy failed'); }
+  };
+  const cp = document.getElementById('cp');
+  if (cp) cp.onclick = async () => {
+    try { await navigator.clipboard.writeText(v.address || v.name); flash(cp, 'Copied'); }
+    catch { flash(cp, 'Copy failed'); }
+  };
 }
 
 /* ── verbatim: the parse line ────────────────────────────────────────────────── */
