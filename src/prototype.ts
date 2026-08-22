@@ -1062,32 +1062,69 @@ const OSM_FACTS: [string, (t: Record<string, string>) => string | null][] = [
 
 /* Wikipedia, free and key-less, with CORS open to anyone. If a venue has an article it is
    usually because something happened there — it is old, or famous, or the building is
-   listed — and that is exactly the kind of thing nobody learns from a listings app. The
-   search is title-matched against the venue name so a common word does not drag in an
-   unrelated article, and anything below that bar is simply not shown. */
-async function wikiNote(v: Venue): Promise<{ text: string; url: string } | null> {
+   listed — and that is exactly the kind of thing nobody learns from a listings app.
+ *
+ * THIS USED TO BE A FULL-TEXT SEARCH, AND IT LIED.
+ *
+ * The old version searched article text for the venue name and then tried to filter the
+ * wrong answers out afterwards with `!got.includes(name) && !name.includes(got)`. The
+ * second half of that test is the bug: a one-word article title passes whenever the title
+ * appears anywhere inside the venue's name. So "Our Local Kloof Street" in Gardens, Cape
+ * Town matched the article for Kloof — the town outside DURBAN, 1 300 km away — and the
+ * page printed its geography under the heading "The story" as though it were the
+ * restaurant's own. The guard admitted precisely the failure it was written to prevent.
+ *
+ * A filter cannot fix that, because the query had no idea where the venue was. So the
+ * query now carries the coordinates: `list=geosearch` returns only articles whose subject
+ * physically sits within the radius, which makes an article about another province
+ * unreturnable rather than merely unlikely. Wrong-place is now impossible by construction
+ * instead of caught by a string test.
+ *
+ * Two kinds of hit come back and they are NOT the same claim:
+ *   - the venue's own article — the article title contains the venue's full name;
+ *   - the nearest thing to it — a street, a building, a suburb.
+ * The caller is told which, because presenting the second as "the story" of a restaurant
+ * is how this went wrong in the first place. Containment is checked in one direction only
+ * now: the ARTICLE must contain the VENUE's name, never the reverse. */
+interface WikiNote { text: string; url: string; title: string; aboutVenue: boolean }
+
+async function wikiNote(v: Venue): Promise<WikiNote | null> {
+  /* No coordinates, no article. The blind name search that used to run here is exactly
+     what produced the Durban text; there is no safe version of it. */
+  if (!v.latitude || !v.longitude) return null;
+
   try {
-    const q = encodeURIComponent(v.name + ' ' + (v.address.split(',')[1] || '').trim());
-    const r = await fetch(
-      'https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&origin=*&srsearch=' + q,
+    const geo = await fetch(
+      'https://en.wikipedia.org/w/api.php?action=query&list=geosearch&format=json&origin=*'
+      + '&gscoord=' + v.latitude + '%7C' + v.longitude
+      + '&gsradius=600&gslimit=10',
     );
-    if (!r.ok) return null;
-    const j = await r.json() as { query?: { search?: { title: string }[] } };
-    const title = j.query?.search?.[0]?.title;
-    if (!title) return null;
-    /* The article must actually be about this place. Wikipedia will happily return the
-       city, or a person with the same surname, and printing that as a fact about the
-       restaurant would be a confident lie. */
-    const name = v.name.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
-    const got = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
-    if (!got.includes(name) && !name.includes(got)) return null;
-    const sr = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    if (!geo.ok) return null;
+    const gj = await geo.json() as { query?: { geosearch?: { title: string; dist: number }[] } };
+    const near = gj.query?.geosearch || [];
+    if (!near.length) return null;
+
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = norm(v.name);
+    const own = near.find((a) => {
+      const t = norm(a.title);
+      return t === name || t.includes(name);
+    });
+    /* Nearest wins the fallback: at 600m a list can hold a whole district, and the
+       building on the corner says more about where you are standing than the district
+       does. */
+    const pick = own || near.reduce((a, b) => (a.dist <= b.dist ? a : b));
+
+    const sr = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(pick.title));
     if (!sr.ok) return null;
     const sum = await sr.json() as { extract?: string; content_urls?: { desktop?: { page?: string } } };
     if (!sum.extract) return null;
+
     return {
       text: sum.extract.split('. ').slice(0, 2).join('. ').replace(/\.?$/, '.'),
-      url: sum.content_urls?.desktop?.page || 'https://en.wikipedia.org/wiki/' + encodeURIComponent(title),
+      url: sum.content_urls?.desktop?.page || 'https://en.wikipedia.org/wiki/' + encodeURIComponent(pick.title),
+      title: pick.title,
+      aboutVenue: Boolean(own),
     };
   } catch { return null; }
 }
@@ -1132,8 +1169,15 @@ async function venueStory(v: Venue) {
   const host = document.getElementById('detail');
   if (!host || document.body.dataset.view !== 'detail') return;
   const wrap = document.createElement('div');
-  wrap.innerHTML = '<h4>📖 The story</h4><p class="story">' + esc(note.text) + '</p>'
-    + '<p class="src"><a href="' + esc(note.url) + '" target="_blank" rel="noopener noreferrer">Read on Wikipedia</a> · CC BY-SA</p>';
+  /* The heading has to match the claim. "The story" over an article about the suburb reads
+     as the restaurant's own history, and the link said only "Read on Wikipedia", so there
+     was nothing on the page to tell you which place the paragraph was about. Naming the
+     article in the link is the whole correction: the reader can see it says Kloof, or
+     Gardens, or the building next door, before they believe a word of it. */
+  const heading = note.aboutVenue ? 'The story' : 'Around here';
+  wrap.innerHTML = '<h4>📖 ' + heading + '</h4><p class="story">' + esc(note.text) + '</p>'
+    + '<p class="src"><a href="' + esc(note.url) + '" target="_blank" rel="noopener noreferrer">'
+    + esc(note.title) + ' on Wikipedia</a> · CC BY-SA</p>';
   const col = host.querySelector('.dgrid > div');
   if (col) col.appendChild(wrap);
 }
