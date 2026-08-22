@@ -28,7 +28,12 @@
  * `VITE_SUPABASE_ANON_KEY`, the current opaque `sb_publishable_…` string is
  * `VITE_SUPABASE_PUBLISHABLE_KEY` — which is what the Lovable export used. Accept either
  * rather than making the deployment guess which era it is in. */
-const DEFAULT_URL = 'https://jpgycbnpfckabkjhyzbk.supabase.co';
+/* The Lovable build's project, jpgycbnpfckabkjhyzbk, is NOT this app's database and is not
+   reachable from the owner's Supabase account. The live project is ibdnalmezctixgvjjwtm —
+   it holds the saved_items table and the auth URL configuration. Production already
+   overrides this through VITE_SUPABASE_URL, so the stale default was invisible in the
+   running app and cost a later reader a real detour working out which one was true. */
+const DEFAULT_URL = 'https://ibdnalmezctixgvjjwtm.supabase.co';
 const URL_BASE = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || DEFAULT_URL;
 const ANON_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined)
   || (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
