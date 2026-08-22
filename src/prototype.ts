@@ -26,7 +26,7 @@
  *    prototype's own note calls its content "illustrative only".
  */
 import './prototype.css';
-import { fetchVenues } from './placesService';
+import { fetchVenues, detectCityFromCoords } from './placesService';
 /*
  * The app reads numbers to a person, so it never serialises one by hand.
  *
@@ -258,6 +258,32 @@ function startingCity(): string {
 }
 
 let city = startingCity(), tab = 'eat', period = 'pm', picked: string | null = null, manual = false;
+
+/* The timezone is a good guess and a bad answer: it names the nearest big city, so a
+   whole province collapses onto one name. If the reader will tell us where they are, ask
+   once and use it. The permission prompt only appears because they opened a "what's near
+   me" product, the coordinates never leave the request that resolves them to a city name,
+   and a refusal is silent — the timezone guess simply stands. */
+async function locateMe() {
+  if (!navigator.geolocation) return;
+  const pos = await new Promise<GeolocationPosition | null>((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve(p),
+      () => resolve(null),
+      { timeout: 8000, maximumAge: 600_000 },
+    );
+  });
+  if (!pos) return;
+  const found = await detectCityFromCoords(pos.coords.latitude, pos.coords.longitude);
+  if (!found || !found.city || found.city === city) return;
+  /* Never overrule a choice already made by hand. */
+  const typed = ($('city') as HTMLInputElement).value.trim();
+  if (typed && typed !== city) return;
+  city = found.city;
+  ($('city') as HTMLInputElement).value = city;
+  rememberCity(city);
+  build();
+}
 
 /** Live venues for the current query. The prototype's `NAMES`/`BLURB` arrays are gone. */
 let venues: Venue[] = [];
@@ -867,13 +893,17 @@ function recipe(idx: number) {
 function venue(idx: number) {
   const v = venues[idx];
   if (!v) return;
+  /* These were four glyphs with no words, one of which (Instagram) never had a link at
+     all and rendered as nothing — so the row read as broken icons. A link that cannot say
+     where it goes should not be on the page. Each surviving entry now carries its own
+     label and only appears when it actually resolves somewhere. */
   const soc: [string, string, string | null][] = [
-    ['Instagram', IG, null],
+    ['Website', GM, v.externalLink || null],
     ['WhatsApp', WA, v.phone ? 'https://wa.me/' + v.phone.replace(/[^\d]/g, '') : null],
     ['Directions', GM, v.latitude && v.longitude
       ? 'https://www.google.com/maps/search/?api=1&query=' + v.latitude + ',' + v.longitude
       : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v.name + ' ' + v.address)],
-    ['Reviews', TA, v.externalLink || null],
+    ['Search', TA, 'https://www.google.com/search?q=' + encodeURIComponent(v.name + ' ' + v.address)],
   ];
   const gal = (v.galleryUrls || []).slice(0, 4);
   const facts = [
@@ -890,7 +920,12 @@ function venue(idx: number) {
     '<button class="back" id="bk">← Back to ' + esc(label(picked || 'local')) + '</button>'
     + '<div ' + phAttrs(v.photoUrl, v.name, 'dhero') + '><div class="in"><h2>' + esc(v.name) + '</h2>'
       + '<p class="sub">' + esc([v.cuisine, v.address].filter(Boolean).join(' · ')) + '</p></div></div>'
-    + (gal.length ? '<div class="gal">' + gal.map((u) => '<div ' + phAttrs(u, v.name) + '></div>').join('') + '</div>' : '')
+    /* The gallery was six dead squares. A photograph the reader can see but not open is a
+       control that looks interactive and is not, so each one is now a real link to the
+       full-size image. */
+    + (gal.length ? '<div class="gal">' + gal.map((u) =>
+        '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" aria-label="Open photo of ' + esc(v.name) + '" '
+        + phAttrs(u, v.name) + '></a>').join('') + '</div>' : '')
     + '<div class="dgrid"><div>'
       + (facts.length ? '<div class="facts">' + facts.map((f) =>
           '<div class="fact"><u>' + esc(f[0]) + '</u><b>' + esc(f[1]) + '</b>'
@@ -904,7 +939,8 @@ function venue(idx: number) {
             + (v.signatureDescription ? '<p>' + esc(v.signatureDescription) + '</p>' : '') + '</div></div></div>'
           : '')
       + '<h4>Find them</h4><div class="socials">' + soc.map(([n, path, href]) => (href
-          ? '<a class="soc" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" title="' + n + '" aria-label="' + n + '"><svg viewBox="0 0 24 24"><path d="' + path + '"/></svg></a>'
+          ? '<a class="soc" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" aria-label="' + n + '">'
+            + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg><span>' + esc(n) + '</span></a>'
           : '')).join('') + '</div>'
     + '</div><div><div class="side">'
       + '<a class="cta" style="text-align:center;text-decoration:none" href="' + esc(soc[2][2]!) + '" target="_blank" rel="noopener noreferrer">Directions</a>'
@@ -1075,6 +1111,19 @@ const commitCity = () => {
   if (next === city) return;
   city = next; rememberCity(city); build();
 };
+/* The wordmark looked like a home link and was inert. It is a button now: back to the
+   start of whatever tab you are on, and out of a venue page if you are in one. */
+const homeBtn = document.getElementById('home');
+if (homeBtn) homeBtn.onclick = () => {
+  if (document.body.dataset.view === 'detail') { history.back(); return; }
+  picked = null;
+  ($('q') as HTMLInputElement).value = '';
+  $('refine').classList.remove('on');
+  build();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+void locateMe();
+
 ($('city') as HTMLInputElement).onchange = commitCity;
 ($('city') as HTMLInputElement).addEventListener('keydown', (e) => {
   if ((e as KeyboardEvent).key === 'Enter') { (e.target as HTMLInputElement).blur(); }

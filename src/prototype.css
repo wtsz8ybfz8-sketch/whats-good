@@ -389,3 +389,13 @@ body[data-view="detail"] .dgrid>*:nth-child(2){animation-delay:.08s}
 .simsg.ok{color:var(--ink2)}
 .simsg.bad{color:var(--accent)}
 #savedwrap .who{gap:2px}
+
+/* The Find-them row carries words now, not bare glyphs — a link that cannot say where it
+   goes is not a link anyone can trust. */
+.socials { flex-wrap: wrap; gap: 8px; }
+.socials .soc { display: inline-flex; align-items: center; gap: 8px; width: auto; padding: 0 14px; height: 40px; border-radius: 999px; }
+.socials .soc svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.socials .soc span { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.gal a { display: block; }
+/* The wordmark is a real control now, so it must not inherit button chrome. */
+button.logo { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
