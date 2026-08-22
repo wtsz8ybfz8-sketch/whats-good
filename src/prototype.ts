@@ -223,7 +223,41 @@ const DIST: (number | 'any')[] = [0.5, 1, 2, 3, 5, 8, 'any'];
    stays exactly as it was — it is one of the parts — but it now OPENS on the real local
    hour, because an app that always thinks it is 19:00 is not working. */
 let hour = new Date().getHours();
-let city = 'Cape Town', tab = 'eat', period = 'pm', picked: string | null = null, manual = false;
+/* ── where the reader actually is ─────────────────────────────────────────────
+   The city defaulted to the literal string 'Cape Town', so someone opening this in
+   Johannesburg was told what was good 1,400km away. The browser already knows: its IANA
+   timezone names the nearest major city, and reading it costs nothing — no geolocation
+   prompt, no IP lookup, no API call.
+
+   The same signal fixes the units. formatDistance was keyed off navigator.language, which
+   is the reader's LANGUAGE, not their LOCATION — an en-GB Mac in Cape Town got miles on
+   every card. Road distance follows the ground you are standing on, so the region comes
+   from the timezone too. */
+function tzCity(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const leaf = tz.split('/').pop() || '';
+    return leaf.replace(/_/g, ' ').trim();
+  } catch { return ''; }
+}
+function tzZone(): string {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
+}
+/** Miles are read in the US, the UK, Liberia and Myanmar — everywhere else, kilometres. */
+function distanceLocale(): string {
+  const z = tzZone();
+  const miles = z.startsWith('America/') || z === 'Europe/London' || z === 'Africa/Monrovia' || z === 'Asia/Yangon';
+  return miles ? 'en-US' : 'en-ZA';
+}
+/** Curated spelling wins when we hold local knowledge, otherwise the timezone's own name. */
+function startingCity(): string {
+  const guess = tzCity();
+  if (!guess) return 'Cape Town';
+  const curated = Object.keys(CITY).find((c) => c.toLowerCase() === guess.toLowerCase());
+  return curated || guess;
+}
+
+let city = startingCity(), tab = 'eat', period = 'pm', picked: string | null = null, manual = false;
 
 /** Live venues for the current query. The prototype's `NAMES`/`BLURB` arrays are gone. */
 let venues: Venue[] = [];
@@ -359,6 +393,25 @@ function heroPhoto(url?: string) {
 /* Paints the occasion tiles from photographs we already hold. Skips any plate that has
    its own picture, and leaves the monogram in place when we have nothing — the fallback
    stays a fallback. Cycles the list so a short response still fills the grid. */
+/* Photographs survive the session. The tiles could only ever be dressed AFTER a search,
+   because dressing them before one would mean a billed Places call on arrival — the exact
+   thing that took this app down with "Quota exceeded ... SearchTextRequest per day".
+   Keeping the URLs a search already returned means the SECOND visit to a city opens with
+   pictures and still costs nothing. Only the very first visit to a city is bare. */
+const PHOTO_KEY = 'wg.tilephotos';
+function photoStore(): Record<string, string[]> {
+  try { return JSON.parse(localStorage.getItem(PHOTO_KEY) || '{}') as Record<string, string[]>; } catch { return {}; }
+}
+function savePhotos(k: string, urls: string[]) {
+  if (!urls.length) return;
+  try {
+    const all = photoStore();
+    all[k] = urls.slice(0, 8);
+    localStorage.setItem(PHOTO_KEY, JSON.stringify(all));
+  } catch { /* private mode, or quota — the tiles simply stay bare */ }
+}
+const loadPhotos = (k: string): string[] => photoStore()[k] || [];
+
 function dressTiles(urls: string[]) {
   if (!urls.length) return;
   const plates = [...document.querySelectorAll('#grid .tile .ph')] as HTMLElement[];
@@ -458,8 +511,8 @@ function build() {
   });
   /* The grid is rebuilt on every idle render, which throws away the plates heroPreview
      dressed. Re-apply from cache so switching tab or city does not drop back to grey. */
-  const cached = heroCache[city + '|' + tab];
-  if (cached) dressTiles(cached);
+  const pk = city + '|' + tab;
+  dressTiles(heroCache[pk] || loadPhotos(pk));
   /* Neighbourhood chips are hand-picked per city. For a city we hold none for, hide the
      whole Nearby block — an empty row under a heading reads as a broken feature. */
   const nw = document.getElementById('nearbywrap');
@@ -570,7 +623,7 @@ async function render() {
   if (!picked) return;
   const areas = [...document.querySelectorAll('.chip[aria-pressed="true"]')].map((c) => c.textContent!);
   const { d, p, party } = sliderState();
-  $('o-dist').textContent = d === 'any' ? 'anywhere' : formatDistance(d as number);
+  $('o-dist').textContent = d === 'any' ? 'anywhere' : formatDistance(d as number, distanceLocale());
   $('o-price').textContent = p;
   $('o-party').textContent = party === 8 ? '8+' : String(party);
   const typedNow = ($('q') as HTMLInputElement).value.trim();
@@ -708,7 +761,9 @@ async function render() {
      city change and took the app down with "Quota exceeded ... SearchTextRequest per day"
      on 2026-08-14 — so the tiles cannot be filled before the first search without
      reintroducing exactly that. These photographs are already paid for and in memory. */
-  dressTiles(venues.map((v) => v.photoUrl).filter((u): u is string => !!u));
+  const shots = venues.map((v) => v.photoUrl).filter((u): u is string => !!u);
+  dressTiles(shots);
+  savePhotos(city + '|' + tab, shots);
 }
 
 async function renderRecipes() {
