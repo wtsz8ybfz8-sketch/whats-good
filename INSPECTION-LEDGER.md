@@ -97,3 +97,14 @@ Proven twice on 2026-08-01: CI went red and Vercel deployed anyway, because
 | "Venue surfaces can't be tested here" | **FALSE.** The dev server needed a key, not a different container. |
 | "The deployment is unreachable / protected" | **FALSE.** The proxy 403s every URL; that says nothing about the deployment. |
 | "I cannot set a Google Cloud quota" | **TRUE, and verified** — `which gcloud`, `~/.config/gcloud`, env all empty on 2026-08-01. This is what a verified impossibility looks like. |
+
+---
+
+## 2026-08-22 — live production inspection (real browser)
+
+Inspected `https://whats-good-nu.vercel.app/` in a real Chromium at 800×450, Johannesburg / 18:00. Method: page load, one occasion tap ("Date night"), console + network + computed background-image audit. This reconciles two long-standing "unconfirmed / open" items against current prod (main).
+
+- **Do venues render live? — CONFIRMED YES.** "Date night · Johannesburg · 20 places"; first result PROUD MARY, real address (The Bank, 26 Cradock Ave, Rosebank), "Open now · 4.4★ (2,653) · Mid", Save present. Page load: **0 console errors.** This retires HANDOVER's "whether it renders venues is still unconfirmed by anyone."
+- **Data path — same-origin proxy, not client-side Google.** Search fires `POST /api/places?path=searchText → 200`. Photos load via `url(https://whats-good-nu.vercel.app/api/places?photo=places%2F...)`.
+- **Open finding #2 (public API key) — APPEARS FIXED on prod.** Audited 27 background-images + all `<img>`: **0 URLs containing `key=`/`AIza`, 0 direct `googleapis`/`ggpht`/`googleusercontent` URLs.** Both search and photo traffic go through `api/places.ts`. Verify against source that no legacy direct-key path remains, then move finding #2 to FIXED with the commit.
+- **NOT checked this pass:** OSM fallback path (`api/osm.ts` — only fires when Places fails; still never exercised), iOS Safari, screen reader, contrast, the recipe/scaler path, URL state, other three occasions/tabs.
