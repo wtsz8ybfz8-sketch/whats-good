@@ -285,20 +285,24 @@ function extract(html: string, url: string): Recipe | null {
   return null;
 }
 
-async function fetchRecipe(url: string): Promise<Recipe | null> {
+interface FetchResult { recipe: Recipe | null; status: number | string; bytes: number; }
+
+async function fetchRecipe(url: string): Promise<FetchResult> {
   try {
     const r = await fetch(url, {
       headers: {
-        /* A plain fetch UA gets soft-blocked by some CDNs; a browser-shaped one is served
-           the same public HTML any reader gets. */
-        'User-Agent': 'Mozilla/5.0 (compatible; WhatsGood/1.0; +https://whats-good-nu.vercel.app)',
-        Accept: 'text/html',
+        /* A real browser UA: some CDNs serve a bot UA a challenge page instead of the
+           article, which carries no Recipe JSON-LD and silently drops the source. */
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
       signal: AbortSignal.timeout(15_000),
     });
-    if (!r.ok) return null;
-    return extract(await r.text(), url);
-  } catch { return null; }
+    if (!r.ok) return { recipe: null, status: r.status, bytes: 0 };
+    const html = await r.text();
+    return { recipe: extract(html, url), status: r.status, bytes: html.length };
+  } catch (e) { return { recipe: null, status: String((e as Error)?.name || 'err'), bytes: 0 }; }
 }
 
 export default async function handler(req: Req, res: Res): Promise<void> {
@@ -314,11 +318,18 @@ export default async function handler(req: Req, res: Res): Promise<void> {
      half) random subset dropped on every cold run. A small concurrency window keeps the
      host happy and the result complete; the 6h edge cache pays the latency once. */
   const recipes: Recipe[] = [];
+  const diag: Array<{ url: string; status: number | string; bytes: number; ok: boolean }> = [];
   const CONCURRENCY = 3;
   for (let i = 0; i < urls.length; i += CONCURRENCY) {
-    const batch = await Promise.all(urls.slice(i, i + CONCURRENCY).map(fetchRecipe));
-    for (const r of batch) if (r) recipes.push(r);
+    const slice = urls.slice(i, i + CONCURRENCY);
+    const batch = await Promise.all(slice.map(fetchRecipe));
+    batch.forEach((res, j) => {
+      if (res.recipe) recipes.push(res.recipe);
+      diag.push({ url: slice[j], status: res.status, bytes: res.bytes, ok: !!res.recipe });
+    });
   }
+
+  if (one(req.query?.debug)) { res.status(200).json({ count: recipes.length, diag }); return; }
 
   if (recipes.length) {
     /* Recipe pages are effectively static — cache the assembled list hard so an occasion
