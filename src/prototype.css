@@ -423,3 +423,7 @@ button.logo { background: none; border: 0; padding: 0; font: inherit; color: inh
   background: #fff; color: #17150f; }
 .gbtn svg { width: 18px; height: 18px; }
 :root[data-theme="dark"] .gbtn { background: #f6f4ef; }
+
+.story { margin: 6px 0 4px; line-height: 1.55; opacity: 0.92; }
+.src { font-size: 12px; opacity: 0.62; margin: 2px 0 18px; }
+.src a { color: inherit; }

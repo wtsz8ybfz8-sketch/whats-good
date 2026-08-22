@@ -981,6 +981,7 @@ function venue(idx: number) {
   const sv = document.getElementById('sv');
   if (sv) sv.onclick = () => toggleSave('places', v.name, sv);
   void venueFacts(v);
+  void venueStory(v);
 
   /* A viewer, in the page. Escape and a click outside both close it, and focus returns to
      the thumbnail that opened it so a keyboard does not lose its place. */
@@ -1036,18 +1037,75 @@ function venue(idx: number) {
    a venue nobody has tagged yet must look like a venue with no extra facts, never like a
    broken page. */
 const OSM_FACTS: [string, (t: Record<string, string>) => string | null][] = [
-  ['Vegan', (t) => (t['diet:vegan'] === 'only' ? 'Only vegan' : t['diet:vegan'] === 'yes' ? 'Yes' : null)],
-  ['Vegetarian', (t) => (t['diet:vegetarian'] === 'only' ? 'Only vegetarian' : t['diet:vegetarian'] === 'yes' ? 'Yes' : null)],
-  ['Halal', (t) => (t['diet:halal'] === 'yes' || t['diet:halal'] === 'only' ? 'Yes' : null)],
-  ['Gluten free', (t) => (t['diet:gluten_free'] === 'yes' ? 'Yes' : null)],
-  ['Step-free', (t) => (t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'limited' ? 'Limited' : null)],
-  ['Outside', (t) => (t.outdoor_seating === 'yes' ? 'Tables outside' : null)],
-  ['Takeaway', (t) => (t.takeaway === 'yes' ? 'Yes' : t.takeaway === 'only' ? 'Takeaway only' : null)],
-  ['Delivery', (t) => (t.delivery === 'yes' ? 'Yes' : null)],
-  ['Wi-Fi', (t) => (t.internet_access === 'wlan' || t.internet_access === 'yes' ? 'Yes' : null)],
-  ['Dogs', (t) => (t.dog === 'yes' ? 'Welcome' : null)],
-  ['Cards', (t) => (t['payment:cards'] === 'yes' || t['payment:visa'] === 'yes' ? 'Accepted' : null)],
+  /* Dietary and access first — these decide whether a place is possible at all. */
+  ['🌱 Vegan', (t) => (t['diet:vegan'] === 'only' ? 'Entirely vegan' : t['diet:vegan'] === 'yes' ? 'Options on the menu' : null)],
+  ['🥗 Vegetarian', (t) => (t['diet:vegetarian'] === 'only' ? 'Entirely vegetarian' : t['diet:vegetarian'] === 'yes' ? 'Options on the menu' : null)],
+  ['🕌 Halal', (t) => (t['diet:halal'] === 'only' ? 'Fully halal' : t['diet:halal'] === 'yes' ? 'Options on the menu' : null)],
+  ['✡️ Kosher', (t) => (t['diet:kosher'] === 'only' ? 'Fully kosher' : t['diet:kosher'] === 'yes' ? 'Options on the menu' : null)],
+  ['🌾 Gluten free', (t) => (t['diet:gluten_free'] === 'yes' ? 'Options on the menu' : null)],
+  ['♿ Step-free', (t) => (t.wheelchair === 'yes' ? 'Yes' : t.wheelchair === 'limited' ? 'Limited' : t.wheelchair === 'no' ? 'No' : null)],
+  ['🚻 Accessible loo', (t) => (t['toilets:wheelchair'] === 'yes' ? 'Yes' : null)],
+  /* Then the things that change what an evening feels like. */
+  ['📅 Serving since', (t) => {
+    const y = (t.start_date || '').slice(0, 4);
+    return /^\d{4}$/.test(y) ? y : null;
+  }],
+  ['🏛 Heritage listed', (t) => (t.heritage || t.historic ? 'The building is listed' : null)],
+  ['🍺 Brews its own', (t) => (t.microbrewery === 'yes' ? 'Microbrewery on site' : t.brewery ? 'House beer: ' + t.brewery : null)],
+  ['🎶 Live music', (t) => (t.live_music === 'yes' || t['music:live'] === 'yes' ? 'Yes' : null)],
+  ['💃 Dancing', (t) => (t['dance:teaching'] === 'yes' || t.dance === 'yes' ? 'Yes' : null)],
+  ['🌿 Organic', (t) => (t.organic === 'only' ? 'Entirely organic' : t.organic === 'yes' ? 'Some organic' : null)],
+  ['🤝 Fair trade', (t) => (t.fair_trade === 'yes' || t.fair_trade === 'only' ? 'Yes' : null)],
+  ['🪑 Outside', (t) => (t.outdoor_seating === 'yes' ? 'Tables outside' : null)],
+  ['🔥 Smoking', (t) => (t.smoking === 'outside' ? 'Outside only' : t.smoking === 'no' ? 'Non-smoking' : t.smoking === 'yes' ? 'Permitted' : null)],
+  ['❄️ Air conditioned', (t) => (t.air_conditioning === 'yes' ? 'Yes' : null)],
+  ['📖 Booking', (t) => (t.reservation === 'required' ? 'Required' : t.reservation === 'recommended' ? 'Recommended' : t.reservation === 'no' ? 'Walk-ins only' : null)],
+  ['👥 Seats', (t) => (/^\d+$/.test(t.capacity || '') ? t.capacity : null)],
+  ['🥐 Breakfast', (t) => (t.breakfast === 'yes' ? 'Served' : null)],
+  ['🥡 Takeaway', (t) => (t.takeaway === 'only' ? 'Takeaway only' : t.takeaway === 'yes' ? 'Yes' : null)],
+  ['🛵 Delivery', (t) => (t.delivery === 'yes' ? 'Yes' : null)],
+  ['🚗 Drive-through', (t) => (t.drive_through === 'yes' ? 'Yes' : null)],
+  ['📶 Wi-Fi', (t) => (t.internet_access === 'wlan' || t.internet_access === 'yes'
+    ? (t['internet_access:fee'] === 'no' ? 'Free' : 'Yes') : null)],
+  ['🐕 Dogs', (t) => (t.dog === 'yes' ? 'Welcome' : t.dog === 'leashed' ? 'On a lead' : null)],
+  ['👶 High chairs', (t) => (t.highchair === 'yes' ? 'Yes' : null)],
+  ['💳 Cards', (t) => (t['payment:cards'] === 'yes' || t['payment:visa'] === 'yes' ? 'Accepted' : null)],
+  ['📱 Contactless', (t) => (t['payment:contactless'] === 'yes' ? 'Accepted' : null)],
+  ['💵 Cash only', (t) => (t['payment:cash'] === 'only' ? 'Yes' : null)],
+  ['🔞 Over 18s', (t) => (t.min_age ? t.min_age + '+' : null)],
 ];
+
+/* Wikipedia, free and key-less, with CORS open to anyone. If a venue has an article it is
+   usually because something happened there — it is old, or famous, or the building is
+   listed — and that is exactly the kind of thing nobody learns from a listings app. The
+   search is title-matched against the venue name so a common word does not drag in an
+   unrelated article, and anything below that bar is simply not shown. */
+async function wikiNote(v: Venue): Promise<{ text: string; url: string } | null> {
+  try {
+    const q = encodeURIComponent(v.name + ' ' + (v.address.split(',')[1] || '').trim());
+    const r = await fetch(
+      'https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=1&format=json&origin=*&srsearch=' + q,
+    );
+    if (!r.ok) return null;
+    const j = await r.json() as { query?: { search?: { title: string }[] } };
+    const title = j.query?.search?.[0]?.title;
+    if (!title) return null;
+    /* The article must actually be about this place. Wikipedia will happily return the
+       city, or a person with the same surname, and printing that as a fact about the
+       restaurant would be a confident lie. */
+    const name = v.name.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    const got = title.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    if (!got.includes(name) && !name.includes(got)) return null;
+    const sr = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    if (!sr.ok) return null;
+    const sum = await sr.json() as { extract?: string; content_urls?: { desktop?: { page?: string } } };
+    if (!sum.extract) return null;
+    return {
+      text: sum.extract.split('. ').slice(0, 2).join('. ').replace(/\.?$/, '.'),
+      url: sum.content_urls?.desktop?.page || 'https://en.wikipedia.org/wiki/' + encodeURIComponent(title),
+    };
+  } catch { return null; }
+}
 
 async function venueFacts(v: Venue) {
   if (!v.latitude || !v.longitude) return;
@@ -1075,9 +1133,22 @@ async function venueFacts(v: Venue) {
   const host = document.getElementById('detail');
   if (!host || document.body.dataset.view !== 'detail') return;
   const wrap = document.createElement('div');
-  wrap.innerHTML = '<h4>Good to know</h4><div class="facts">'
+  wrap.innerHTML = '<h4>✨ Good to know</h4><div class="facts">'
     + found.map(([k, val]) => '<div class="fact"><u>' + esc(k) + '</u><b>' + esc(val) + '</b></div>').join('')
     + '</div><p class="src">From OpenStreetMap contributors</p>';
+  const col = host.querySelector('.dgrid > div');
+  if (col) col.appendChild(wrap);
+}
+
+/** The story, when there is one. Silent when there is not. */
+async function venueStory(v: Venue) {
+  const note = await wikiNote(v);
+  if (!note) return;
+  const host = document.getElementById('detail');
+  if (!host || document.body.dataset.view !== 'detail') return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = '<h4>📖 The story</h4><p class="story">' + esc(note.text) + '</p>'
+    + '<p class="src"><a href="' + esc(note.url) + '" target="_blank" rel="noopener noreferrer">Read on Wikipedia</a> · CC BY-SA</p>';
   const col = host.querySelector('.dgrid > div');
   if (col) col.appendChild(wrap);
 }
