@@ -110,12 +110,19 @@ export async function captureSessionFromUrl(): Promise<AuthSession | null> {
   const query = new URLSearchParams(window.location.search);
   const code = query.get('code');
   if (code) {
+    /* The verifier that was generated before the redirect. Without it this exchange
+       CANNOT succeed — GoTrue's pkce grant requires auth_code AND code_verifier, and the
+       previous version of this function sent only the code. That call was guaranteed to
+       fail; it merely looked harmless because signInWithGoogle() never asked for PKCE in
+       the first place, so no ?code= ever arrived to run it. */
+    const verifier = takeVerifier();
     clean();
+    if (!verifier) return null;
     try {
       const res = await fetch(`${URL_BASE}/auth/v1/token?grant_type=pkce`, {
         method: 'POST',
         headers: headers(),
-        body: JSON.stringify({ auth_code: code }),
+        body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -213,19 +220,80 @@ async function refresh(): Promise<AuthSession | null> {
   } catch { return null; }
 }
 
+/* ─── PKCE ────────────────────────────────────────────────────────────────────────────
+ *
+ * The provider handshake used to run WITHOUT a code_challenge, which makes GoTrue fall
+ * back to the implicit flow and hand the access token back in the URL fragment. That
+ * works, and it is also the flow OAuth 2.1 removed: the token lands in the address bar,
+ * in `history`, and in anything that reads document.location — including a referrer if
+ * the page ever loads a third-party asset before the fragment is cleaned.
+ *
+ * PKCE returns a single-use `?code=` instead, worthless to anyone who does not hold the
+ * verifier this browser generated and never transmitted. The exchange branch above was
+ * already written for that flow; the missing half was ever asking for it.
+ *
+ * sessionStorage, not localStorage: the verifier is dead the moment it is spent, and a
+ * value that outlives the tab is a value that can be stolen from a shared machine.
+ */
+const VERIFIER_KEY = 'wg.auth.pkce';
+
+function base64url(bytes: Uint8Array): string {
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** 32 random bytes, base64url-encoded — 43 characters, the RFC 7636 minimum length. */
+function makeVerifier(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64url(bytes);
+}
+
+async function challengeFor(verifier: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return base64url(new Uint8Array(digest));
+}
+
+/** Reads the verifier and removes it in one motion: it is valid for exactly one exchange. */
+function takeVerifier(): string | null {
+  try {
+    const v = sessionStorage.getItem(VERIFIER_KEY);
+    sessionStorage.removeItem(VERIFIER_KEY);
+    return v;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Sends the browser to Supabase's own OAuth entry point. There is no SDK in this app, and
- * none is needed: the provider handshake is a redirect, and the session comes back in the
- * URL fragment that captureSessionFromUrl() already reads for magic links.
+ * none is needed: the provider handshake is a redirect and the session comes back to
+ * captureSessionFromUrl(), which handles both the PKCE code and the magic link's fragment.
  *
  * Passwordless email is defensible, but it asks someone to leave the page, open a mail
  * client and come back — three chances to lose them, on a page whose whole job is a
  * single decision. A provider button is one tap and identity people already trust.
+ *
+ * If crypto.subtle is unavailable — it is gated on a secure context, so this means an
+ * http:// origin — the call falls back to the implicit flow rather than doing nothing.
+ * A sign-in button that silently does nothing is worse than one using the older flow.
  */
-export function signInWithGoogle(): void {
+export async function signInWithGoogle(): Promise<void> {
   const back = window.location.origin + window.location.pathname;
-  window.location.href = URL_BASE + '/auth/v1/authorize?provider=google&redirect_to='
+  const authorize = URL_BASE + '/auth/v1/authorize?provider=google&redirect_to='
     + encodeURIComponent(back);
+
+  try {
+    const verifier = makeVerifier();
+    const challenge = await challengeFor(verifier);
+    sessionStorage.setItem(VERIFIER_KEY, verifier);
+    window.location.href = authorize
+      + '&code_challenge=' + encodeURIComponent(challenge)
+      + '&code_challenge_method=s256';
+  } catch {
+    window.location.href = authorize;
+  }
 }
 
 export function signOut(): void {

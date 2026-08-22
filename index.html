@@ -18,9 +18,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>What's Good — Find your next great meal</title>
     <meta name="description" content="What's Good finds restaurants near you by mood, budget, and distance — or helps you pick a recipe for a night in." />
+    <!--
+      Canonical, absolute and singular.
+
+      The catch-all rewrite means EVERY path on this domain returns this document, so
+      /whatever, /?tab=saved and /#anything are all the same page served under unlimited
+      addresses. Without a canonical, a crawler treats those as separate near-duplicate
+      URLs and splits whatever ranking the site has across all of them. One canonical
+      collapses them back to the single address that actually exists.
+    -->
+    <link rel="canonical" href="https://whats-good-nu.vercel.app/" />
+
     <meta property="og:title" content="What's Good" />
     <meta property="og:description" content="Find a place to eat by mood, budget, and distance — or stay in and cook." />
     <meta property="og:type" content="website" />
+    <!--
+      og:url and og:image are what turn a shared link into a card instead of a bare grey
+      rectangle. WhatsApp, iMessage, Slack and X all read these and NONE of them fall back
+      to the favicon — with no og:image the unfurl is blank, which is the single most
+      visible thing wrong with sharing this app today.
+
+      The image is the 512px maskable icon, not a purpose-built 1200×630 banner. It is a
+      square mark on a coloured field, so it renders as a small centred logo rather than a
+      full-bleed hero. That is a stopgap: a real 1200×630 open-graph image belongs under
+      /assets/ with a -vN name (that directory is immutable-cached for a year) and this
+      tag should point at it as soon as one exists.
+    -->
+    <meta property="og:url" content="https://whats-good-nu.vercel.app/" />
+    <meta property="og:site_name" content="What's Good" />
+    <meta property="og:locale" content="en_ZA" />
+    <meta property="og:image" content="https://whats-good-nu.vercel.app/assets/icon-512-v1.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:image:alt" content="The What's Good app mark." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="What's Good" />
+    <meta name="twitter:description" content="Find a place to eat by mood, budget, and distance — or stay in and cook." />
+    <meta name="twitter:image" content="https://whats-good-nu.vercel.app/assets/icon-512-v1.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -110,6 +144,34 @@
       href="/fonts/schibsted-grotesk-latin-wght-italic.woff2"
       crossorigin
     />
+
+    <!--
+      Structured data, in the document rather than injected by script.
+
+      Everything this app renders — venues, tabs, results — arrives from fetch() after
+      hydration, so a crawler's first look at this URL is an empty shell. That is the
+      normal cost of a client-rendered app and it is not worth an SSR rewrite tonight.
+      What it does mean is that the ONLY machine-readable description of the product on
+      first fetch is this block, which is why it is static markup here and not something
+      prototype.ts appends later.
+
+      WebApplication, not Organization or LocalBusiness: this is a tool for finding
+      restaurants, it is not itself a restaurant, and claiming LocalBusiness for a
+      directory is the kind of mismatch that earns a structured-data penalty.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "What's Good",
+        "url": "https://whats-good-nu.vercel.app/",
+        "description": "What's Good finds restaurants near you by mood, budget, and distance — or helps you pick a recipe for a night in.",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "ZAR" }
+      }
+    </script>
   </head>
   <body>
     <div class="wrap">

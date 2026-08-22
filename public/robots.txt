@@ -1,0 +1,11 @@
+# Served as a real file, not the SPA shell. The catch-all rewrite in vercel.json
+# excludes /robots.txt by name; if that exclusion is ever removed this file starts
+# answering with index.html and every directive below silently stops existing.
+User-agent: *
+Allow: /
+
+# The Places proxy is billed per call. Nothing here is indexable and a crawler
+# walking it spends real money.
+Disallow: /api/
+
+Sitemap: https://whats-good-nu.vercel.app/sitemap.xml

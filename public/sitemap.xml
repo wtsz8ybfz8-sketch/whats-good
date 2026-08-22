@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  One entry, deliberately. This is a single-page app whose tabs are client state, not
+  routes with server-rendered content — listing ?tab= URLs would offer Google a set of
+  pages that all return the identical shell, which is the duplicate-content problem this
+  file is supposed to avoid rather than create.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://whats-good-nu.vercel.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
