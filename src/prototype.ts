@@ -281,6 +281,14 @@ const auto = (h: number) => (h < 11 ? 'am' : h < 17 ? 'mid' : 'pm');
 const T = () => TABS.find((t) => t.k === tab)!;
 const icon = (k: string) => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + I[k] + '</svg>';
 const FALL: Record<string, string> = {
+  /* Generic English for every occasion key. These used to live ONLY inside each city's
+     `v` map, so the moment the city field accepted a fifth city the tiles rendered their
+     raw keys — "lunchdeal", "local", "fire", seen on Lisbon. A fallback that covers only
+     some of the keys is not a fallback. Curated cities still override these with the
+     local word, so Cape Town keeps "Braai" and London keeps "Sunday roast". */
+  coffee: 'Coffee & a laptop', brunch: 'Slow morning', cheap: 'Cheap & cheerful',
+  drinks: 'Drinks', local: 'Neighbourhood', lunchdeal: 'Quick lunch',
+  fire: 'Grill & barbecue', late: 'Late night', happy: 'Happy hour',
   comfort: 'Comfort', date: 'Date night', celebrate: 'Celebrating', nu: 'Something new', family: 'With the kids',
   cocktails: 'Cocktails', live: 'Live music', dance: 'Dancing', quietdrink: 'Quiet drink', roof: 'Rooftop',
   quick30: 'Under 30 min', onepot: 'One pot', pantry: 'Pantry raid', veg: 'Vegetarian', batch: 'Batch cook', baking: 'Baking',
