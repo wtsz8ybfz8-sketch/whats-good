@@ -16,8 +16,6 @@ export interface Venue {
   name: string;
   address: string;
   cuisine: string;
-  vibeMatch: string;
-  fallbackDistance: string; // shown when geolocation is denied
   /**
    * Optional on purpose. This was `rating: number` fed by `place.rating ?? 4.0`, so a
    * venue Google holds no rating for was handed a 4.0 and rendered it beside a star as
@@ -45,10 +43,6 @@ export interface Venue {
    * everywhere; the glyph is a presentation decision made at render time.
    */
   priceTier?: 1 | 2 | 3 | 4;
-  signatureOrder: string;
-  signatureDescription: string;
-  signatureIngredients: string[];
-  digestiveNote: string;
   externalLink: string;
   /**
    * True only when the venue published its own site. Places has no website for many
@@ -63,7 +57,6 @@ export interface Venue {
   latitude?: number;
   longitude?: number;
   phone: string;
-  estimatedWait: string;
   photoUrl?: string; // Optional override for dynamic sources (e.g. Google Places)
   /**
    * Additional Places photos, hero excluded, for the venue page's gallery strip

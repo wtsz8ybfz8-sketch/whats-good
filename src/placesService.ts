@@ -710,8 +710,6 @@ export async function fetchVenues(
            synthesised menus: a template presented as knowledge. CLAUDE.md 8 requires a
            Vibe Match to be tied to a real signal — Places publishes no such field, so
            there is none, and the render site already omits an empty value. */
-        vibeMatch: '',
-        fallbackDistance: '',
         rating,
         priceTier,
         /* Empty on purpose. These four fields used to be filled with template strings
@@ -723,10 +721,6 @@ export async function fetchVenues(
            so we do not have one, and the render sites already omit an empty value. An
            empty section beats a confident lie; see the "never render invented data" rule
            in CLAUDE.md. */
-        signatureOrder: '',
-        signatureDescription: '',
-        signatureIngredients: [],
-        digestiveNote: '',
         externalLink: website,
         hasOwnWebsite,
         /* No coordinate fallback. This was `?? -33.9249, 18.4241` — Cape Town's City
@@ -738,7 +732,6 @@ export async function fetchVenues(
         latitude: place.location?.latitude,
         longitude: place.location?.longitude,
         phone,
-        estimatedWait: '', // Not published by Places. "Check with venue" is filler, not a wait time.
         photoUrl,
         galleryUrls,
         openNow,

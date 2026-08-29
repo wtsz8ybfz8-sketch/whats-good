@@ -289,8 +289,8 @@ const TABS = [
 ];
 
 /* ── verbatim: freeform intent parsing ───────────────────────────────────────── */
-const RULES: [RegExp, { occ: string; party?: number; price?: number; note: string }][] = [
-  [/stag|bachelor|hen|bucks/i, { occ: 'drinks', party: 8, note: 'big group · drinks · late' }],
+const RULES: [RegExp, { occ: string; price?: number; note: string }][] = [
+  [/stag|bachelor|hen|bucks/i, { occ: 'drinks', note: 'drinks · late' }],
   [/hotel/i, { occ: 'cocktails', note: 'hotel bars' }],
   [/park|garden|outside|outdoor|terrace/i, { occ: 'local', note: 'outdoor seating' }],
   [/vegan|vegetarian|plant/i, { occ: 'veg', note: 'vegan · vegetarian' }],
@@ -299,8 +299,8 @@ const RULES: [RegExp, { occ: string; party?: number; price?: number; note: strin
   [/birthday|anniversary|celebrat/i, { occ: 'celebrate', note: 'celebrating' }],
   [/quiet|talk|catch up/i, { occ: 'quietdrink', note: 'quiet enough to talk' }],
   [/late|after midnight|2am/i, { occ: 'late', note: 'open late' }],
-  [/kid|child|family|baby/i, { occ: 'family', party: 5, note: 'family friendly' }],
-  [/date|romantic/i, { occ: 'date', party: 2, note: 'date night' }],
+  [/kid|child|family|baby/i, { occ: 'family', note: 'family friendly' }],
+  [/date|romantic/i, { occ: 'date', note: 'date night' }],
   [/coffee|work|laptop|wifi/i, { occ: 'coffee', note: 'laptop friendly' }],
 ];
 
@@ -838,14 +838,29 @@ async function openSaved(name: string) {
        a curated corpus with no by-name lookup — so rather than a button that silently
        does nothing, the tile re-runs the Cook search that can contain it. */
     const idx = recipes.findIndex((r) => r.title === name);
-    if (idx >= 0) recipe(idx);
+    if (idx >= 0) { recipe(idx); return; }
+    /* Not loaded, and the Cook corpus has no by-name lookup. Saying so beats a button
+       that appears broken. */
+    const msg = document.createElement('p');
+    msg.className = 'empty';
+    msg.textContent = 'Open the Cook tab to load ' + name + ' again.';
+    document.getElementById('savedwrap')?.appendChild(msg);
     return;
   }
   const wrap = document.getElementById('savedwrap');
   if (wrap) wrap.setAttribute('aria-busy', 'true');
   const out = await fetchVenues(name, city, undefined, undefined, 'restaurant');
   if (wrap) wrap.removeAttribute('aria-busy');
-  if (out.status !== 'ok' || !out.venues.length) return;
+  if (out.status !== 'ok' || !out.venues.length) {
+    /* A tap that produces nothing at all reads as a dead app. Say what happened. */
+    const msg = document.createElement('p');
+    msg.className = 'empty';
+    msg.textContent = out.status === 'ok'
+      ? 'Could not find ' + name + ' in ' + city + ' any more. It may have closed, or be in another city.'
+      : 'Could not reach Google Places just now, so ' + name + ' cannot be opened.';
+    wrap?.appendChild(msg);
+    return;
+  }
   /* Prefer an exact name match; Places will happily return neighbours for a name query. */
   const exact = out.venues.find((v) => v.name.toLowerCase() === name.toLowerCase());
   venues = out.venues;
@@ -872,16 +887,14 @@ const sliderState = () => ({
   d: DIST[+($('dist') as HTMLInputElement).value],
   p: PR[+($('price') as HTMLInputElement).value],
   tier: +($('price') as HTMLInputElement).value + 1,
-  party: +($('party') as HTMLInputElement).value,
 });
 
 async function render() {
   if (!picked) return;
   const areas = [...document.querySelectorAll('.chip[aria-pressed="true"]')].map((c) => c.textContent!);
-  const { d, p, party } = sliderState();
+  const { d, p } = sliderState();
   $('o-dist').textContent = d === 'any' ? 'anywhere' : formatDistance(d as number, distanceLocale());
   $('o-price').textContent = p;
-  $('o-party').textContent = party === 8 ? '8+' : String(party);
   const typedNow = ($('q') as HTMLInputElement).value.trim();
   $('rt').textContent = (typedNow || label(picked))
     + ' · ' + (areas.length ? areas.slice(0, 2).join(', ') : city);
@@ -1173,10 +1186,7 @@ function venue(idx: number) {
          four hardcoded dishes WITH PRICES; a fake price sends someone across town for
          something that does not exist, so when there is nothing confirmed this module is
          absent and the venue's own link is the answer instead (§8.4). */
-      + (v.signatureOrder
-          ? '<h4>Known for</h4><div class="known"><div class="dish"><div><b>' + esc(v.signatureOrder) + '</b>'
-            + (v.signatureDescription ? '<p>' + esc(v.signatureDescription) + '</p>' : '') + '</div></div></div>'
-          : '')
+
       + '<h4>Find them</h4><div class="socials">' + soc.map(([n, path, href]) => (href
           ? '<a class="soc" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" aria-label="' + n + '">'
             + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg><span>' + esc(n) + '</span></a>'
@@ -1494,7 +1504,6 @@ function parse() {
     return;
   }
   const h = hits[0];
-  if (h.party) ($('party') as HTMLInputElement).value = String(h.party);
   if (h.price !== undefined) ($('price') as HTMLInputElement).value = String(h.price);
   const all = [...new Set(hits.map((x) => x.note))];
   P3.innerHTML = '<b>Reading that as</b>' + all.map((n) => '<span class="pz">' + esc(n) + '</span>').join('');
@@ -1519,7 +1528,7 @@ setInterval(() => {
 
 $('go').onclick = parse;
 $('q').addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Enter') parse(); });
-['dist', 'price', 'party'].forEach((id) => $(id).addEventListener('input', () => { void render(); }));
+['dist', 'price'].forEach((id) => $(id).addEventListener('input', () => { void render(); }));
 /* Commit on change or Enter, not on every keystroke — a search per character typed would
    be a billed Places call per character. Blank input falls back to the last good city
    rather than searching for "". */
