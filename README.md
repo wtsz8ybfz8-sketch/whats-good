@@ -40,8 +40,14 @@ from `.env.local` — set it there if you need live venue data.
 
 ## Stack
 
-Vite 6 · React 19 · TypeScript 5.8 · Tailwind v4 (CSS-first, no config file) ·
-lucide-react · motion v12. Deploys to Vercel. No test runner, no backend.
+Vite 6 · TypeScript 5.8. The entry point is `src/prototype.ts` — vanilla TS, no
+framework. Styling is hand-written `src/prototype.css`; there is no Tailwind
+output in the bundle. Deploys to Vercel. No test runner, no backend.
+
+React 19, react-dom, lucide-react, motion and `@tailwindcss/vite` are still
+declared in `package.json`, but nothing reachable imports them and they
+contribute zero bytes to the shipped bundle (verified 2026-08-29 by grepping
+the built asset). Treat them as pending removal, not as the stack.
 
 ## Where the code lives
 

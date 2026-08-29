@@ -9,7 +9,9 @@ import {defineConfig} from 'vite';
 // — deploys went out fine and the live URL still showed the previous version, forever.
 // For a app whose whole value is "what's open near me RIGHT NOW", offline precaching buys
 // nothing and cost us every shipped change. Do not reintroduce it without a kill switch.
-// `src/main.tsx` actively unregisters any worker still installed on returning devices.
+// `public/registerSW.js` exists so stale cached pages can still fetch the
+// self-destructing `public/sw.js` and unregister old workers. There is no
+// `src/main.tsx` in this repo and there has not been one for some time.
 export default defineConfig(() => {
   return {
     plugins: [
