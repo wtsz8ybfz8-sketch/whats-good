@@ -495,33 +495,22 @@ const T = () => TABS.find((t) => t.k === tab)!;
 const icon = (k: string) => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + I[k] + '</svg>';
 const FALL: Record<string, string> = {
   /* Generic English for every occasion key. These used to live ONLY inside each city's
-     `v` map, so the moment the city field accepted a fifth city the tiles rendered their
-     raw keys — "lunchdeal", "local", "fire", seen on Lisbon. A fallback that covers only
-     some of the keys is not a fallback. Curated cities still override these with the
-     local word, so Cape Town keeps "Braai" and London keeps "Sunday roast". */
-  coffee: 'Coffee & a laptop', brunch: 'Slow morning', cheap: 'Cheap & cheerful',
-  drinks: 'Drinks', local: 'Neighbourhood', lunchdeal: 'Quick lunch',
-  fire: 'Grill & barbecue', late: 'Late night', happy: 'Happy hour',
-  comfort: 'Comfort', date: 'Date night', celebrate: 'Celebrating', nu: 'Something new', family: 'With the kids',
-  cocktails: 'Cocktails', live: 'Live music', dance: 'Dancing', quietdrink: 'Quiet drink', roof: 'Rooftop',
-  quick30: 'Under 30 min', onepot: 'One pot', pantry: 'Pantry raid', veg: 'Vegetarian', batch: 'Batch cook', baking: 'Baking',
-  recent: 'Recent', loved: 'Loved', lists: 'Lists', been: 'Been',
   /* Each label names the Google category behind it. "With the kids" was a MOOD over a
-     search for the words "family friendly restaurant" — a phrase Google does not record,
-     so it matched on names and reviews and returned anything. `family_restaurant` is a
-     real type, and the label now says which one it is. */
-  brunch: 'Brunch', breakfast: 'Breakfast', coffee: 'Coffee', bakery: 'Bakery',
-  juice: 'Juice bar', tea: 'Tea house', lunchdeal: 'Sandwiches', deli: 'Deli',
-  diner: 'Diner', bistro: 'Bistro', foodcourt: 'Food hall', buffet: 'Buffet',
+  coffee: 'Coffee', brunch: 'Brunch', cheap: 'Cheap & cheerful', drinks: 'Bars',
+  local: 'Anything nearby', lunchdeal: 'Sandwiches', fire: 'Barbecue', late: 'Open right now',
+  happy: 'Bars open now', comfort: 'Comfort', date: 'Date night', celebrate: 'Celebrating',
+  nu: 'Something new', family: 'Family restaurants', cocktails: 'Cocktails',
+  live: 'Live music', dance: 'Dancing', quietdrink: 'Quiet drink', roof: 'Rooftop',
+  quick30: 'Under 30 min', onepot: 'One pot', pantry: 'Pantry raid', veg: 'Vegetarian',
+  batch: 'Batch cook', baking: 'Baking', recent: 'Recent', loved: 'Loved', lists: 'Lists',
+  been: 'Been', breakfast: 'Breakfast', bakery: 'Bakery', juice: 'Juice bar', tea: 'Tea house',
+  deli: 'Deli', diner: 'Diner', bistro: 'Bistro', foodcourt: 'Food hall', buffet: 'Buffet',
   steak: 'Steakhouse', seafood: 'Seafood', tapas: 'Small plates', pizza: 'Pizza',
   sushi: 'Sushi', ramen: 'Ramen', burger: 'Burgers', vegan: 'Vegan', halal: 'Halal',
-  dessert: 'Dessert', icecream: 'Ice cream', drinks: 'Bars', wine: 'Wine bar',
-  beer: 'Beer garden', pub: 'Pub', sports: 'Sports bar', gastropub: 'Gastropub',
-  local: 'Anything nearby', cheap: 'Cheap & cheerful', fire: 'Barbecue',
-  late: 'Open right now', happy: 'Bars open now', family: 'Family restaurants',
-  chicken: 'Chicken', beef: 'Beef', fish: 'Fish', pasta: 'Pasta', rice: 'Rice',
-  noodles: 'Noodles', curry: 'Curry', stew: 'Stew', soup: 'Soup', salad: 'Salad',
-  bread: 'Bread', pie: 'Pie', cake: 'Cake',
+  dessert: 'Dessert', icecream: 'Ice cream', wine: 'Wine bar', beer: 'Beer garden', pub: 'Pub',
+  sports: 'Sports bar', gastropub: 'Gastropub', chicken: 'Chicken', beef: 'Beef', fish: 'Fish',
+  pasta: 'Pasta', rice: 'Rice', noodles: 'Noodles', curry: 'Curry', stew: 'Stew', soup: 'Soup',
+  salad: 'Salad', bread: 'Bread', pie: 'Pie', cake: 'Cake'
 };
 const label = (k: string) => cityMeta(city).v[k] || FALL[k] || k;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
