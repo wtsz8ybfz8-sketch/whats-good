@@ -12,3 +12,8 @@ since that date.
 | Date | Claim | Command | Result |
 |------|-------|---------|--------|
 | 2026-08-29 | ledger created; no prior claim in this repo has been verified | (none) | UNKNOWN |
+| 2026-08-29 | production site loads on vercel, renders home screen | browser navigate https://whats-good-nu.vercel.app + screenshot | PASS |
+| 2026-08-29 | page contains ZERO `<img>` elements; all imagery is CSS background-image | JS `document.images.length` -> 0 | FAIL (defect) |
+| 2026-08-29 | Schibsted Grotesk is preloaded but never used; body renders in system font | computed fontFamily = system stack; `--sans` token in prototype.css omits Schibsted | FAIL (defect) |
+| 2026-08-29 | stack is Vite 6 + React 19 + Tailwind 4, NOT TanStack Start as memory claimed | head package.json | PASS (memory corrected) |
+| 2026-08-29 | home page scrollHeight 3606px at 375px wide; 43 buttons, 0 unlabelled | JS DOM query | PASS |
