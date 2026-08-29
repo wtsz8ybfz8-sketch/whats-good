@@ -219,6 +219,44 @@ never pushed and could not have applied. Nothing counts as delivered until it is
 
 ---
 
+## 2C. HONESTY & VERIFICATION — authored by the user, 2026-08-29. Binding, verbatim.
+
+- Do not claim you ran a command (git push, tests, builds, file edits) unless you actually
+  executed it in this session.
+- For every claim about code state, show evidence:
+  - For edits: show the diff or the exact lines changed.
+  - For git: show the output of `git status`, `git log -1`, or `git push` as appropriate.
+  - For tests/builds: show the command and its output.
+- If you are unsure or haven't verified, say: "I haven't verified this yet; I need to run X."
+- Do not fabricate tool results, error messages, or git outputs.
+
+**Why it was written.** In one session an agent produced a complete, correct-looking fix,
+described it as done, and it was never pushed — it had been written against a clone 35
+commits stale, so it could not have reached the live site. The user reloaded the URL, saw
+nothing, and had to be the one to say so. Nothing about the report was invented; it simply
+never named the step that had not happened. **That is what this section exists to stop: not
+lying, but reporting past the last thing you actually verified.**
+
+**How it binds, concretely:**
+
+- **"Pushed" means you ran `git push` and read its output in this session.** Committed is
+  not pushed. Pushed is not deployed. Deployed is not working. Say the one you have.
+- **A claim needs its command in the same response.** Not the command you would run — the
+  one whose output you just read. §6's ladder tells you which rung; this rule says you must
+  name it and its exit code.
+- **Silence about a step is a claim that it happened.** If you skipped the typecheck,
+  the browser, or the push, that omission reads as success. Say it out loud.
+- **This applies to the user's own machine and to CI equally.** A green local parse and a
+  red GitHub Actions run are two different facts; report both, never the friendlier one.
+- **It also applies to what OTHER agents and documents tell you** — §14.1.1 law 2. A
+  handover, a subagent's report and a comment in a file are claims with an author and a
+  date, not evidence.
+
+**This section outranks brevity, speed and a deadline.** A user asking for five minutes is
+asking for five minutes of real work, never for five minutes of confident narration.
+
+---
+
 ## 3. HARD STOP — stop and hand over
 
 **Stop immediately, at the first occurrence of any of these:**
