@@ -18,3 +18,12 @@ since that date.
 | 2026-08-29 | stack is Vite 6 + React 19 + Tailwind 4, NOT TanStack Start as memory claimed | head package.json | PASS (memory corrected) |
 | 2026-08-29 | home page scrollHeight 3606px at 375px wide; 43 buttons, 0 unlabelled | JS DOM query | PASS |
 | 2026-08-29 | @font-face declared for all 4 Schibsted woff2 + --sans rewired | edit only; no node_modules on this machine so no local build | UNVERIFIED — confirm on Vercel deploy |
+| 2026-08-29 | Site live at whats-good-nu.vercel.app, 0 console errors, load 1519ms | browser get_page_text + read_console_messages + performance API | PASS |
+| 2026-08-29 | Occasion rail renders 33 tiles on first screen | JS: document.querySelectorAll('.tile').length === 33 | PASS |
+| 2026-08-29 | --ink3 (#8D8C87) on --bg (#F5F4F2) = 3.06:1, below WCAG AA 4.5:1 | JS contrast ratio calc in page | FAIL |
+| 2026-08-29 | No main/nav landmarks, no h2; only 1 h1 for whole page | JS: querySelectorAll('main'/'nav'/'h2').length = 0,0,0 | FAIL |
+| 2026-08-29 | 7 of 48 focusable controls under 44px minimum tap target | JS getBoundingClientRect audit | FAIL |
+| 2026-08-29 | All photography is CSS background-image; 0 <img> elements | JS: document.images.length === 0 | FAIL |
+| 2026-08-29 | Hero photo served as 592 KB PNG at fixed 800px width | fetch(heroPhotoUrl) -> content-type image/png, content-length 606317 | FAIL |
+| 2026-08-29 | Photo proxy edge-caches correctly (s-maxage=86400, 302 to Google CDN); vercel.json does NOT override /api/* | read api/places.ts:91 + vercel.json | PASS |
+| 2026-08-29 | 10 /api/places invocations on first paint, avg 487ms, slowest 898ms | performance.getEntriesByType('resource') | PASS (measured) |
