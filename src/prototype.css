@@ -460,3 +460,39 @@ button.logo { background: none; border: 0; padding: 0; font: inherit; color: inh
 .story { margin: 6px 0 4px; line-height: 1.55; opacity: 0.92; }
 .src { font-size: 12px; opacity: 0.62; margin: 2px 0 18px; }
 .src a { color: inherit; }
+
+/* ── BRAND TYPEFACE ─────────────────────────────────────────────────────────
+ * The four Schibsted Grotesk woff2 files have been sitting in public/fonts and
+ * preloaded from index.html since the prototype landed, but nothing ever
+ * declared an @font-face for them and `--sans` never named the family. The
+ * browser dutifully downloaded two variable fonts on every page load and then
+ * rendered the entire app in -apple-system. Declared and wired here rather than
+ * in the :root block above, so the verbatim prototype block stays untouched.
+ */
+@font-face{
+  font-family:"Schibsted Grotesk";
+  src:url("/fonts/schibsted-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight:100 900;font-style:normal;font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:"Schibsted Grotesk";
+  src:url("/fonts/schibsted-grotesk-latin-wght-italic.woff2") format("woff2-variations");
+  font-weight:100 900;font-style:italic;font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:"Schibsted Grotesk";
+  src:url("/fonts/schibsted-grotesk-latin-ext-wght-normal.woff2") format("woff2-variations");
+  font-weight:100 900;font-style:normal;font-display:swap;
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face{
+  font-family:"Schibsted Grotesk";
+  src:url("/fonts/schibsted-grotesk-latin-ext-wght-italic.woff2") format("woff2-variations");
+  font-weight:100 900;font-style:italic;font-display:swap;
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+:root,:root[data-theme="light"],:root[data-theme="dark"]{
+  --sans:"Schibsted Grotesk",-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,system-ui,sans-serif;
+}

@@ -17,3 +17,4 @@ since that date.
 | 2026-08-29 | Schibsted Grotesk is preloaded but never used; body renders in system font | computed fontFamily = system stack; `--sans` token in prototype.css omits Schibsted | FAIL (defect) |
 | 2026-08-29 | stack is Vite 6 + React 19 + Tailwind 4, NOT TanStack Start as memory claimed | head package.json | PASS (memory corrected) |
 | 2026-08-29 | home page scrollHeight 3606px at 375px wide; 43 buttons, 0 unlabelled | JS DOM query | PASS |
+| 2026-08-29 | @font-face declared for all 4 Schibsted woff2 + --sans rewired | edit only; no node_modules on this machine so no local build | UNVERIFIED — confirm on Vercel deploy |
