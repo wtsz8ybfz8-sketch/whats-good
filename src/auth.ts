@@ -69,15 +69,20 @@ export async function sendMagicLink(email: string): Promise<{ ok: boolean; error
   if (!isAuthConfigured()) return { ok: false, error: 'Sign-in is not configured for this deployment.' };
 
   try {
-    const res = await fetch(`${URL_BASE}/auth/v1/otp`, {
-      method: 'POST',
-      headers: headers(),
-      body: JSON.stringify({
-        email,
-        create_user: true,
-        options: { email_redirect_to: window.location.origin + '/?tab=saved-recipes' },
-      }),
-    });
+    /* The redirect goes in the QUERY STRING, not the body. `options.email_redirect_to`
+       is the supabase-js shape; the REST endpoint ignores it silently, so the mailed link
+       fell back to the project's Site URL and the click landed anywhere but this app —
+       which is exactly what "sign-in does nothing" looked like from the outside.
+       See supabase/auth#1738 and the passwordless guide: /auth/v1/otp?redirect_to=… */
+    const redirectTo = window.location.origin + '/?tab=saved-recipes';
+    const res = await fetch(
+      `${URL_BASE}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`,
+      {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ email, create_user: true }),
+      },
+    );
 
     if (res.ok) return { ok: true };
 

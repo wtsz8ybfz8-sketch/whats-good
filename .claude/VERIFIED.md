@@ -27,3 +27,6 @@ since that date.
 | 2026-08-29 | Hero photo served as 592 KB PNG at fixed 800px width | fetch(heroPhotoUrl) -> content-type image/png, content-length 606317 | FAIL |
 | 2026-08-29 | Photo proxy edge-caches correctly (s-maxage=86400, 302 to Google CDN); vercel.json does NOT override /api/* | read api/places.ts:91 + vercel.json | PASS |
 | 2026-08-29 | 10 /api/places invocations on first paint, avg 487ms, slowest 898ms | performance.getEntriesByType('resource') | PASS (measured) |
+| 2026-08-29 | Magic link body used options.email_redirect_to; REST /auth/v1/otp ignores it, so mailed links returned to Supabase Site URL, not the app | read src/auth.ts:74-79 + supabase/auth#1738 | FAIL (root cause) |
+| 2026-08-29 | Fix: redirect_to moved to query string on /auth/v1/otp; project builds clean | npm ci && npm run build -> "built in 235ms", 60.83 kB | PASS (build only) |
+| 2026-08-29 | End-to-end magic link (mail arrives, click lands in app) | not run - needs a real send | UNVERIFIED |
