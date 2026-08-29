@@ -368,13 +368,13 @@ async function searchTextOnce(
       // "Italienisches Restaurant" for a phone set to German.
       languageCode: placesLanguageCode(),
       ...(priceLevels ? { priceLevels } : {}),
-      /* strictTypeFiltering is deliberately ON. A bias would let "Brunch" quietly return
-         a steakhouse and the tile would be lying again — the whole point of moving off a
-         text phrase. An empty strict result is a TRUE answer, and the empty state says
-         so rather than padding the list to look busy. */
-      ...(filters.includedType
-        ? { includedType: filters.includedType, strictTypeFiltering: true }
-        : {}),
+      /* strictTypeFiltering was ON and it emptied the app. Google types a lot of venues
+         only as `restaurant`, so strict-matching `brunch_restaurant` discarded genuine
+         brunch places for having a coarser type — combined with the distance filter it
+         left most searches with nothing at all. `includedType` on its own is still a real
+         request parameter that really changes the result set, which is the whole point;
+         it just no longer throws away correct answers for being under-labelled. */
+      ...(filters.includedType ? { includedType: filters.includedType } : {}),
       ...(filters.openNow ? { openNow: true } : {}),
     }),
     });
