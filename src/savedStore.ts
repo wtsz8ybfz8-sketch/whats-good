@@ -32,6 +32,24 @@ const KIND: Record<SavedKind, string> = { places: 'venue', recipes: 'recipe' };
 export type SavedKind = 'places' | 'recipes';
 export interface SavedList { places: string[]; recipes: string[] }
 
+/** What a saved item looked like when it was saved: enough to render it again. */
+export interface SavedDetail { subtitle?: string; image?: string }
+
+const DETAIL_KEY = 'wg_saved_detail';
+
+/** The device's mirror of subtitle/photo per item name, so the Saved tab renders
+ *  instantly and still has pictures when signed out. */
+export function readDetails(): Record<string, SavedDetail> {
+  try { return JSON.parse(localStorage.getItem(DETAIL_KEY) || '{}') || {}; } catch { return {}; }
+}
+
+export function rememberDetail(name: string, detail: SavedDetail): void {
+  if (!detail.subtitle && !detail.image) return;
+  const all = readDetails();
+  all[name] = { ...all[name], ...detail };
+  try { localStorage.setItem(DETAIL_KEY, JSON.stringify(all)); } catch { /* private mode */ }
+}
+
 const LOCAL_KEY = 'wg_saved';
 
 export function readLocal(): SavedList {
@@ -68,11 +86,15 @@ function restHeaders(session: AuthSession): Record<string, string> {
 export async function fetchRemote(session: AuthSession): Promise<SavedList | null> {
   try {
     const res = await fetch(
-      `${URL_BASE}/rest/v1/saved_items?select=kind,title&order=created_at.desc`,
+      `${URL_BASE}/rest/v1/saved_items?select=kind,title,subtitle,image_url&order=created_at.desc`,
       { headers: restHeaders(session) },
     );
     if (!res.ok) return null;
-    const rows = (await res.json()) as { kind: string; title: string }[];
+    const rows = (await res.json()) as
+      { kind: string; title: string; subtitle?: string; image_url?: string }[];
+    /* Bring the account's own pictures back down to this device, so a fresh browser that
+       has just signed in shows the same tab as the one that did the saving. */
+    rows.forEach((r) => rememberDetail(r.title, { subtitle: r.subtitle, image: r.image_url }));
     return {
       places: rows.filter((r) => r.kind === KIND.places).map((r) => r.title),
       recipes: rows.filter((r) => r.kind === KIND.recipes).map((r) => r.title),
@@ -87,13 +109,20 @@ export async function fetchRemote(session: AuthSession): Promise<SavedList | nul
    refuses anything that is not the caller's own id.
    `ref_id` is the venue/recipe name: Places ids are not stable across queries (CLAUDE.md
    6), so the name is the only key that survives a re-search. */
-export async function addRemote(session: AuthSession, kind: SavedKind, name: string): Promise<boolean> {
+export async function addRemote(
+  session: AuthSession, kind: SavedKind, name: string, detail?: SavedDetail,
+): Promise<boolean> {
   try {
     const res = await fetch(`${URL_BASE}/rest/v1/saved_items`, {
       method: 'POST',
       headers: { ...restHeaders(session), Prefer: 'resolution=ignore-duplicates' },
+      /* `subtitle` and `image_url` are columns the migration already created and that
+         nothing has ever written. Without them the Saved tab is a list of bare names
+         with monogram plates — the one screen in a photography-led product guaranteed to
+         have no photographs, on the items the reader liked most. */
       body: JSON.stringify({
         user_id: userId(session), kind: KIND[kind], ref_id: name, title: name,
+        subtitle: detail?.subtitle || null, image_url: detail?.image || null,
       }),
     });
     return res.ok;
@@ -127,7 +156,7 @@ export async function mergeLocalIntoRemote(session: AuthSession): Promise<SavedL
   const pending: Promise<boolean>[] = [];
   (['places', 'recipes'] as SavedKind[]).forEach((kind) => {
     local[kind].filter((n) => !remote[kind].includes(n))
-      .forEach((n) => { pending.push(addRemote(session, kind, n)); remote[kind].push(n); });
+      .forEach((n) => { pending.push(addRemote(session, kind, n, readDetails()[n])); remote[kind].push(n); });
   });
   if (pending.length) await Promise.all(pending);
 

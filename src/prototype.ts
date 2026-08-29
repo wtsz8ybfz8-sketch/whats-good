@@ -45,6 +45,7 @@ import {
 } from './auth';
 import {
   readLocal, writeLocal, addRemote, removeRemote, mergeLocalIntoRemote,
+  readDetails, rememberDetail, type SavedDetail,
 } from './savedStore';
 import type { Venue } from './venue';
 
@@ -317,18 +318,22 @@ const saved: { places: string[]; recipes: string[] } = readLocal();
 let session: AuthSession | null = null;
 let savedSeg: 'places' | 'recipes' = 'places';
 const isSaved = (t: 'places' | 'recipes', n: string) => saved[t].includes(n);
-function toggleSave(t: 'places' | 'recipes', n: string, el?: HTMLElement) {
+function toggleSave(t: 'places' | 'recipes', n: string, el?: HTMLElement, detail?: SavedDetail) {
   /* Saving used to bounce you to a sign-in gate that could not save anything anywhere.
      It saves. */
   const i = saved[t].indexOf(n);
   const adding = i < 0;
   if (adding) saved[t].push(n); else saved[t].splice(i, 1);
   writeLocal(saved);
+  /* Keep what it LOOKED like, not just what it was called. The Saved tab used to be a
+     wall of monogram plates because a name was all that was ever stored — on a product
+     whose pitch is photography, on the exact items the reader chose to keep. */
+  if (adding && detail) rememberDetail(n, detail);
   if (el) el.setAttribute('aria-pressed', String(adding));
   /* Optimistic: the button flips now and the account catches up. A save that waits on a
      round trip on a phone outside a restaurant feels broken. */
   if (session) {
-    (adding ? addRemote(session, t, n) : removeRemote(session, t, n))
+    (adding ? addRemote(session, t, n, detail || readDetails()[n]) : removeRemote(session, t, n))
       .catch(() => { /* the local copy still holds it; the next sign-in merges it up */ });
   }
 }
@@ -764,15 +769,31 @@ function renderSaved() {
       : '<div class="who"><b>Kept on this device</b>'
           + '<span>' + total + ' saved · this browser only, nothing sent anywhere</span></div>';
   const list = saved[savedSeg];
+  const details = readDetails();
   h.innerHTML = head
     + '<div class="segs" style="margin-top:16px">'
       + '<button class="seg" data-s="places" aria-pressed="' + (savedSeg === 'places') + '">Places · ' + saved.places.length + '</button>'
       + '<button class="seg" data-s="recipes" aria-pressed="' + (savedSeg === 'recipes') + '">Recipes · ' + saved.recipes.length + '</button></div>'
-    + (list.length ? '<div class="grid">' + list.map((n) =>
-        '<button class="tile in" type="button" aria-pressed="false"><span ' + phAttrs(undefined, n) + '></span><span class="ring"></span>'
-        + '<span class="bd"><span><span class="nm">' + esc(n) + '</span><span class="ds">' + (savedSeg === 'places' ? 'Saved place' : 'Saved recipe') + '</span></span></span></button>').join('') + '</div>'
+    /* The photograph and the one-line description the item had when it was kept. A saved
+       list of bare monogram plates is the least useful screen in the app, and it was that
+       way only because nothing was ever stored but the name. */
+    + (list.length ? '<div class="grid">' + list.map((n) => {
+        const dt = details[n] || {};
+        return '<button class="tile in" type="button" data-open="' + esc(n) + '" aria-pressed="false">'
+          + '<span ' + phAttrs(dt.image, n) + '></span><span class="ring"></span>'
+          + '<span class="bd"><span><span class="nm">' + esc(n) + '</span><span class="ds">'
+          + esc(dt.subtitle || (savedSeg === 'places' ? 'Saved place' : 'Saved recipe'))
+          + '</span></span></span></button>';
+      }).join('') + '</div>'
       : '<p class="empty">Nothing saved under ' + savedSeg + ' yet. Tap Save on anything and it lands here.</p>');
   h.querySelectorAll('.seg').forEach((b) => { (b as HTMLElement).onclick = () => { savedSeg = (b as HTMLElement).dataset.s as 'places' | 'recipes'; renderSaved(); }; });
+  /* THE SAVED TILES WERE DEAD. They rendered, they had a pressed state, and nothing was
+     bound to them — you could keep a place and then never open it again from the one
+     screen built to hold it. A saved place re-searches itself by name in the current city
+     and opens its venue page; a saved recipe opens the page it came from. */
+  h.querySelectorAll('[data-open]').forEach((b) => {
+    (b as HTMLElement).onclick = () => openSaved((b as HTMLElement).dataset.open!);
+  });
 
   const goog = document.getElementById('goog');
   if (goog) goog.onclick = () => signInWithGoogle();
@@ -803,6 +824,32 @@ function renderSaved() {
       renderSaved();
     };
   }
+}
+
+/**
+ * Opens a saved item. Places ids are not stable across Places queries (§6), so the name
+ * is the only key that survives — which means re-asking for it by name is the honest way
+ * back to a venue page, not a lookup we could have cached.
+ */
+async function openSaved(name: string) {
+  if (savedSeg === 'recipes') {
+    /* `recipe(idx)` renders from the loaded list, so it only works for one already on
+       screen. A recipe saved in an earlier session is not in memory, and the Cook tab is
+       a curated corpus with no by-name lookup — so rather than a button that silently
+       does nothing, the tile re-runs the Cook search that can contain it. */
+    const idx = recipes.findIndex((r) => r.title === name);
+    if (idx >= 0) recipe(idx);
+    return;
+  }
+  const wrap = document.getElementById('savedwrap');
+  if (wrap) wrap.setAttribute('aria-busy', 'true');
+  const out = await fetchVenues(name, city, undefined, undefined, 'restaurant');
+  if (wrap) wrap.removeAttribute('aria-busy');
+  if (out.status !== 'ok' || !out.venues.length) return;
+  /* Prefer an exact name match; Places will happily return neighbours for a name query. */
+  const exact = out.venues.find((v) => v.name.toLowerCase() === name.toLowerCase());
+  venues = out.venues;
+  venue(venues.indexOf(exact || out.venues[0]));
 }
 
 /** True while `parse()` is choosing the tile, so `pick` knows not to clear the query. */
@@ -985,7 +1032,9 @@ async function render() {
       + '<button class="savebtn" aria-pressed="' + isSaved('places', v.name) + '">Save</button></div>'
       + '</div>';
     c.querySelector('.savebtn')!.addEventListener('click', (e) => {
-      e.stopPropagation(); toggleSave('places', v.name, e.currentTarget as HTMLElement);
+      e.stopPropagation();
+      toggleSave('places', v.name, e.currentTarget as HTMLElement,
+        { subtitle: v.cuisine || v.address, image: v.photoUrl });
     });
     c.onclick = () => venue(i);
     $('list').appendChild(c);
@@ -1029,7 +1078,9 @@ async function renderRecipes() {
       + '<p>' + esc([m.publisher, m.cuisine || m.category, m.timeLabel].filter(Boolean).join(' · ')) + '</p>'
       + '<div class="meta"><button class="savebtn" aria-pressed="' + isSaved('recipes', m.title) + '">Save</button></div></div>';
     b.querySelector('.savebtn')!.addEventListener('click', (e) => {
-      e.stopPropagation(); toggleSave('recipes', m.title, e.currentTarget as HTMLElement);
+      e.stopPropagation();
+      toggleSave('recipes', m.title, e.currentTarget as HTMLElement,
+        { subtitle: m.publisher || '', image: m.image });
     });
     $('list').appendChild(b);
     setTimeout(() => b.classList.add('in'), 35 + i * 55);
@@ -1073,7 +1124,7 @@ function recipe(idx: number) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   $('bk').onclick = () => history.back();
   const sv = document.getElementById('sv');
-  if (sv) sv.onclick = () => toggleSave('recipes', m.title, sv);
+  if (sv) sv.onclick = () => toggleSave('recipes', m.title, sv, { subtitle: m.publisher || '', image: m.image });
 }
 
 function venue(idx: number) {
@@ -1156,7 +1207,8 @@ function venue(idx: number) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   $('bk').onclick = () => history.back();
   const sv = document.getElementById('sv');
-  if (sv) sv.onclick = () => toggleSave('places', v.name, sv);
+  if (sv) sv.onclick = () => toggleSave('places', v.name, sv,
+    { subtitle: v.cuisine || v.address, image: v.photoUrl });
   void venueFacts(v);
   void venueStory(v);
 
