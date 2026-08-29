@@ -862,7 +862,7 @@ async function render() {
   /* The tile's CATEGORY now travels as `includedType`, not as words in the query. Only an
      occasion Table A cannot express (rooftop, live music, dancing) contributes a phrase —
      otherwise the words would fight the type filter and re-create the name-matching bug. */
-  const terms = [typed, typed ? '' : (occ.q || ''), ...areas].filter(Boolean).join(' ');
+  const terms = [typed, typed ? '' : (occ.q || label(picked)), ...areas].filter(Boolean).join(' ');
   const out = await fetchVenues(terms, city, sliderState().tier, undefined, kind, {
     includedType: occ.type,
     openNow: occ.openNow,
