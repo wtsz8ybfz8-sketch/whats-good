@@ -494,8 +494,10 @@ const auto = (h: number) => (h < 11 ? 'am' : h < 17 ? 'mid' : 'pm');
 const T = () => TABS.find((t) => t.k === tab)!;
 const icon = (k: string) => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + I[k] + '</svg>';
 const FALL: Record<string, string> = {
-  /* Generic English for every occasion key. These used to live ONLY inside each city's
-  /* Each label names the Google category behind it. "With the kids" was a MOOD over a
+  /* Generic English for every occasion key, and each label names the Google category
+     behind it. "With the kids" was a MOOD over a search for the words "family friendly
+     restaurant" — a phrase Google does not record, so it matched names and reviews and
+     returned anything. `family_restaurant` is a real type; the label says which it is. */
   coffee: 'Coffee', brunch: 'Brunch', cheap: 'Cheap & cheerful', drinks: 'Bars',
   local: 'Anything nearby', lunchdeal: 'Sandwiches', fire: 'Barbecue', late: 'Open right now',
   happy: 'Bars open now', comfort: 'Comfort', date: 'Date night', celebrate: 'Celebrating',
