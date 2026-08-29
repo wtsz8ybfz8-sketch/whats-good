@@ -309,10 +309,28 @@ const FAILURE_RANK: Record<VenueSearchFailure['status'], number> = {
   aborted: 0,
 };
 
+/**
+ * A HARD filter the occasion tiles now carry, instead of a hopeful phrase.
+ *
+ * Verified against the Places (New) Text Search reference this session: the request body
+ * takes `includedType` ("Only one type may be specified"), `strictTypeFiltering` ("only
+ * places that match the specified types ... are returned") and `openNow`. Before this a
+ * tile was a STRING — "Neighbourhood" searched the words "neighbourhood restaurant" and
+ * matched whatever had those letters in its NAME. `brunch_restaurant` is a real Google
+ * type, so a tile can be a real constraint instead of a wish.
+ */
+export interface VenueFilters {
+  /** A Table A type, e.g. `brunch_restaurant`. One only — the API allows one. */
+  includedType?: string;
+  /** True narrows to venues Google says are open right now. */
+  openNow?: boolean;
+}
+
 async function searchTextOnce(
   textQuery: string,
   priceLevels: string[] | undefined,
   signal: AbortSignal,
+  filters: VenueFilters = {},
 ): Promise<PlacesFetch> {
   let response: Response;
   try {
@@ -350,6 +368,14 @@ async function searchTextOnce(
       // "Italienisches Restaurant" for a phone set to German.
       languageCode: placesLanguageCode(),
       ...(priceLevels ? { priceLevels } : {}),
+      /* strictTypeFiltering is deliberately ON. A bias would let "Brunch" quietly return
+         a steakhouse and the tile would be lying again — the whole point of moving off a
+         text phrase. An empty strict result is a TRUE answer, and the empty state says
+         so rather than padding the list to look busy. */
+      ...(filters.includedType
+        ? { includedType: filters.includedType, strictTypeFiltering: true }
+        : {}),
+      ...(filters.openNow ? { openNow: true } : {}),
     }),
     });
   } catch (err) {
@@ -436,8 +462,15 @@ function searchTextShared(
   textQuery: string,
   priceLevels: string[] | undefined,
   signal: AbortSignal,
+  filters: VenueFilters = {},
 ): Promise<PlacesFetch> {
-  const cacheKey = JSON.stringify([textQuery, priceLevels ?? null, placesLanguageCode()]);
+  /* The filters are part of the IDENTITY of the request. Leaving them out of the key
+     would serve a brunch search from an unfiltered one held moments earlier — a cache
+     that answers a different question than the one asked. */
+  const cacheKey = JSON.stringify([
+    textQuery, priceLevels ?? null, placesLanguageCode(),
+    filters.includedType ?? null, filters.openNow ?? null,
+  ]);
 
   const hit = settled.get(cacheKey);
   if (hit && Date.now() - hit.at < TTL_MS) return Promise.resolve(hit.value);
@@ -452,7 +485,7 @@ function searchTextShared(
       waiters: 0,
       promise: Promise.resolve({ status: 'aborted' } as PlacesFetch),
     };
-    created.promise = searchTextOnce(textQuery, priceLevels, controller.signal)
+    created.promise = searchTextOnce(textQuery, priceLevels, controller.signal, filters)
       .then((r) => {
         remember(cacheKey, r);
         return r;
@@ -511,6 +544,7 @@ export async function fetchVenues(
   priceTier?: number | null,
   signal?: AbortSignal,
   kind: VenueKind = 'restaurant',
+  filters: VenueFilters = {},
 ): Promise<VenueSearchResult> {
   /* A deployment with no key configured is the same situation as a spent one, from the
      user's side of the screen: they asked where to eat. The proxy answers 503 and that
@@ -571,7 +605,7 @@ export async function fetchVenues(
      * never going to reach the bottom of that list. So: fire one, and only reach for the
      * second when the first genuinely underdelivers.
      */
-    const first = await searchTextShared(queries[0], priceLevels, abortSignal).catch(
+    const first = await searchTextShared(queries[0], priceLevels, abortSignal, filters).catch(
       (): PlacesFetch => ({ status: 'network' }),
     );
 
@@ -581,7 +615,7 @@ export async function fetchVenues(
     const outcomes: PlacesFetch[] = needsMore
       ? [
           first,
-          await searchTextShared(queries[1], priceLevels, abortSignal).catch(
+          await searchTextShared(queries[1], priceLevels, abortSignal, filters).catch(
             (): PlacesFetch => ({ status: 'network' }),
           ),
         ]

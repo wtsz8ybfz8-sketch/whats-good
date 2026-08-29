@@ -165,6 +165,60 @@ those is now, explicitly, a violation of this section.
 
 ---
 
+## 2B. THE REALITY LAW — a control that changes nothing is a lie. NEVER ship one.
+
+**Added 2026-08-29, after the user found FOUR separate things on screen that were not
+backed by anything.** This is not a style rule. It decides whether the product can be
+trusted at all, and it outranks every aesthetic consideration in this file.
+
+**The law:** every control, label, filter, badge, count, distance, category and claim on
+screen MUST be backed by a real field from a real source, and MUST change the result when
+the user changes it. If the source cannot answer it, it does not ship — relabelled to what
+the source CAN answer, or removed. There is no third option, and "wire it up later" has
+never once happened in this repo.
+
+**Answer all four in the response before writing any control:**
+
+1. **What real field backs this?** Name the API field as it is returned today.
+2. **What changes in the output when it moves?** Name the request parameter it sets.
+   "It updates a label" is a FAIL.
+3. **What happens when the source has no answer?** Absent beats invented, always (§8).
+4. **How would I see it broken?** If both extremes of the control could produce the same
+   list, you have not tested it — you have watched it render.
+
+**The four that shipped, all found by the user and none by any check:**
+
+- **The distance slider** printed "2.0 km" and nothing read it. `fetchVenues` received only
+  the price tier. Cards could not have shown a distance either: `fallbackDistance` is
+  hardcoded `''` in BOTH `placesService.ts` and `osmFallback.ts`.
+- **The occasion tiles** were free text dressed as filters. "Neighbourhood" searched the
+  words *neighbourhood restaurant* and returned a café with Neighbour in its NAME. "With
+  the kids" searched *family friendly restaurant*, which Google does not record at all.
+- **The Cook tiles** claimed effort the recipe source does not publish.
+- **Wikipedia "Around here"** printed the nearest encyclopaedia subject within 600m under a
+  heading on the venue's page — which in Sea Point meant a paragraph about the area's
+  HOSPITALS on a restaurant page. Nearest-thing is not a fact about the venue.
+
+**Still open: the party-size slider.** Places has no party-size field. Give it real
+behaviour or remove it.
+
+**Corollary: an occasion the reader cannot reach does not exist.** Six tiles per
+time-of-day period meant there was NO route to Brunch at 14:00. Time of day may ORDER the
+options; it must never be the only way to reach one.
+
+**Corollary: check the dependency before renaming a key.** The Cook tiles were nearly
+renamed to honest labels — which would have 400'd every recipe request, because
+`api/recipes.ts` keys its curated corpus on those exact six strings. Grep for the key
+before you change it.
+
+**And the process rule that made all of this invisible: `git fetch` FIRST, work on `main`,
+push before reporting.** A session wrote a full fix against a clone that was 35 commits
+stale, reported it as done, and the user saw no change on the live site — because it was
+never pushed and could not have applied. Nothing counts as delivered until it is on
+`origin/main`.
+
+---
+
 ## 3. HARD STOP — stop and hand over
 
 **Stop immediately, at the first occurrence of any of these:**

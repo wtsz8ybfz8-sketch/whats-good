@@ -121,44 +121,163 @@ const D: Record<string, [string, string]> = {
   batch: ['plate', 'Cook once, eat thrice'], baking: ['fire', 'Weekend project'],
   recent: ['clock2', 'Seen lately'], loved: ['heart', 'You saved these'],
   lists: ['book', 'Your lists'], been: ['star', 'Been and rated'],
+  /* Every line below states the REAL filter, not a mood. Where the tile is a Google
+     category it names the category; where it is a phrase (rooftop, live music, dancing)
+     it says so, because those three cannot be enforced and must not pretend to be. */
+  breakfast: ['cup', 'Breakfast places'], bakery: ['plate', 'Bread, pastry, cake'],
+  juice: ['leaf', 'Juice and smoothies'], tea: ['cup', 'Tea houses'],
+  deli: ['knife', 'Counter, not a table'], diner: ['plate', 'All-day, no fuss'],
+  bistro: ['candle', 'Small, French-ish'], foodcourt: ['shop', 'Many kitchens, one room'],
+  buffet: ['plate', 'Help yourself'], steak: ['knife', 'Steakhouses'],
+  seafood: ['plate', 'Seafood kitchens'], tapas: ['plate', 'Small plates to share'],
+  pizza: ['plate', 'Pizzerias'], sushi: ['plate', 'Sushi counters'],
+  ramen: ['bowl', 'Ramen shops'], burger: ['plate', 'Burger joints'],
+  vegan: ['leaf', 'Fully vegan kitchens'], halal: ['plate', 'Halal kitchens'],
+  dessert: ['spark', 'Dessert and pudding'], icecream: ['spark', 'Ice cream'],
+  wine: ['glass', 'Wine bars'], beer: ['glass', 'Beer gardens'], pub: ['glass', 'Pubs'],
+  sports: ['disco', "It'll be on"], gastropub: ['glass', 'A pub that cooks'],
+  chicken: ['plate', 'Chicken dishes'], beef: ['plate', 'Beef dishes'],
+  fish: ['plate', 'Fish dishes'], pasta: ['bowl', 'Pasta dishes'],
+  rice: ['bowl', 'Rice dishes'], noodles: ['bowl', 'Noodle dishes'],
+  curry: ['pot', 'Curries'], stew: ['pot', 'Stews'], soup: ['bowl', 'Soups'],
+  salad: ['leaf', 'Salads'], bread: ['fire', 'Breads'], pie: ['plate', 'Pies'],
+  cake: ['fire', 'Cakes'],
 };
 
 /**
- * NOT in the prototype, and required to make it work: what each occasion actually ASKS
- * Google. The prototype never issued a query — it filtered an array of invented names —
- * so this is the mapping that turns each tile into a real search.
+ * WHAT AN OCCASION ACTUALLY IS.
+ *
+ * It used to be a STRING handed to Text Search. `QUERY.local` was "neighbourhood
+ * restaurant", which returned a cafe with "Neighbour" in its NAME; `QUERY.family` was
+ * "family friendly restaurant", which is not a thing Google records, so it matched on
+ * words in reviews and names and returned anything. The tile looked like a filter and
+ * behaved like a guess. That is what "random locations" and "why am I still seeing with
+ * the kids" describe, and both were true.
+ *
+ * Read this session, primary sources: Google Places API (New) — Place Types, Table A
+ * (developers.google.com/maps/documentation/places/web-service/place-types) and Text
+ * Search (New) request body (.../web-service/text-search). Table A carries, as real
+ * first-class types: brunch_restaurant, breakfast_restaurant, coffee_shop, bakery,
+ * fine_dining_restaurant, family_restaurant, vegan_restaurant, vegetarian_restaurant,
+ * steak_house, barbecue_restaurant, seafood_restaurant, dessert_shop, ice_cream_shop,
+ * cocktail_bar, wine_bar, sports_bar, irish_pub, pub, gastropub, beer_garden, lounge_bar,
+ * tea_house, juice_shop, diner, bistro, deli, sandwich_shop, buffet_restaurant,
+ * food_court, pizza_restaurant, sushi_restaurant, ramen_restaurant, hamburger_restaurant,
+ * tapas_restaurant, halal_restaurant. Text Search accepts `includedType` with
+ * `strictTypeFiltering`, and `openNow`.
+ *
+ * So every tile is now exactly one of two honest things:
+ *   `type`  — a hard, Google-ENFORCED category. The tile cannot lie.
+ *   `q`     — a phrase, used ONLY where Table A has no type for the idea (a rooftop is
+ *             not a Google category). Marked as such, so the two are never confused.
+ * Plus `openNow`, which is a real request field rather than an adjective.
  */
-const QUERY: Record<string, string> = {
-  coffee: 'cafe with wifi', brunch: 'brunch', cheap: 'cheap eats', drinks: 'bar',
-  local: 'neighbourhood restaurant', lunchdeal: 'lunch', fire: 'grill barbecue',
-  late: 'late night restaurant', comfort: 'comfort food', date: 'romantic restaurant',
-  celebrate: 'fine dining', nu: 'new restaurant', family: 'family friendly restaurant',
-  happy: 'happy hour bar', cocktails: 'cocktail bar', live: 'live music bar',
-  dance: 'nightclub', quietdrink: 'quiet bar', roof: 'rooftop bar',
+interface Occasion {
+  /** Table A type. When present the result set is strictly filtered to it. */
+  type?: string;
+  /** Free text. Only for ideas Table A genuinely does not model. */
+  q?: string;
+  /** The real `openNow` request field. */
+  openNow?: boolean;
+  /** Bars rather than restaurants — changes the phrasing of the query. */
+  bar?: boolean;
+}
+
+const OCC: Record<string, Occasion> = {
+  /* Morning */
+  brunch: { type: 'brunch_restaurant' },
+  breakfast: { type: 'breakfast_restaurant' },
+  coffee: { type: 'coffee_shop' },
+  bakery: { type: 'bakery' },
+  juice: { type: 'juice_shop' },
+  tea: { type: 'tea_house' },
+  /* Daytime */
+  lunchdeal: { type: 'sandwich_shop' },
+  deli: { type: 'deli' },
+  diner: { type: 'diner' },
+  bistro: { type: 'bistro' },
+  foodcourt: { type: 'food_court' },
+  buffet: { type: 'buffet_restaurant' },
+  /* Evening */
+  celebrate: { type: 'fine_dining_restaurant' },
+  steak: { type: 'steak_house' },
+  seafood: { type: 'seafood_restaurant' },
+  fire: { type: 'barbecue_restaurant' },
+  tapas: { type: 'tapas_restaurant' },
+  family: { type: 'family_restaurant' },
+  pizza: { type: 'pizza_restaurant' },
+  sushi: { type: 'sushi_restaurant' },
+  ramen: { type: 'ramen_restaurant' },
+  burger: { type: 'hamburger_restaurant' },
+  veg: { type: 'vegetarian_restaurant' },
+  vegan: { type: 'vegan_restaurant' },
+  halal: { type: 'halal_restaurant' },
+  dessert: { type: 'dessert_shop' },
+  icecream: { type: 'ice_cream_shop' },
+  /* Drinks */
+  drinks: { type: 'bar', bar: true },
+  cocktails: { type: 'cocktail_bar', bar: true },
+  wine: { type: 'wine_bar', bar: true },
+  beer: { type: 'beer_garden', bar: true },
+  pub: { type: 'pub', bar: true },
+  sports: { type: 'sports_bar', bar: true },
+  gastropub: { type: 'gastropub', bar: true },
+  quietdrink: { type: 'lounge_bar', bar: true },
+  /* "Open right now" is not a category, it is a request field — and these are the only
+     two tiles allowed to claim it. */
+  late: { type: 'restaurant', openNow: true },
+  happy: { type: 'bar', openNow: true, bar: true },
+  /* The only phrases left. Table A has no rooftop, no live music, no nightclub-as-food,
+     and no "opened this year" — so these say what they are and nothing more. */
+  roof: { q: 'rooftop bar', bar: true },
+  live: { q: 'live music venue', bar: true },
+  dance: { q: 'nightclub', bar: true },
+  local: { type: 'restaurant' },
+  cheap: { type: 'restaurant' },
+  comfort: { type: 'restaurant' },
+  date: { type: 'restaurant' },
+  nu: { type: 'restaurant' },
 };
 
 /** Which occasions are bars rather than restaurants — drives `fetchVenues`' phrasing. */
-const BAR_KEYS = new Set(['drinks', 'happy', 'cocktails', 'live', 'dance', 'quietdrink', 'roof']);
+const BAR_KEYS = new Set(Object.keys(OCC).filter((k) => OCC[k].bar));
 
 /* ── verbatim: tabs, their heroes, their periods and their occasions ─────────── */
 const TABS = [
   {
     k: 'eat', n: 'Eat out', h: "What's <em>good</em> right now?", s: 'Pick the occasion, or just tell us what you\'re after.',
-    per: [{ k: 'am', n: 'Morning', t: '05–11', keys: ['brunch', 'coffee', 'local', 'cheap', 'family', 'nu'] },
+    /* THE WHOLE SET, always reachable. Six tiles per time-of-day period meant that at
+       14:00 there was NO route to Brunch — the tile existed only in the 05–11 period and
+       nothing on the screen could reach it. The user wanted brunch and the app had no
+       way to be asked. The period now decides the ORDER; it never decides the menu. */
+    all: ['brunch', 'breakfast', 'coffee', 'bakery', 'lunchdeal', 'deli', 'diner',
+      'bistro', 'local', 'cheap', 'pizza', 'burger', 'sushi', 'ramen', 'seafood',
+      'steak', 'fire', 'tapas', 'veg', 'vegan', 'halal', 'buffet', 'foodcourt',
+      'dessert', 'icecream', 'juice', 'tea', 'family', 'celebrate', 'date', 'comfort',
+      'nu', 'late'],
+    per: [{ k: 'am', n: 'Morning', t: '05–11', keys: ['brunch', 'breakfast', 'coffee', 'bakery', 'juice', 'local'] },
       { k: 'mid', n: 'Midday', t: '11–17', keys: ['lunchdeal', 'local', 'fire', 'cheap', 'family', 'coffee'] },
       { k: 'pm', n: 'Evening', t: '17–late', keys: ['date', 'comfort', 'drinks', 'celebrate', 'local', 'late'] }],
   },
   {
     k: 'out', n: 'Out', h: "Where's <em>good</em> tonight?", s: 'Same idea, different night. Pick the kind of evening.',
-    per: [{ k: 'am', n: 'Early', t: '12–17', keys: ['quietdrink', 'roof', 'local', 'cheap', 'coffee', 'live'] },
+    all: ['drinks', 'cocktails', 'wine', 'beer', 'pub', 'gastropub', 'sports',
+      'quietdrink', 'roof', 'live', 'dance', 'happy', 'late'],
+    per: [{ k: 'am', n: 'Early', t: '12–17', keys: ['quietdrink', 'wine', 'roof', 'pub', 'gastropub', 'beer'] },
       { k: 'mid', n: 'Sundown', t: '17–21', keys: ['happy', 'drinks', 'roof', 'cocktails', 'live', 'quietdrink'] },
       { k: 'pm', n: 'Late', t: '21–late', keys: ['dance', 'cocktails', 'live', 'late', 'drinks', 'quietdrink'] }],
   },
   {
     k: 'cook', n: 'Cook', h: "What's <em>good</em> to cook?", s: "By how much time and effort you've actually got.",
-    per: [{ k: 'am', n: 'Breakfast', t: '05–11', keys: ['quick30', 'onepot', 'pantry', 'veg', 'batch', 'baking'] },
-      { k: 'mid', n: 'Lunch', t: '11–17', keys: ['quick30', 'pantry', 'veg', 'batch', 'onepot', 'baking'] },
-      { k: 'pm', n: 'Dinner', t: '17–late', keys: ['onepot', 'quick30', 'veg', 'batch', 'baking', 'pantry'] }],
+    /* These six and ONLY these six: `api/recipes.ts` keys its curated corpus on exactly
+       these strings and answers 400 "Unknown occasion" for anything else. Changing them
+       here without changing the corpus would take the whole Cook tab offline. What
+       changes is reachability — all six now appear under every period instead of a
+       reshuffled subset. */
+    all: ['quick30', 'onepot', 'pantry', 'veg', 'batch', 'baking'],
+    per: [{ k: 'am', n: 'Breakfast', t: '05–11', keys: ['quick30', 'baking', 'pantry'] },
+      { k: 'mid', n: 'Lunch', t: '11–17', keys: ['quick30', 'pantry', 'veg'] },
+      { k: 'pm', n: 'Dinner', t: '17–late', keys: ['onepot', 'batch', 'veg'] }],
   },
   {
     k: 'saved', n: 'Saved', h: 'What you <em>kept</em>.', s: 'Everything you kept, and what it says about you.',
@@ -213,6 +332,37 @@ function toggleSave(t: 'places' | 'recipes', n: string, el?: HTMLElement) {
       .catch(() => { /* the local copy still holds it; the next sign-in merges it up */ });
   }
 }
+/*
+ * THE DISTANCE SLIDER WAS DECORATION, AND THE CARDS COULD NOT HAVE SHOWN A DISTANCE
+ * EITHER.
+ *
+ * `render()` read `d`, wrote "2.0 km" into `#o-dist`, and passed only the price tier to
+ * `fetchVenues`. Nothing downstream ever saw the radius. And `fallbackDistance` — the one
+ * field on a card that could carry a distance — is hardcoded to the empty string in BOTH
+ * placesService.ts and osmFallback.ts, so no card has ever printed one.
+ *
+ * It costs no extra request to fix: `places.location` is already in the field mask and
+ * already mapped onto `Venue.latitude/longitude`. The radius is applied here, against
+ * coordinates we are already paying for.
+ */
+/** The reader's own position once `locateMe()` has it, else null. */
+let here: [number, number] | null = null;
+
+/** Great-circle kilometres — which is what a radius means. */
+function kmBetween(a: [number, number], b: [number, number]): number {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (b[0] - a[0]) * rad, dLng = (b[1] - a[1]) * rad;
+  const x = Math.sin(dLat / 2) ** 2
+    + Math.cos(a[0] * rad) * Math.cos(b[0] * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+}
+
+/** Kilometres from the reader, or undefined when either end has no coordinates. */
+function venueKm(v: Venue): number | undefined {
+  if (!here || typeof v.latitude !== 'number' || typeof v.longitude !== 'number') return undefined;
+  return kmBetween(here, [v.latitude, v.longitude]);
+}
+
 const PR = ['Low', 'Mid', 'High', 'Top'];
 const DIST: (number | 'any')[] = [0.5, 1, 2, 3, 5, 8, 'any'];
 
@@ -271,6 +421,9 @@ async function locateMe() {
     );
   });
   if (!pos) return;
+  /* These coordinates were already fetched and then discarded after resolving a city
+     name. Keeping them is what makes the distance slider able to mean "from me". */
+  here = [pos.coords.latitude, pos.coords.longitude];
   const found = await detectCityFromCoords(pos.coords.latitude, pos.coords.longitude);
   if (!found || !found.city || found.city === city) return;
   /* Never overrule a choice already made by hand. */
@@ -353,6 +506,22 @@ const FALL: Record<string, string> = {
   cocktails: 'Cocktails', live: 'Live music', dance: 'Dancing', quietdrink: 'Quiet drink', roof: 'Rooftop',
   quick30: 'Under 30 min', onepot: 'One pot', pantry: 'Pantry raid', veg: 'Vegetarian', batch: 'Batch cook', baking: 'Baking',
   recent: 'Recent', loved: 'Loved', lists: 'Lists', been: 'Been',
+  /* Each label names the Google category behind it. "With the kids" was a MOOD over a
+     search for the words "family friendly restaurant" — a phrase Google does not record,
+     so it matched on names and reviews and returned anything. `family_restaurant` is a
+     real type, and the label now says which one it is. */
+  brunch: 'Brunch', breakfast: 'Breakfast', coffee: 'Coffee', bakery: 'Bakery',
+  juice: 'Juice bar', tea: 'Tea house', lunchdeal: 'Sandwiches', deli: 'Deli',
+  diner: 'Diner', bistro: 'Bistro', foodcourt: 'Food hall', buffet: 'Buffet',
+  steak: 'Steakhouse', seafood: 'Seafood', tapas: 'Small plates', pizza: 'Pizza',
+  sushi: 'Sushi', ramen: 'Ramen', burger: 'Burgers', vegan: 'Vegan', halal: 'Halal',
+  dessert: 'Dessert', icecream: 'Ice cream', drinks: 'Bars', wine: 'Wine bar',
+  beer: 'Beer garden', pub: 'Pub', sports: 'Sports bar', gastropub: 'Gastropub',
+  local: 'Anything nearby', cheap: 'Cheap & cheerful', fire: 'Barbecue',
+  late: 'Open right now', happy: 'Bars open now', family: 'Family restaurants',
+  chicken: 'Chicken', beef: 'Beef', fish: 'Fish', pasta: 'Pasta', rice: 'Rice',
+  noodles: 'Noodles', curry: 'Curry', stew: 'Stew', soup: 'Soup', salad: 'Salad',
+  bread: 'Bread', pie: 'Pie', cake: 'Cake',
 };
 const label = (k: string) => cityMeta(city).v[k] || FALL[k] || k;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
@@ -525,7 +694,13 @@ function build() {
   $('rc').textContent = '';
   $('list').innerHTML = '<p class="empty">' + (tab === 'cook' ? "Pick how much effort you've got." : "Pick an occasion, or just type what you're after.") + '</p>';
   $('grid').innerHTML = '';
-  P2.keys.forEach((k, i) => {
+  /* The period's own picks lead — that is what "right now" is worth — and then everything
+     else the tab can do. Nothing is behind the clock any more. */
+  const T2 = T() as { all?: string[] };
+  const ordered = T2.all
+    ? [...P2.keys, ...T2.all.filter((k) => !P2.keys.includes(k))]
+    : P2.keys;
+  ordered.forEach((k, i) => {
     const b = document.createElement('button');
     b.className = 'tile'; b.type = 'button'; b.setAttribute('aria-pressed', 'false');
     /* The tile plate carries the occasion's own monogram, so the top half is composed
@@ -685,6 +860,7 @@ async function render() {
   $('list').innerHTML = '<p class="empty">Looking…</p>';
 
   const kind = BAR_KEYS.has(picked) ? 'bar' : 'restaurant';
+  const occ: Occasion = OCC[picked] || {};
   /* What the user TYPED outranks the tile the parse line happened to land on. Typing
      "vegan ramen near a park" used to set the sliders, print "vegan · japanese · outdoor
      seating", then search the occasion label "Neighbourhood" — which returned a café with
@@ -692,9 +868,14 @@ async function render() {
      understanding the query never carried. Now the typed words ARE the query, the tile's
      terms only add to it, and the parse line is a readout of a search that really ran. */
   const typed = ($('q') as HTMLInputElement).value.trim();
-  const terms = [typed, typed ? '' : (QUERY[picked] || label(picked)), ...areas]
-    .filter(Boolean).join(' ');
-  const out = await fetchVenues(terms, city, sliderState().tier, undefined, kind);
+  /* The tile's CATEGORY now travels as `includedType`, not as words in the query. Only an
+     occasion Table A cannot express (rooftop, live music, dancing) contributes a phrase —
+     otherwise the words would fight the type filter and re-create the name-matching bug. */
+  const terms = [typed, typed ? '' : (occ.q || ''), ...areas].filter(Boolean).join(' ');
+  const out = await fetchVenues(terms, city, sliderState().tier, undefined, kind, {
+    includedType: occ.type,
+    openNow: occ.openNow,
+  });
   if (seq !== loadSeq) return;
 
   if (out.status !== 'ok') {
@@ -709,9 +890,25 @@ async function render() {
           : 'Could not reach Google Places just now. Try again in a moment.') + '</p>';
     return;
   }
-  venues = out.venues;
+  /* Apply the radius the reader actually set. Venues with no coordinates are KEPT, not
+     dropped — an unknown distance is not a known-too-far one, and quietly hiding real
+     places to make a filter look tidy is the same lie the fake slider was. They sort
+     last. When we have no position at all the filter cannot run, and it says so rather
+     than pretending to have filtered. */
+  const measured = out.venues.map((v) => ({ v, km: venueKm(v) }));
+  const inRange = here && d !== 'any'
+    ? measured.filter(({ km }) => km === undefined || km <= (d as number))
+    : measured;
+  inRange.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+  venues = inRange.map((x) => x.v);
+  const kmOf = new Map(inRange.map((x) => [x.v.id, x.km]));
   if (!venues.length) {
-    $('list').innerHTML = '<p class="empty">Nothing came back for that in ' + esc(city) + '. Try another occasion, or widen the spend.</p>';
+    /* Recover (§5) has to name the constraint that emptied the list, or the reader cannot
+       tell which control to move. */
+    $('list').innerHTML = out.venues.length
+      ? '<p class="empty">' + out.venues.length + ' came back in ' + esc(city)
+        + ', but none within ' + esc(formatDistance(d as number, distanceLocale())) + ' of you. Widen the distance.</p>'
+      : '<p class="empty">Nothing came back for that in ' + esc(city) + '. Try another occasion, or widen the spend.</p>';
     return;
   }
   /* Say where the list came from when it is NOT Google, and SAY WHY.
@@ -780,7 +977,11 @@ async function render() {
     const stars = typeof v.rating === 'number'
       ? v.rating.toFixed(1) + '★' + (v.userRatingCount ? ' (' + v.userRatingCount.toLocaleString() + ')' : '')
       : null;
-    const meta = [stars, v.fallbackDistance, typeof v.priceTier === 'number' ? PR[v.priceTier - 1] : null]
+    /* The real, measured distance — not `fallbackDistance`, which both data sources set
+       to the empty string, so this line has never once carried a distance. */
+    const km = kmOf.get(v.id);
+    const meta = [stars, km === undefined ? null : formatDistance(km, distanceLocale()),
+      typeof v.priceTier === 'number' ? PR[v.priceTier - 1] : null]
       .filter(Boolean).join(' · ');
     /* Type AND neighbourhood, not one or the other. "Italian" alone does not tell you
        whether it is worth the trip; "Italian · Sea Point" does, and both were already
@@ -1086,7 +1287,7 @@ const OSM_FACTS: [string, (t: Record<string, string>) => string | null][] = [
  * The caller is told which, because presenting the second as "the story" of a restaurant
  * is how this went wrong in the first place. Containment is checked in one direction only
  * now: the ARTICLE must contain the VENUE's name, never the reverse. */
-interface WikiNote { text: string; url: string; title: string; aboutVenue: boolean }
+interface WikiNote { text: string; url: string; title: string }
 
 async function wikiNote(v: Venue): Promise<WikiNote | null> {
   /* No coordinates, no article. The blind name search that used to run here is exactly
@@ -1110,10 +1311,23 @@ async function wikiNote(v: Venue): Promise<WikiNote | null> {
       const t = norm(a.title);
       return t === name || t.includes(name);
     });
-    /* Nearest wins the fallback: at 600m a list can hold a whole district, and the
-       building on the corner says more about where you are standing than the district
-       does. */
-    const pick = own || near.reduce((a, b) => (a.dist <= b.dist ? a : b));
+    /* THE NEAREST-ARTICLE FALLBACK IS GONE.
+     *
+     * "Nearest wins" sounded reasonable and produced this, reported from a real phone: a
+     * restaurant in Sea Point whose page carried an encyclopaedia paragraph about the
+     * HOSPITALS in the area. Within 600m of any city restaurant the nearest Wikipedia
+     * subject is usually a hospital, a school, a church or a monument — none of which is
+     * a fact about the venue, and all of which arrive under a heading on the venue's own
+     * page, which is what makes them read as claims about it.
+     *
+     * Section 8 already settles this: a venue page carries a real field or the module is
+     * absent. A paragraph about a nearby building is not a fact about a restaurant, and
+     * "Around here" was a heading invented to make an irrelevant one presentable. So the
+     * only hit that survives is the venue's OWN article — the rare, genuinely valuable
+     * case — and everything else renders nothing at all.
+     */
+    if (!own) return null;
+    const pick = own;
 
     const sr = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(pick.title));
     if (!sr.ok) return null;
@@ -1124,7 +1338,6 @@ async function wikiNote(v: Venue): Promise<WikiNote | null> {
       text: sum.extract.split('. ').slice(0, 2).join('. ').replace(/\.?$/, '.'),
       url: sum.content_urls?.desktop?.page || 'https://en.wikipedia.org/wiki/' + encodeURIComponent(pick.title),
       title: pick.title,
-      aboutVenue: Boolean(own),
     };
   } catch { return null; }
 }
@@ -1174,8 +1387,8 @@ async function venueStory(v: Venue) {
      was nothing on the page to tell you which place the paragraph was about. Naming the
      article in the link is the whole correction: the reader can see it says Kloof, or
      Gardens, or the building next door, before they believe a word of it. */
-  const heading = note.aboutVenue ? 'The story' : 'Around here';
-  wrap.innerHTML = '<h4>' + heading + '</h4><p class="story">' + esc(note.text) + '</p>'
+  /* Only ever the venue's own article now, so the heading can state that plainly. */
+  wrap.innerHTML = '<h4>The story</h4><p class="story">' + esc(note.text) + '</p>'
     + '<p class="src"><a href="' + esc(note.url) + '" target="_blank" rel="noopener noreferrer">'
     + esc(note.title) + ' on Wikipedia</a> · CC BY-SA</p>';
   const col = host.querySelector('.dgrid > div');
