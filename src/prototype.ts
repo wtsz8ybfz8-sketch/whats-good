@@ -966,7 +966,7 @@ async function render() {
        nothing extra), and it was being fetched and thrown away. Count rides with it
        because a 4.9 from three people is not a 4.9 — the average alone is a half-truth. */
     const stars = typeof v.rating === 'number'
-      ? v.rating.toFixed(1) + '★' + (v.userRatingCount ? ' (' + v.userRatingCount.toLocaleString() + ')' : '')
+      ? formatQuantity(v.rating, 1) + '★' + (v.userRatingCount ? ' (' + v.userRatingCount.toLocaleString() + ')' : '')
       : null;
     /* The real, measured distance — not `fallbackDistance`, which both data sources set
        to the empty string, so this line has never once carried a distance. */

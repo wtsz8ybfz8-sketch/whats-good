@@ -436,7 +436,7 @@ button.logo { background: none; border: 0; padding: 0; font: inherit; color: inh
 /* Photo viewer — in the page, never a new tab. */
 .viewer { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
   background: rgba(12, 11, 10, 0.92); padding: 24px; }
-.viewer img { max-width: min(96vw, 1200px); max-height: 86vh; border-radius: 14px; display: block; }
+.viewer img { max-width: min(96vw, 1200px); max-height: 86dvh; border-radius: 14px; display: block; }
 .vclose { position: absolute; top: 16px; right: 16px; height: 40px; padding: 0 16px;
   border-radius: 999px; border: 0; cursor: pointer; font: inherit; font-weight: 600;
   background: rgba(255,255,255,0.92); color: #17150f; }
