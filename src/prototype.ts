@@ -606,7 +606,7 @@ const loadPhotos = (k: string): string[] => photoStore()[k] || [];
 
 function dressTiles(urls: string[]) {
   if (!urls.length) return;
-  const plates = [...document.querySelectorAll('#grid .tile .ph')] as HTMLElement[];
+  const plates = [...document.querySelectorAll('#grid .tile .ph, #gridmore .tile .ph')] as HTMLElement[];
   plates.forEach((p, i) => {
     if (p.classList.contains('has-photo')) return;
     const u = urls[i % urls.length];
@@ -696,15 +696,36 @@ function build() {
   const ordered = T2.all
     ? [...P2.keys, ...T2.all.filter((k) => !P2.keys.includes(k))]
     : P2.keys;
+  /* Six is the menu; the rest is reachable but not shouted. Rendering all 33 at equal
+     weight gave the eye nowhere to land and read as a taxonomy, not a recommendation.
+     The period's picks lead, the first of them is the featured tile, and everything else
+     lives behind one disclosure so nothing is unreachable at any hour. */
+  const LEAD = 6;
+  const more = $('gridmore');
+  const tog = $('moretog') as HTMLButtonElement;
+  more.innerHTML = '';
+  const rest = ordered.length - LEAD;
+  if (rest > 0) {
+    tog.style.display = '';
+    tog.textContent = 'More occasions (' + rest + ')';
+    tog.setAttribute('aria-expanded', 'false');
+    (more as HTMLElement).hidden = true;
+    tog.onclick = () => {
+      const open = (more as HTMLElement).hidden;
+      (more as HTMLElement).hidden = !open;
+      tog.setAttribute('aria-expanded', String(open));
+      tog.textContent = open ? 'Fewer occasions' : 'More occasions (' + rest + ')';
+    };
+  } else { tog.style.display = 'none'; }
   ordered.forEach((k, i) => {
     const b = document.createElement('button');
-    b.className = 'tile'; b.type = 'button'; b.setAttribute('aria-pressed', 'false');
+    b.className = i === 0 ? 'tile lead' : 'tile'; b.type = 'button'; b.setAttribute('aria-pressed', 'false');
     /* The tile plate carries the occasion's own monogram, so the top half is composed
        rather than void — the same plate the venue cards use, one system. */
     b.innerHTML = '<span ' + phAttrs(undefined, label(k)) + '></span><span class="ring"></span>'
       + '<span class="bd">' + icon(D[k][0]) + '<span><span class="nm">' + esc(label(k)) + '</span><span class="ds">' + esc(D[k][1]) + '</span></span></span>';
     b.onclick = () => pick(k, b);
-    $('grid').appendChild(b);
+    (i < LEAD ? $('grid') : more).appendChild(b);
     setTimeout(() => b.classList.add('in'), 60 + i * 44);
   });
   /* The grid is rebuilt on every idle render, which throws away the plates heroPreview
