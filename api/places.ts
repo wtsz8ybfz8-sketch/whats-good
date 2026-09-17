@@ -108,7 +108,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
      rather than widened here. A caller cannot ask for more than the client code asks for
      because this endpoint is same-site only. */
   const mask = one(req.headers['x-goog-fieldmask']);
-  if (!mask) { res.status(400).json({ error: 'A field mask is required' }); return; }
+  if (!mask) {
+    console.error('places: no field mask on the request');
+    res.status(400).json({ error: 'A field mask is required' }); return;
+  }
 
   try {
     const upstream = await fetch(`${BASE}/places:${path}`, {
@@ -122,6 +125,19 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       signal: AbortSignal.timeout(20_000),
     });
     const data = await upstream.json();
+    /* Say WHY Google refused, in the one place that can see the answer.
+       Without this line a rejected key, a malformed field mask and an unsupported request
+       field are one identical 400 in the runtime logs, and the only readout left is the
+       grey note under the results count — which the reader has to notice and repeat back.
+       Google's error carries no credential (the key travels in our request, never in its
+       reply), so this is safe to log; it is truncated because a field-mask complaint can
+       run to kilobytes. */
+    if (!upstream.ok) {
+      console.error(
+        'places: upstream', path, upstream.status,
+        JSON.stringify(data).slice(0, 400),
+      );
+    }
     /* Cache successful searches at the EDGE. This is what makes an arrival-time search
        affordable again: the first visitor to a city in an hour spends one upstream call
        and every visitor after that is served by Vercel for nothing. Restaurants do not
