@@ -83,7 +83,15 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         `${BASE}/${photo}/media?maxWidthPx=${width}&skipHttpRedirect=true&key=${key}`,
         { signal: AbortSignal.timeout(15_000) },
       );
-      if (!r.ok) { res.status(r.status).json({ error: 'Photo unavailable' }); return; }
+      if (!r.ok) {
+        /* Same reason as the search branch below: a refused photo and a refused search
+           are one indistinguishable status code in the logs unless the reason is kept.
+           A rejected key says so here in Google's own words; a photo that simply does not
+           exist says NOT_FOUND, and the two demand opposite fixes. */
+        console.error('places: photo upstream', r.status, (await r.text().catch(() => '')).slice(0, 400));
+        res.status(r.status).json({ error: 'Photo unavailable' });
+        return;
+      }
       const data = await r.json() as { photoUri?: string };
       if (!data.photoUri) { res.status(502).json({ error: 'No photo URI returned' }); return; }
       /* Signed media URLs are stable for long enough to be worth caching at the edge, and
