@@ -62,7 +62,10 @@ const AMENITY: Record<'restaurant' | 'bar', string> = {
  * only honest option without geocoding.
  */
 const CENTRES: Record<string, [number, number]> = {
+  Johannesburg: [-26.2041, 28.0473],
   'Cape Town': [-33.9249, 18.4241],
+  Durban: [-29.8587, 31.0218],
+  Pretoria: [-25.7479, 28.2293],
   London: [51.5072, -0.1276],
   Paris: [48.8566, 2.3522],
   'New York': [40.7128, -74.0060],
