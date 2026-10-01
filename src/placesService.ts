@@ -320,6 +320,10 @@ const FAILURE_RANK: Record<VenueSearchFailure['status'], number> = {
  * type, so a tile can be a real constraint instead of a wish.
  */
 export interface VenueFilters {
+  /** The reader's position, when known (edge IP location, or granted geolocation). When
+   *  present, venue discovery runs as a radius sweep around it — which is what lets the app
+   *  work anywhere, not just in a short list of named cities. */
+  coords?: [number, number] | null;
   /** A Table A type, e.g. `brunch_restaurant`. One only — the API allows one. */
   includedType?: string;
   /** True narrows to venues Google says are open right now. */
@@ -647,7 +651,7 @@ export async function fetchVenues(
        * must stay silent, not race a fallback onto the screen.
        */
       if (worst.status !== 'aborted') {
-        const osm = await fetchOsmVenues(city, kind, query);
+        const osm = await fetchOsmVenues(city, kind, query, filters.coords);
         if (osm.length) return { status: 'ok', venues: osm, source: 'osm', reason: worst.status };
       }
       return worst;

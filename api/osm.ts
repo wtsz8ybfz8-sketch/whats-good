@@ -52,6 +52,18 @@ function buildQuery(city: string, kind: string): string | null {
   return `[out:json][timeout:25];\n(\n  node${filter}${around};\n  way${filter}${around};\n);\nout center tags 60;`;
 }
 
+/** The same radius sweep as buildQuery, but around an arbitrary coordinate instead of a
+ *  named city. This is what makes discovery work ANYWHERE on earth rather than only in the
+ *  handful of cities in CENTRES — fed by the reader's IP location (api/geo.ts) or, once
+ *  granted, their precise position. */
+function sweepQuery(lat: number, lon: number, kind: string): string | null {
+  const amenity = AMENITY[kind];
+  if (!amenity) return null;
+  const filter = `["amenity"~"^(${amenity})$"]["name"]`;
+  const around = `(around:6000,${lat},${lon})`;
+  return `[out:json][timeout:25];\n(\n  node${filter}${around};\n  way${filter}${around};\n);\nout center tags 60;`;
+}
+
 interface Req { query?: Record<string, string | string[] | undefined> }
 interface Res {
   status: (code: number) => Res;
@@ -135,32 +147,6 @@ async function wikidataPhotos(qids: string[]): Promise<Map<string, string>> {
   return out;
 }
 
-/** The og:image (or twitter:image) a venue publishes on its own site. Short timeout and a
- *  capped read: this is a nicety, never worth holding the whole list for. */
-async function ogImage(site: string): Promise<string | null> {
-  const base = /^https?:\/\//i.test(site) ? site : `https://${site}`;
-  try {
-    const res = await fetch(base, {
-      headers: { 'User-Agent': 'whats-good/1.0 (+https://whats-good-nu.vercel.app)', Accept: 'text/html' },
-      signal: AbortSignal.timeout(2500),
-      redirect: 'follow',
-    });
-    if (!res.ok) return null;
-    const html = (await res.text()).slice(0, 200_000);
-    const m =
-      html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i) ||
-      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
-      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i);
-    if (!m) return null;
-    let img = m[1].trim();
-    if (img.startsWith('//')) img = 'https:' + img;
-    else if (img.startsWith('/')) img = new URL(base).origin + img;
-    return /^https?:\/\//i.test(img) ? img : null;
-  } catch {
-    return null;
-  }
-}
-
 /** Resolve a real photo for each named venue and write it back onto `tags.image`, so the
  *  cached Overpass response carries it and the client reads it with no extra round trip. */
 async function addFreeImages(elements: OsmEl[]): Promise<void> {
@@ -182,23 +168,16 @@ async function addFreeImages(elements: OsmEl[]): Promise<void> {
     if (q && /^Q\d+$/.test(q)) qidOf.set(el, q);
   }
   const photos = await wikidataPhotos([...new Set(qidOf.values())]);
-  const stillNeeds: OsmEl[] = [];
   for (const el of needsImage) {
     const q = qidOf.get(el);
     const img = q ? photos.get(q) : undefined;
     if (img) el.tags!.image = img;
-    else stillNeeds.push(el);
   }
-  if (!stillNeeds.length) return;
-
-  // 3) The venue's own website og:image — capped, best-effort, never blocking for long.
-  await Promise.allSettled(
-    stillNeeds.slice(0, 16).map(async (el) => {
-      const site = el.tags!.website || el.tags!['contact:website'];
-      const og = site ? await ogImage(site) : null;
-      if (og) el.tags!.image = og;
-    }),
-  );
+  /* A website og:image tier lived here. Measured against real data it resolved almost
+     nothing — store-locator pages return a generic graphic or none — while adding a fetch
+     per venue that pushed cold, large-city responses past the request timeout. Dropped:
+     the cost was real and the benefit was not. A venue with no OSM image and no Wikidata
+     photo keeps its monogram plate. */
 }
 
 export default async function handler(req: Req, res: Res): Promise<void> {
@@ -207,9 +186,13 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   const lat = Number(one(req.query?.lat));
   const lon = Number(one(req.query?.lon));
 
-  /* Coordinates take precedence: this is the single-venue lookup, not the city sweep. */
-  const query = Number.isFinite(lat) && Number.isFinite(lon) && (lat !== 0 || lon !== 0)
-    ? factsQuery(lat, lon)
+  const scope = one(req.query?.scope);
+  /* Coordinates + scope=area are the "around me" sweep that makes the app global — any
+     point on earth, not one of a handful of named cities. Coordinates alone stay the
+     single-venue facts lookup. No coordinates falls back to the named-city sweep. */
+  const haveCoords = Number.isFinite(lat) && Number.isFinite(lon) && (lat !== 0 || lon !== 0);
+  const query = haveCoords
+    ? (scope === 'area' ? sweepQuery(lat, lon, kind) : factsQuery(lat, lon))
     : buildQuery(city, kind);
   /* An unknown city is a client bug, not a server error, and it must not be cached. */
   if (!query) {

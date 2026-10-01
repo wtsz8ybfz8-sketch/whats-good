@@ -250,6 +250,7 @@ export async function fetchOsmVenues(
   city: string,
   kind: 'restaurant' | 'bar',
   terms = '',
+  coords?: [number, number] | null,
 ): Promise<Venue[]> {
   /*
    * THROUGH OUR OWN ENDPOINT, NOT STRAIGHT AT OVERPASS.
@@ -260,10 +261,15 @@ export async function fetchOsmVenues(
    * the answer at the edge. The direct call stays as a second attempt purely so the dev
    * server (which serves no /api) can still exercise this path.
    */
-  const routes = [
-    `/api/osm?city=${encodeURIComponent(city)}&kind=${encodeURIComponent(kind)}`,
-    ...ENDPOINTS.map((e) => `${e}?data=${encodeURIComponent(query(city, kind))}`),
-  ];
+  /* With coordinates we sweep a radius around the reader (global, any point on earth);
+     without them we fall back to the named-city sweep. The direct-to-Overpass routes stay
+     only for the dev server, which serves no /api, and only for the city path. */
+  const routes = coords
+    ? [`/api/osm?lat=${coords[0]}&lon=${coords[1]}&kind=${encodeURIComponent(kind)}&scope=area`]
+    : [
+        `/api/osm?city=${encodeURIComponent(city)}&kind=${encodeURIComponent(kind)}`,
+        ...ENDPOINTS.map((e) => `${e}?data=${encodeURIComponent(query(city, kind))}`),
+      ];
 
   for (const url of routes) {
     try {
