@@ -982,7 +982,7 @@ async function render() {
       out.status === 'unconfigured'
         ? 'No Places key is configured, so live venues cannot be loaded.'
         : out.status === 'http' && out.code === 429
-          ? "Today's Google Places allowance is used up, so venues can't load until it resets. Cook still works."
+          ? "Live venues can't load right now — Cook still works, or try again a bit later."
           : 'Could not reach Google Places just now. Try again in a moment.') + '</p>';
     return;
   }
@@ -1030,8 +1030,13 @@ async function render() {
         : out.reason === 'quota'
           ? "Today's Google Places allowance is used up"
           : 'Google Places could not be reached just now';
-    note.textContent = why + ', so these came from OpenStreetMap instead — real places, '
-      + 'but no photos, no ratings, and the occasion only filters on cuisine.';
+    /* The reader is choosing dinner, not debugging a key — so the card speaks to them in
+       their own terms (what is different about this list), while the engineering reason
+       stays in the console for the owner. Still honest about the degrade (§5), just
+       addressed to the person who can actually act on it. */
+    console.warn('[whats-good] venues via OSM fallback:', why);
+    note.textContent = "You're seeing a lighter list right now — real places nearby, "
+      + 'but without photos or ratings, and matched on cuisine rather than the full occasion.';
     note.style.display = '';
   } else {
     note.textContent = '';
