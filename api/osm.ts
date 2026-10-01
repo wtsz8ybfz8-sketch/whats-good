@@ -73,6 +73,134 @@ function factsQuery(lat: number, lon: number): string {
   return `[out:json][timeout:20];\n(\n  node${filter}(around:60,${lat},${lon});\n  way${filter}(around:60,${lat},${lon});\n);\nout tags center 8;`;
 }
 
+/* ── Free, real venue photographs ────────────────────────────────────────────────────
+ *
+ * Google Places photos are a paid tier the project will not buy, and NO free Places API
+ * returns venue photos either (Foursquare's photo endpoint is premium-only; Geoapify and
+ * Overture carry none). So photos are ASSEMBLED, not bought, from sources that are free:
+ *
+ *   1. the venue's own OSM `image` tag — the exact place, when a mapper added one;
+ *   2. a Wikidata P18 photograph via `wikidata` / `brand:wikidata` — a real photo of the
+ *      place or its brand (a KFC storefront, a Nando's branch), resolved in ONE batched
+ *      call for every id at once;
+ *   3. the og:image on the venue's own website — again the exact place.
+ *
+ * Logos (Wikidata P154) are deliberately refused: a grid of logos reads as advertising,
+ * not as somewhere to eat. A venue with none of the three keeps its monogram plate, which
+ * is a designed fallback, not a missing image. All of this runs server-side — where CORS,
+ * a real User-Agent and the edge cache apply — and is cached with the venue list, so the
+ * whole resolution happens once per city per hour, not once per visitor. */
+interface OsmEl {
+  type: string;
+  id: number;
+  tags?: Record<string, string>;
+}
+
+function commonsFile(filename: string): string {
+  return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=640`;
+}
+
+/** A usable image URL from an OSM `image` tag: an http(s) URL as-is, or a Commons file
+ *  reference turned into a served URL. Anything else (a bare word, a dead scheme) is not
+ *  an image and is ignored. */
+function imageTagUrl(v?: string): string | null {
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  const file = v.replace(/^(File|Image):/i, '').trim();
+  return file && /\.(jpe?g|png|webp|gif)$/i.test(file) ? commonsFile(file) : null;
+}
+
+/** P18 photographs for many Wikidata entities in a single request. P154 (logo) is never
+ *  read. Returns qid → served Commons URL; failures simply leave a qid out. */
+async function wikidataPhotos(qids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!qids.length) return out;
+  try {
+    const url = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${qids.join('|')}&props=claims&format=json&origin=*`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'whats-good/1.0 (+https://whats-good-nu.vercel.app)' },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return out;
+    const data = (await res.json()) as {
+      entities?: Record<string, { claims?: Record<string, Array<{ mainsnak?: { datavalue?: { value?: unknown } } }>> }>;
+    };
+    for (const [qid, ent] of Object.entries(data.entities || {})) {
+      const file = ent.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+      if (typeof file === 'string' && file) out.set(qid, commonsFile(file));
+    }
+  } catch {
+    /* Leave whatever resolved; the rest fall through to website or monogram. */
+  }
+  return out;
+}
+
+/** The og:image (or twitter:image) a venue publishes on its own site. Short timeout and a
+ *  capped read: this is a nicety, never worth holding the whole list for. */
+async function ogImage(site: string): Promise<string | null> {
+  const base = /^https?:\/\//i.test(site) ? site : `https://${site}`;
+  try {
+    const res = await fetch(base, {
+      headers: { 'User-Agent': 'whats-good/1.0 (+https://whats-good-nu.vercel.app)', Accept: 'text/html' },
+      signal: AbortSignal.timeout(2500),
+      redirect: 'follow',
+    });
+    if (!res.ok) return null;
+    const html = (await res.text()).slice(0, 200_000);
+    const m =
+      html.match(/<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i);
+    if (!m) return null;
+    let img = m[1].trim();
+    if (img.startsWith('//')) img = 'https:' + img;
+    else if (img.startsWith('/')) img = new URL(base).origin + img;
+    return /^https?:\/\//i.test(img) ? img : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Resolve a real photo for each named venue and write it back onto `tags.image`, so the
+ *  cached Overpass response carries it and the client reads it with no extra round trip. */
+async function addFreeImages(elements: OsmEl[]): Promise<void> {
+  const named = elements.filter((e) => e.tags?.name);
+
+  // 1) A direct image already on the venue wins — it is the exact place.
+  const needsImage: OsmEl[] = [];
+  for (const el of named) {
+    const direct = imageTagUrl(el.tags!.image);
+    if (direct) el.tags!.image = direct;
+    else needsImage.push(el);
+  }
+  if (!needsImage.length) return;
+
+  // 2) Wikidata P18 photographs, one batched call for every id present.
+  const qidOf = new Map<OsmEl, string>();
+  for (const el of needsImage) {
+    const q = el.tags!.wikidata || el.tags!['brand:wikidata'];
+    if (q && /^Q\d+$/.test(q)) qidOf.set(el, q);
+  }
+  const photos = await wikidataPhotos([...new Set(qidOf.values())]);
+  const stillNeeds: OsmEl[] = [];
+  for (const el of needsImage) {
+    const q = qidOf.get(el);
+    const img = q ? photos.get(q) : undefined;
+    if (img) el.tags!.image = img;
+    else stillNeeds.push(el);
+  }
+  if (!stillNeeds.length) return;
+
+  // 3) The venue's own website og:image — capped, best-effort, never blocking for long.
+  await Promise.allSettled(
+    stillNeeds.slice(0, 16).map(async (el) => {
+      const site = el.tags!.website || el.tags!['contact:website'];
+      const og = site ? await ogImage(site) : null;
+      if (og) el.tags!.image = og;
+    }),
+  );
+}
+
 export default async function handler(req: Req, res: Res): Promise<void> {
   const city = one(req.query?.city);
   const kind = one(req.query?.kind) || 'restaurant';
@@ -100,6 +228,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       if (!upstream.ok) continue;
       const data = await upstream.json();
       if (!Array.isArray((data as { elements?: unknown[] }).elements)) continue;
+
+      /* Fill in a real photograph for each venue from free sources, before caching, so the
+         stored response already carries images for every later visitor to this city. */
+      await addFreeImages((data as { elements?: OsmEl[] }).elements || []);
 
       /* Restaurants do not move hourly. One hour at the edge, a day of stale-while-
          revalidate: the next visitor to the same city gets an instant answer and Overpass

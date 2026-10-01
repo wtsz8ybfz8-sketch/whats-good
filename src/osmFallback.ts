@@ -175,7 +175,12 @@ function toVenue(el: OsmElement): Venue | null {
     phone: tags.phone || tags['contact:phone'] || '',
     openNow: openFromOsm(tags.opening_hours),
     hoursToday: tags.opening_hours,
-    /* No photoUrl, no rating, no priceTier — OSM publishes none of them, so nothing is
+    /* A real photograph when a FREE source has one. `tags.image` is set server-side in
+       api/osm.ts — the venue's own `image` tag, a Wikidata P18 photograph, or the
+       og:image from its own website (never a logo). Absent otherwise, and the designed
+       monogram plate stands rather than a broken-image box. */
+    photoUrl: (tags.image && /^https?:\/\//i.test(tags.image)) ? tags.image : undefined,
+    /* No rating, no priceTier — OSM publishes none of them, so nothing is
        set and every render site already omits what is absent. */
   };
 }
