@@ -429,15 +429,38 @@ async function locateMe() {
   /* These coordinates were already fetched and then discarded after resolving a city
      name. Keeping them is what makes the distance slider able to mean "from me". */
   here = [pos.coords.latitude, pos.coords.longitude];
-  const found = await detectCityFromCoords(pos.coords.latitude, pos.coords.longitude);
-  if (!found || !found.city || found.city === city) return;
-  /* Never overrule a choice already made by hand. */
+  /* Try to NAME the precise city too, but a failure must not stop the re-search: the
+     coordinates alone already make "near me" correct via the radius sweep. */
+  const found = await detectCityFromCoords(pos.coords.latitude, pos.coords.longitude).catch(() => null);
   const typed = ($('city') as HTMLInputElement).value.trim();
-  if (typed && typed !== city) return;
-  city = found.city;
-  ($('city') as HTMLInputElement).value = city;
-  rememberCity(city);
+  if (found?.city && found.city !== city && !manual && (!typed || typed === city)) {
+    city = found.city;
+    ($('city') as HTMLInputElement).value = city;
+    rememberCity(city);
+  }
   build();
+}
+
+/* Open on the reader's own city, ANYWHERE, with no permission prompt: the edge derived it
+   from their IP (see api/geo.ts). This replaces the old default where everyone sharing a
+   timezone — a whole country — collapsed onto one city (every South African got
+   Johannesburg). Precise geolocation, if granted, refines it afterwards via locateMe(). */
+async function locateFromIp() {
+  try {
+    const r = await fetch('/api/geo');
+    if (!r.ok) return;
+    const g = (await r.json()) as { city?: string | null; lat?: number | null; lon?: number | null };
+    if (typeof g.lat === 'number' && typeof g.lon === 'number') here = [g.lat, g.lon];
+    const typed = ($('city') as HTMLInputElement).value.trim();
+    if (g.city && !manual && (!typed || typed === city)) {
+      city = g.city;
+      ($('city') as HTMLInputElement).value = city;
+      rememberCity(city);
+    }
+    build();
+  } catch {
+    /* No edge location — the timezone guess stands. */
+  }
 }
 
 /** Live venues for the current query. The prototype's `NAMES`/`BLURB` arrays are gone. */
@@ -945,6 +968,7 @@ async function render() {
      otherwise the words would fight the type filter and re-create the name-matching bug. */
   const terms = [typed, typed ? '' : (occ.q || label(picked)), ...areas].filter(Boolean).join(' ');
   const out = await fetchVenues(terms, city, sliderState().tier, undefined, kind, {
+    coords: here,
     includedType: occ.type,
     openNow: occ.openNow,
   });
@@ -1571,6 +1595,7 @@ if (homeBtn) homeBtn.onclick = () => {
   build();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
+void locateFromIp();
 void locateMe();
 
 ($('city') as HTMLInputElement).onchange = commitCity;
