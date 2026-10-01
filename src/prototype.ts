@@ -575,10 +575,12 @@ const monogram = (name?: string) => (name || '')
    was a grid of grey boxes — the monogram is the no-photo fallback, and it was being used
    as the default state. Reusing this one response costs no extra Places call, so the grid
    is alive on arrival for the price we were already paying for the hero. */
+import { assignTilePhotos } from './tilePhotos';
+
 const heroCache: Record<string, string[]> = {};
 async function heroPreview() {
   const k = city + '|' + tab;
-  if (heroCache[k]) { heroPhoto(heroCache[k][0]); dressTiles(heroCache[k]); return; }
+  if (heroCache[k]) { heroPhoto(heroCache[k][0]); dressTiles(heroCache[k].slice(1)); return; }
   const out = await fetchVenues(
     tab === 'out' ? 'popular bar' : 'well reviewed restaurant',
     city, undefined, undefined, tab === 'out' ? 'bar' : 'restaurant',
@@ -590,7 +592,10 @@ async function heroPreview() {
   savePhotos(k, urls);
   /* Only if the user has not since picked an occasion — its own photo outranks this one. */
   if (!picked) heroPhoto(urls[0]);
-  dressTiles(urls);
+  /* Tiles draw from the photos the hero did NOT take, so the hero image is never also
+     tiled below it — the single-photo city used to show one KFC on the hero and again on
+     every plate. */
+  dressTiles(urls.slice(1));
 }
 
 /** Dresses the hero with a photograph, or returns it to its plain plate. */
@@ -630,9 +635,14 @@ const loadPhotos = (k: string): string[] => photoStore()[k] || [];
 function dressTiles(urls: string[]) {
   if (!urls.length) return;
   const plates = [...document.querySelectorAll('#grid .tile .ph, #gridmore .tile .ph')] as HTMLElement[];
-  plates.forEach((p, i) => {
-    if (p.classList.contains('has-photo')) return;
-    const u = urls[i % urls.length];
+  /* A plate that already carries its own venue photo keeps it; the rest draw from the pool.
+     assignTilePhotos uses each DISTINCT url at most once (no `i % length` reuse), so one
+     venue's photograph can never be smeared across unrelated occasion tiles — plates past
+     the supply of distinct photos keep their monogram fallback. */
+  const undressed = plates.filter((p) => !p.classList.contains('has-photo'));
+  const plan = assignTilePhotos(urls, undressed.length);
+  undressed.forEach((p, i) => {
+    const u = plan[i];
     if (!u) return;
     p.classList.add('has-photo');
     p.style.backgroundImage = "url('" + u.replace(/'/g, '%27') + "')";
