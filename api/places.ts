@@ -50,6 +50,16 @@ function sameSite(req: Req): boolean {
 
 /* A crude per-instance throttle. Fluid Compute reuses instances, so this catches the
  * obvious hammering; it is deliberately not presented as a real rate limiter. */
+/* A key with an HTTP-referrer restriction (the mitigation CLAUDE.md §14.1 recommends) refuses
+   any request that carries no Referer — and a server-side fetch carries none. Google then
+   answers PERMISSION_DENIED for every search and photo, which reads exactly like a billing
+   or API-enablement fault. Forward this deployment's own origin so a referrer-restricted
+   key accepts its own proxy. Harmless for an unrestricted key. */
+function siteReferer(req: Req): string {
+  const host = one(req.headers['x-forwarded-host']) || one(req.headers.host);
+  return host ? `https://${host}/` : 'https://whats-good-nu.vercel.app/';
+}
+
 const HITS = new Map<string, { n: number; until: number }>();
 const LIMIT = 60;
 const WINDOW_MS = 60_000;
@@ -81,7 +91,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     try {
       const r = await fetch(
         `${BASE}/${photo}/media?maxWidthPx=${width}&skipHttpRedirect=true&key=${key}`,
-        { signal: AbortSignal.timeout(15_000) },
+        { headers: { Referer: siteReferer(req) }, signal: AbortSignal.timeout(15_000) },
       );
       if (!r.ok) {
         /* Same reason as the search branch below: a refused photo and a refused search
@@ -128,6 +138,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': key,
         'X-Goog-FieldMask': mask,
+        Referer: siteReferer(req),
       },
       body: JSON.stringify(req.body ?? {}),
       signal: AbortSignal.timeout(20_000),
