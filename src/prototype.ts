@@ -775,6 +775,16 @@ function build() {
      be alive on arrival — the thing a photography-led product should never fail at — with
      one shared call per city per hour instead of one per user per switch. */
   if (!heroCache[pk]) void heroPreview();
+  /* LOVABLE OPERATING MODE (.claude/rules/lovable-operating-mode.md): the first screen must
+     be FULL of real content on arrival — never an empty "pick an occasion" plate. Auto-select
+     the period's lead occasion and render its board immediately. This is free now: Places is
+     tried first, the OSM fallback answers when it is denied/unconfigured, and the edge cache
+     makes it one shared call per city per hour. The user can still tap another tile to reshape
+     it; this only decides what fills the screen before they do. */
+  if (tab !== 'cook' && ordered.length) {
+    const leadTile = $('grid').querySelector('.tile') as HTMLElement | null;
+    if (leadTile) pick(ordered[0], leadTile);
+  }
   /* Neighbourhood chips are hand-picked per city. For a city we hold none for, hide the
      whole Nearby block — an empty row under a heading reads as a broken feature. */
   const nw = document.getElementById('nearbywrap');
