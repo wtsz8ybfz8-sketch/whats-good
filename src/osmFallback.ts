@@ -270,12 +270,24 @@ export async function fetchOsmVenues(
   /* With coordinates we sweep a radius around the reader (global, any point on earth);
      without them we fall back to the named-city sweep. The direct-to-Overpass routes stay
      only for the dev server, which serves no /api, and only for the city path. */
+  /* The named-city sweep is edge-cached (api/osm.ts s-maxage=3600), so it answers fast and
+     reliably. The coords `scope=area` sweep is unique per location, never cache-hits, hits
+     Overpass live, and in production the mirrors time out and the function returns 502 —
+     observed live as `/api/osm?lat=…&scope=area → 502`. When that happened the client gave
+     up with NOTHING on screen, because the coords branch was the ONLY route it tried. So the
+     city sweep now ALWAYS follows the coords sweep as a fallback: a geolocated reader gets
+     the local radius when it works, and real city venues instead of an empty screen when the
+     area endpoint 502s. (2026-10-08) */
+  const cityRoutes = [
+    `/api/osm?city=${encodeURIComponent(city)}&kind=${encodeURIComponent(kind)}`,
+    ...ENDPOINTS.map((e) => `${e}?data=${encodeURIComponent(query(city, kind))}`),
+  ];
   const routes = coords
-    ? [`/api/osm?lat=${coords[0]}&lon=${coords[1]}&kind=${encodeURIComponent(kind)}&scope=area`]
-    : [
-        `/api/osm?city=${encodeURIComponent(city)}&kind=${encodeURIComponent(kind)}`,
-        ...ENDPOINTS.map((e) => `${e}?data=${encodeURIComponent(query(city, kind))}`),
-      ];
+    ? [
+        `/api/osm?lat=${coords[0]}&lon=${coords[1]}&kind=${encodeURIComponent(kind)}&scope=area`,
+        ...cityRoutes,
+      ]
+    : cityRoutes;
 
   for (const url of routes) {
     try {
