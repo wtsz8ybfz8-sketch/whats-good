@@ -1,0 +1,28 @@
+name: Build venue data
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
+  push:
+    branches: [main]
+    paths: ['scripts/build_venues.py', '.github/workflows/venues.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install duckdb==1.1.3
+      - run: python scripts/build_venues.py
+      - name: Commit data
+        run: |
+          git config user.name "venue-data-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/data
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh venue data (Overture Places + venues' own share images)"
+          git pull --rebase origin main && git push origin HEAD:main

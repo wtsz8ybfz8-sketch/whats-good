@@ -5,7 +5,7 @@
 
 import { Venue } from './venue';
 import { fetchOsmVenues } from './osmFallback';
-import { fetchFoursquareVenues } from './foursquare';
+import { fetchCityVenues } from './cityData';
 import { localiseHours, placesLanguageCode, stripDayPrefix, venueDayIndex } from './locale';
 
 /* The browser no longer holds the key, so it no longer talks to Google directly. Every
@@ -289,7 +289,7 @@ export type VenueSearchResult =
       status: 'ok';
       venues: Venue[];
       /** 'osm' means Google did not answer — no photographs, no ratings, coarse filtering. */
-      source: 'places' | 'osm' | 'foursquare';
+      source: 'places' | 'osm' | 'city';
       /** Why Places was abandoned. Only ever set when `source` is 'osm'. */
       reason?: Exclude<VenueSearchFailure['status'], 'aborted'>;
     }
@@ -558,13 +558,11 @@ export async function fetchVenues(
   const controller = new AbortController();
   const abortSignal = signal ?? controller.signal;
 
-  /* Foursquare first: it carries real photographs, ratings, price and hours with no Google
-     billing account. Empty or failed → Google Places → OpenStreetMap, exactly as before. */
-  const fsqQuery = kind === 'bar' && query && !/\bbar|pub|club|lounge\b/i.test(query)
-    ? `${query} bar` : query || (kind === 'bar' ? 'bar' : 'restaurant');
-  const fsq = await fetchFoursquareVenues(fsqQuery, city, priceTier, filters.coords, filters.openNow, abortSignal);
+  /* Our own city files first (public/data, built from Overture Maps + venues' own share
+     images): instant, keyless, free. No file for this city → Google Places → OpenStreetMap. */
+  const own = await fetchCityVenues(query, city, kind, filters.coords);
   if (abortSignal.aborted) return { status: 'aborted' };
-  if (fsq.length) return { status: 'ok', venues: fsq, source: 'foursquare' };
+  if (own.length) return { status: 'ok', venues: own, source: 'city' };
 
   try {
     const priceLevels = tierToPriceLevels(priceTier);
