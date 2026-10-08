@@ -62,7 +62,15 @@ export async function fetchCityVenues(
   const slug = fileFor(city, coords);
   if (!slug) return [];
   const all = await load(slug);
-  const pool = all.filter((v) => (kind === 'bar') === BARISH.test(v.category));
+  /* A chain publishes ONE share image for every branch. Count how often each photo recurs: a
+     photo used once is that venue's own; a shared one is brand art and is dropped, so a list
+     never opens on six identical Ocean Basket cards. Delivery depots are not places to eat. */
+  const uses = new Map<string, number>();
+  for (const v of all) if (v.photo) uses.set(v.photo, (uses.get(v.photo) || 0) + 1);
+  const pool = all
+    .filter((v) => !/delivery|shipping|catering/.test(v.category))
+    .filter((v) => (kind === 'bar') === BARISH.test(v.category))
+    .map((v) => (v.photo && (uses.get(v.photo) || 0) > 1 ? { ...v, photo: undefined } : v));
   /* The occasion IS the search: its words are matched against the venue's real category and
      name, so different tiles return different venues. No match → the whole kind, never empty. */
   const words = query.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !STOP.has(w));
