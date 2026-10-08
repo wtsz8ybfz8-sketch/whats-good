@@ -246,7 +246,17 @@ export function narrowByQuery(elements: OsmElement[], query: string): OsmElement
       .toLowerCase().replace(/_/g, ' ');
     return words.some((w) => hay.includes(w));
   });
-  return matches.length ? matches : elements;
+  if (!matches.length) return elements;
+  /* Lovable-style fullness: a real finder is never a two-card screen. When an occasion
+     matches only a few venues, lead with those matches, then fill the board with the rest
+     of the real nearby places — the UI already frames this as a "lighter list, matched on
+     cuisine rather than the full occasion" — so the screen is always a full board of real
+     local spots instead of "2 places". Matches still come first, so the occasion still
+     shapes the order. (2026-10-08) */
+  const MIN_BOARD = 8;
+  if (matches.length >= MIN_BOARD) return matches;
+  const matched = new Set(matches);
+  return [...matches, ...elements.filter((el) => !matched.has(el))];
 }
 
 /* NOT named `query`: this module already has a top-level `query(city, kind)` that builds
