@@ -292,12 +292,17 @@ export async function fetchOsmVenues(
     `/api/osm?city=${encodeURIComponent(city)}&kind=${encodeURIComponent(kind)}`,
     ...ENDPOINTS.map((e) => `${e}?data=${encodeURIComponent(query(city, kind))}`),
   ];
-  const routes = coords
-    ? [
-        `/api/osm?lat=${coords[0]}&lon=${coords[1]}&kind=${encodeURIComponent(kind)}&scope=area`,
-        ...cityRoutes,
-      ]
-    : cityRoutes;
+  let routes: string[];
+  if (coords) {
+    /* The area sweep's 502s are TRANSIENT (a busy Overpass mirror), so try it TWICE before
+       giving up on the local radius — a retry usually succeeds and keeps the result local,
+       which matters because this is a global app, not a Cape Town one. Only then fall back to
+       the edge-cached named-city sweep. (2026-10-08) */
+    const area = `/api/osm?lat=${coords[0]}&lon=${coords[1]}&kind=${encodeURIComponent(kind)}&scope=area`;
+    routes = [area, area, ...cityRoutes];
+  } else {
+    routes = cityRoutes;
+  }
 
   for (const url of routes) {
     try {

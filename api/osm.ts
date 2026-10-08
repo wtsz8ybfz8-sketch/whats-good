@@ -191,8 +191,13 @@ export default async function handler(req: Req, res: Res): Promise<void> {
      point on earth, not one of a handful of named cities. Coordinates alone stay the
      single-venue facts lookup. No coordinates falls back to the named-city sweep. */
   const haveCoords = Number.isFinite(lat) && Number.isFinite(lon) && (lat !== 0 || lon !== 0);
+  /* Round the area sweep to a ~2km grid so nearby readers share ONE edge-cached response
+     instead of each triggering a fresh live Overpass hit — those uncached live hits are what
+     return 502 when the mirrors are busy (observed: New York & Cape Town 502 while London,
+     already warm, served 200). Precise coords stay for the single-venue facts lookup. */
+  const grid = (n: number) => Math.round(n * 50) / 50;
   const query = haveCoords
-    ? (scope === 'area' ? sweepQuery(lat, lon, kind) : factsQuery(lat, lon))
+    ? (scope === 'area' ? sweepQuery(grid(lat), grid(lon), kind) : factsQuery(lat, lon))
     : buildQuery(city, kind);
   /* An unknown city is a client bug, not a server error, and it must not be cached. */
   if (!query) {
