@@ -5,6 +5,7 @@
 
 import { Venue } from './venue';
 import { fetchOsmVenues } from './osmFallback';
+import { fetchFoursquareVenues } from './foursquare';
 import { localiseHours, placesLanguageCode, stripDayPrefix, venueDayIndex } from './locale';
 
 /* The browser no longer holds the key, so it no longer talks to Google directly. Every
@@ -288,7 +289,7 @@ export type VenueSearchResult =
       status: 'ok';
       venues: Venue[];
       /** 'osm' means Google did not answer — no photographs, no ratings, coarse filtering. */
-      source: 'places' | 'osm';
+      source: 'places' | 'osm' | 'foursquare';
       /** Why Places was abandoned. Only ever set when `source` is 'osm'. */
       reason?: Exclude<VenueSearchFailure['status'], 'aborted'>;
     }
@@ -556,6 +557,14 @@ export async function fetchVenues(
      apologising — so there is nothing to check here first. */
   const controller = new AbortController();
   const abortSignal = signal ?? controller.signal;
+
+  /* Foursquare first: it carries real photographs, ratings, price and hours with no Google
+     billing account. Empty or failed → Google Places → OpenStreetMap, exactly as before. */
+  const fsqQuery = kind === 'bar' && query && !/\bbar|pub|club|lounge\b/i.test(query)
+    ? `${query} bar` : query || (kind === 'bar' ? 'bar' : 'restaurant');
+  const fsq = await fetchFoursquareVenues(fsqQuery, city, priceTier, filters.coords, filters.openNow, abortSignal);
+  if (abortSignal.aborted) return { status: 'aborted' };
+  if (fsq.length) return { status: 'ok', venues: fsq, source: 'foursquare' };
 
   try {
     const priceLevels = tierToPriceLevels(priceTier);
