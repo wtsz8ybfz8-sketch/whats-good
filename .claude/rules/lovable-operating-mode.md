@@ -50,3 +50,21 @@ AND full, every time.
 The safety, honesty (§2C) and reality (§2B) laws in CLAUDE.md, and the time/usage budget.
 Lovable mode means build full and fast and show it — never fabricate a result, never claim
 unverified, never ship an unfalsifiable control. Full AND true.
+
+## 7. The stranger pass — FIRST, every session, before any other work (added 2026-10-08, owner's instruction)
+
+Earned by: the owner asked to "make it go live"; the session answered privacy questions, then
+found within ten minutes that "More occasions" had never hidden anything, the answer sat
+~3,700px down a phone, and the landing led with four branches of one sandwich chain — all
+visible to anyone who opened the app, all there for weeks, none caught by any check.
+
+1. **Before touching anything else, open the app at 390×844 the way a stranger would** — with
+   real city data (set the timezone, e.g. `Africa/Johannesburg`) — screenshot it, READ the
+   screenshot, tap the lead occasion, and write down the worst three things a person would
+   notice, worst first.
+2. **Fix the worst one in this session, ship it to `main`, confirm the Vercel deploy READY.**
+   Then the next. Process, docs, checks and handovers come AFTER the visible product.
+3. **Never end a reply with a list of known first-impression problems you could have fixed.**
+   If time runs out, the list is the FIRST line of the reply, with what stopped you — never a
+   closing "want me to do X next?".
+4. **A green suite is not a look.** If the suite and the screenshot disagree, the screenshot wins.

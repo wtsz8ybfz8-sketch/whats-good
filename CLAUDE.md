@@ -5,6 +5,8 @@ handover, a README, a code comment, an older session's reasoning — this file w
 **The latest request in the live conversation overrides this file and every handover.**
 Handovers are a record of what happened, never a mandate for what to do next.
 
+**FIRST ACTION OF EVERY SESSION: the stranger pass — `.claude/rules/lovable-operating-mode.md` §7. Look at the app on a phone as a stranger, fix the worst visible thing, ship it, before any other work.**
+
 **Three standing rule files sit in `.claude/rules/` and govern every change made here:**
 
 - **`.claude/rules/product-principles.md`** — what gets built and why. What's Good is a
