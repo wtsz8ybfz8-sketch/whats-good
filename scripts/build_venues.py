@@ -50,21 +50,33 @@ def og_image(url: str) -> str | None:
 def build(release: str, slug: str, box) -> None:
     con = duckdb.connect()
     con.execute("INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
-    like = " OR ".join(f"lower(categories.primary) LIKE '%{w}%'" for w in FOOD)
-    notlike = " AND ".join(f"lower(categories.primary) NOT LIKE '%{w}%'" for w in NOT_FOOD)
+    src = f"read_parquet('s3://overturemaps-us-west-2/release/{release}/theme=places/type=place/*', hive_partitioning=1)"
+    cols = {r[0]: r[1] for r in con.execute(f"DESCRIBE SELECT * FROM {src}").fetchall()}
+    print("columns:", {k: v[:60] for k, v in cols.items()})
+    # Overture renamed its category field across releases; use whichever this one carries.
+    if "basic_category" in cols:
+        cat = "basic_category"
+    elif "taxonomy" in cols:
+        cat = "taxonomy.primary"
+    else:
+        cat = "categories.primary"
+    pick = lambda name, expr: expr if name in cols else "NULL"
+    like = " OR ".join(f"lower({cat}) LIKE '%{w}%'" for w in FOOD)
+    notlike = " AND ".join(f"lower({cat}) NOT LIKE '%{w}%'" for w in NOT_FOOD)
     xmin, ymin, xmax, ymax = box
     rows = con.execute(f"""
-      SELECT id, names.primary, categories.primary, confidence,
-             websites[1], phones[1], addresses[1].freeform, addresses[1].locality,
+      SELECT id, names.primary, {cat}, {pick('confidence', 'confidence')},
+             {pick('websites', 'websites[1]')}, {pick('phones', 'phones[1]')},
+             {pick('addresses', 'addresses[1].freeform')}, {pick('addresses', 'addresses[1].locality')},
              (bbox.xmin + bbox.xmax) / 2, (bbox.ymin + bbox.ymax) / 2,
-             socials[1]
-      FROM read_parquet('s3://overturemaps-us-west-2/release/{release}/theme=places/type=place/*', hive_partitioning=1)
+             {pick('socials', 'socials[1]')}
+      FROM {src}
       WHERE bbox.xmin > {xmin} AND bbox.xmax < {xmax} AND bbox.ymin > {ymin} AND bbox.ymax < {ymax}
-        AND names.primary IS NOT NULL AND categories.primary IS NOT NULL
-        AND ({like}) AND ({notlike}) AND confidence >= 0.7
-      ORDER BY confidence DESC LIMIT 1500
+        AND names.primary IS NOT NULL AND {cat} IS NOT NULL
+        AND ({like}) AND ({notlike}) AND coalesce({pick('confidence', 'confidence')}, 1) >= 0.7
+      ORDER BY coalesce({pick('confidence', 'confidence')}, 1) DESC LIMIT 1500
     """).fetchall()
-    venues = [dict(id=r[0], name=r[1], category=r[2], confidence=round(r[3], 2), website=r[4], phone=r[5],
+    venues = [dict(id=r[0], name=r[1], category=r[2], confidence=round(r[3], 2) if r[3] is not None else None, website=r[4], phone=r[5],
                    address=", ".join(x for x in (r[6], r[7]) if x), lon=round(r[8], 6), lat=round(r[9], 6),
                    social=r[10]) for r in rows]
     with cf.ThreadPoolExecutor(32) as ex:
