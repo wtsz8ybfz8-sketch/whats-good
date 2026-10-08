@@ -503,6 +503,9 @@ button.logo { background: none; border: 0; padding: 0; font: inherit; color: inh
 .grid > .tile.lead .nm{font-size:24px;letter-spacing:-.032em}
 .grid > .tile.lead .ds{font-size:13px}
 #gridmore{margin-top:10px}
+/* `.grid{display:grid}` outranks the UA's `[hidden]{display:none}`, so "More occasions (27)"
+   hid nothing: all 33 tiles always rendered and pushed the results ~3,700px down on a phone. */
+.grid[hidden]{display:none}
 .moretog{display:block;margin:14px auto 0;padding:10px 18px;border:1px solid var(--line,rgba(0,0,0,.14));
   background:transparent;border-radius:999px;font:inherit;font-size:13px;font-weight:600;
   color:var(--ink2,inherit);cursor:pointer;transition:background .2s,border-color .2s}
@@ -519,4 +522,19 @@ button.logo { background: none; border: 0; padding: 0; font: inherit; color: inh
   .hero h1{font-size:30px;line-height:1.05}
   .hero p{margin-top:6px;font-size:13px}
   .hero .kick{margin-bottom:8px}
+  /* The plate's inner frame drew an empty card round the headline when there is no photo. */
+  .hero.ph:not(.has-photo)::before{content:none}
+  /* Header in two clean rows — name + theme, then city + hour — instead of wrapping the
+     theme button onto a third row of its own. */
+  header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+  .hctrl{display:contents}
+  #home{grid-column:1;grid-row:1;justify-self:start}
+  #t{grid-column:2;grid-row:1}
+  #city{grid-column:1;grid-row:2;min-width:0;width:100%}
+  #hour{grid-column:2;grid-row:2}
+  /* A tile with no photograph was a tall grey void above its label — sixty percent of every
+     plate empty. Without a photo the label IS the tile, so it sizes to its content. */
+  .grid > .tile:has(> .ph:not(.has-photo)){aspect-ratio:auto;min-height:92px}
+  .grid > .tile:has(> .ph:not(.has-photo)) .bd{position:relative;inset:auto;height:100%;justify-content:flex-end}
+  .grid > .tile:has(> .ph:not(.has-photo)) > .ph{display:none}
 }

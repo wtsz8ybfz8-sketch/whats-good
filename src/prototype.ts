@@ -759,7 +759,7 @@ function build() {
        rather than void — the same plate the venue cards use, one system. */
     b.innerHTML = '<span ' + phAttrs(undefined, label(k)) + '></span><span class="ring"></span>'
       + '<span class="bd">' + icon(D[k][0]) + '<span><span class="nm">' + esc(label(k)) + '</span><span class="ds">' + esc(D[k][1]) + '</span></span></span>';
-    b.onclick = () => pick(k, b);
+    b.onclick = () => { pick(k, b); revealResults(); };
     (i < LEAD ? $('grid') : more).appendChild(b);
     setTimeout(() => b.classList.add('in'), 60 + i * 44);
   });
@@ -931,6 +931,16 @@ async function openSaved(name: string) {
   const exact = out.venues.find((v) => v.name.toLowerCase() === name.toLowerCase());
   venues = out.venues;
   venue(venues.indexOf(exact || out.venues[0]));
+}
+
+/* On a phone the results sit below the grid and the filters, so a tap changed nothing the
+   user could see — it read as a dead button. Bring the answer into view. Only on a user tap
+   (the arrival auto-pick must not yank the page), and never on desktop, where the results
+   column is already beside the grid. */
+function revealResults() {
+  if (!matchMedia('(max-width: 959px)').matches) return;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelector('.res')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
 }
 
 /** True while `parse()` is choosing the tile, so `pick` knows not to clear the query. */
