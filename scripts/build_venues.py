@@ -6,7 +6,7 @@ Runs in GitHub Actions (open internet). No key, no account, no bill:
   twitter:image) — the picture it chose to represent itself in link previews. Logos and
   favicons are refused. Hotlinked, never re-hosted; a venue that asks is removed.
 """
-import concurrent.futures as cf, html, json, re, subprocess, sys, urllib.parse, urllib.request
+import concurrent.futures as cf, html, json, os, re, subprocess, sys, urllib.parse, urllib.request
 import duckdb
 
 CITIES = {  # name: (xmin, ymin, xmax, ymax)
@@ -86,6 +86,7 @@ def build(release: str, slug: str, box) -> None:
             if img:
                 futs[f]["photo"] = img
     venues = [{k: v for k, v in x.items() if v not in (None, "")} for x in venues]
+    os.makedirs("public/data", exist_ok=True)
     with open(f"public/data/{slug}.json", "w") as fh:
         json.dump({"source": f"Overture Maps Places {release}", "count": len(venues), "venues": venues},
                   fh, ensure_ascii=False, separators=(",", ":"))
