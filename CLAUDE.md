@@ -5,13 +5,18 @@ handover, a README, a code comment, an older session's reasoning — this file w
 **The latest request in the live conversation overrides this file and every handover.**
 Handovers are a record of what happened, never a mandate for what to do next.
 
-**Two standing rule files sit in `.claude/rules/` and govern every change made here:**
+**Three standing rule files sit in `.claude/rules/` and govern every change made here:**
 
 - **`.claude/rules/product-principles.md`** — what gets built and why. What's Good is a
   decision engine, not a directory; unverified third-party facts are never asserted with
   confidence; positioning is stated before features are added.
 - **`.claude/rules/coding-principles.md`** — how it gets built. Includes a corrections
   section earned from real failures in this repo; treat that section as binding.
+- **`.claude/rules/lovable-operating-mode.md`** — HOW to build here: build to a full,
+  usable, shipped-live state in one pass (never thin/empty/explanation-in-place-of-product),
+  lead with the live result, self-correct after deploy. The bridge between how Lovable
+  builds and how a general agent builds. Binding; it does not override the safety/honesty
+  (§2C) / reality (§2B) laws or the budget.
 
 They are referenced here explicitly rather than left to directory auto-loading, so that a
 change in how rules are discovered cannot silently switch them off. Read both before
