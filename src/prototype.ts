@@ -618,7 +618,9 @@ function heroPhoto(url?: string) {
    thing that took this app down with "Quota exceeded ... SearchTextRequest per day".
    Keeping the URLs a search already returned means the SECOND visit to a city opens with
    pictures and still costs nothing. Only the very first visit to a city is bare. */
-const PHOTO_KEY = 'wg.tilephotos';
+/* Bumped to .v2 (2026-10-08): abandons stale cached Wikimedia documentation URLs from before
+   the §7 photo-source filter in osmFallback.ts, so old fake-looking chain shots do not reappear. */
+const PHOTO_KEY = 'wg.tilephotos.v2';
 function photoStore(): Record<string, string[]> {
   try { return JSON.parse(localStorage.getItem(PHOTO_KEY) || '{}') as Record<string, string[]>; } catch { return {}; }
 }

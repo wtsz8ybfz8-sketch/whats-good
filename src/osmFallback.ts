@@ -179,7 +179,13 @@ function toVenue(el: OsmElement): Venue | null {
        api/osm.ts — the venue's own `image` tag, a Wikidata P18 photograph, or the
        og:image from its own website (never a logo). Absent otherwise, and the designed
        monogram plate stands rather than a broken-image box. */
-    photoUrl: (tags.image && /^https?:\/\//i.test(tags.image)) ? tags.image : undefined,
+    /* §7: OSM/Wikimedia/Wikidata imagery is DOCUMENTATION, not food photography — a generic
+       "McDonald's in Hungary" shot reads as fake on a Cape Town card and kills first-screen
+       trust. Keep a genuine own-website og:image (resolved server-side in api/osm.ts); reject
+       the wiki* documentation hosts so those venues fall back to the designed monogram plate. */
+    photoUrl: (tags.image
+      && /^https?:\/\//i.test(tags.image)
+      && !/wikimedia|wikipedia|wikidata/i.test(tags.image)) ? tags.image : undefined,
     /* No rating, no priceTier — OSM publishes none of them, so nothing is
        set and every render site already omits what is absent. */
   };

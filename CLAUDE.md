@@ -1099,7 +1099,16 @@ before a claim rather than after a user complaint.
 
 ### 14.3 Deliberately NOT used — do not invoke these, and say so if asked
 
-These are installed and relevant-sounding. They are refused on purpose:
+**AMENDED 2026-10-08 by the owner (Lunika), live instruction:** this blanket refusal is
+lifted. The design skills below MAY now be used **in unison, under the `creative-director`
+gate**, to make the app genuinely better. §7 is the **starting point, not a locked ceiling**
+— the owner has said she does not yet know what is possible beyond §7 and wants to see it.
+Rule: run the `creative-director` 5-question gate first, propose a change that EVOLVES §7
+deliberately (never the median-template look), show it, and update §7 when a direction is
+chosen. The original caution below is kept for context — it guards against a skill silently
+overriding a *decided* direction, which is now a conversation, not a veto.
+
+These were previously refused on purpose:
 
 - **`ui-ux-pro-max`, `frontend-design`, `redesign-existing-projects`, `minimalist-ui`,
   `industrial-brutalist-ui`, `stitch-design-taste`, `design`, `brandkit`, `canvas-design`,
