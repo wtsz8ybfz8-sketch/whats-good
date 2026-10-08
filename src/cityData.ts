@@ -45,6 +45,11 @@ const BARISH = /bar|pub|lounge|brewery|winery|night_club|cocktail/;
 const STOP = new Set(['restaurant', 'restaurants', 'best', 'places', 'place', 'food', 'with', 'and',
   'the', 'for', 'eat', 'local', 'popular', 'eateries', 'somewhere', 'good', 'nearby', 'bars', 'pubs']);
 
+/* Venue share images are full-size originals (often megabytes). wsrv.nl — a free, open-source
+   image CDN — resizes and re-encodes them to ~40KB WebP at card size, cached at its edge. */
+const sized = (u: string, w: number) =>
+  `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=${w}&h=${Math.round(w * 0.75)}&fit=cover&a=attention&output=webp&q=72`;
+
 const label = (c: string) => c.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
 
 function km(a: [number, number], lat: number, lon: number): number {
@@ -95,6 +100,6 @@ export async function fetchCityVenues(
     latitude: v.lat,
     longitude: v.lon,
     phone: v.phone || '',
-    photoUrl: v.photo,
+    photoUrl: v.photo ? sized(v.photo, 720) : undefined,
   }));
 }
