@@ -1060,6 +1060,13 @@ async function render() {
     note.textContent = "You're seeing a lighter list right now — real places nearby, "
       + 'but without photos or ratings, and matched on cuisine rather than the full occasion.';
     note.style.display = '';
+  } else if (out.source === 'city') {
+    /* Our own city file carries real names, phones, websites and the venue's own photo, but
+       no published prices or hours — so the price and open-now controls cannot narrow it,
+       and the reader is told so rather than shown a filter that silently did nothing (§2B). */
+    note.textContent = 'Prices and opening hours aren’t published for these places yet — '
+      + 'tap through to the venue’s site or call before you go.';
+    note.style.display = '';
   } else {
     note.textContent = '';
     note.style.display = 'none';
