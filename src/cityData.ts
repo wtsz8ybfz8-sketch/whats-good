@@ -26,12 +26,17 @@ const BOXES: [string, number, number, number, number][] = [
 const cache: Record<string, Promise<CityVenue[]>> = {};
 
 function fileFor(city: string, coords?: [number, number] | null): string | undefined {
+  /* The city the reader TYPED wins. Coordinates used to be checked first, so a phone in Cape
+     Town searching "New York" was served the Cape Town file. GPS only decides when no city
+     is named. */
+  const named = city.trim().toLowerCase();
+  if (named) return FILES[named];
   if (coords) {
     const [lat, lon] = coords;
     const hit = BOXES.find(([, x0, y0, x1, y1]) => lon > x0 && lon < x1 && lat > y0 && lat < y1);
     if (hit) return hit[0];
   }
-  return FILES[city.trim().toLowerCase()];
+  return undefined;
 }
 
 function load(slug: string): Promise<CityVenue[]> {

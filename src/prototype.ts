@@ -352,6 +352,8 @@ function toggleSave(t: 'places' | 'recipes', n: string, el?: HTMLElement, detail
  */
 /** The reader's own position once `locateMe()` has it, else null. */
 let here: [number, number] | null = null;
+/** The city `here` was measured in — coordinates are only sent when searching that city. */
+let hereCity: string | null = null;
 
 /** Great-circle kilometres — which is what a radius means. */
 function kmBetween(a: [number, number], b: [number, number]): number {
@@ -429,10 +431,12 @@ async function locateMe() {
   /* These coordinates were already fetched and then discarded after resolving a city
      name. Keeping them is what makes the distance slider able to mean "from me". */
   here = [pos.coords.latitude, pos.coords.longitude];
+  hereCity = city;
   /* Try to NAME the precise city too, but a failure must not stop the re-search: the
      coordinates alone already make "near me" correct via the radius sweep. */
   const found = await detectCityFromCoords(pos.coords.latitude, pos.coords.longitude).catch(() => null);
   const typed = ($('city') as HTMLInputElement).value.trim();
+  if (found?.city) hereCity = found.city;
   if (found?.city && found.city !== city && !manual && (!typed || typed === city)) {
     city = found.city;
     ($('city') as HTMLInputElement).value = city;
@@ -1000,7 +1004,9 @@ async function render() {
      otherwise the words would fight the type filter and re-create the name-matching bug. */
   const terms = [typed, typed ? '' : (occ.q || label(picked)), ...areas].filter(Boolean).join(' ');
   const out = await fetchVenues(terms, city, sliderState().tier, undefined, kind, {
-    coords: here,
+    /* Your position only means something in the city you are standing in. Searching another
+       city with it attached sent New York searches to Cape Town venues (and distances). */
+    coords: hereCity && hereCity.toLowerCase() === city.toLowerCase() ? here : null,
     includedType: occ.type,
     openNow: occ.openNow,
   });
