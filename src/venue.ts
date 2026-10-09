@@ -72,6 +72,8 @@ export interface Venue {
    * `false` here also covers "we don't know" for a closed or unconfigured venue.
    */
   closingSoon?: boolean;
+  /** Minutes until today's same-day close, from Places periods. Undefined when unknown or overnight. */
+  minutesToClose?: number;
   hoursToday?: string; // e.g. "9:00 AM – 10:00 PM"; from Google Places
   /**
    * "Quiet" / "Lively" / "Packed" — not currently populated. Google Places (New) does

@@ -367,6 +367,8 @@ function kmBetween(a: [number, number], b: [number, number]): number {
 /** Kilometres from the reader, or undefined when either end has no coordinates. */
 function venueKm(v: Venue): number | undefined {
   if (!here || typeof v.latitude !== 'number' || typeof v.longitude !== 'number') return undefined;
+  /* Distance from a phone in another city is not a fact about this venue. */
+  if (!hereCity || hereCity.toLowerCase() !== city.toLowerCase()) return undefined;
   return kmBetween(here, [v.latitude, v.longitude]);
 }
 
@@ -1315,6 +1317,7 @@ function venue(idx: number) {
   if (sv) sv.onclick = () => toggleSave('places', v.name, sv,
     { subtitle: v.cuisine || v.address, image: v.photoUrl });
   void venueFacts(v);
+  void venueMoment(v);
   void venueStory(v);
 
   /* A viewer, in the page. Escape and a click outside both close it, and focus returns to
@@ -1521,6 +1524,54 @@ async function venueFacts(v: Venue) {
     + '</div><p class="src">From OpenStreetMap contributors</p>';
   const col = host.querySelector('.dgrid > div');
   if (col) col.appendChild(wrap);
+}
+
+/* THE DECISION LINE. Google Maps shows walking time and closing time as two separate
+   numbers; the question a person on a street actually has is the sum: will I make it, and
+   how long will I get there? Every figure is a real field — Places periods for the close,
+   the reader's GPS for the walk, Open-Meteo for the sky — and each part is absent, not
+   guessed, when its source has no answer. */
+const hm = (m: number) => (m >= 60 ? Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min');
+async function venueMoment(v: Venue) {
+  const parts: string[] = [];
+  const km = venueKm(v);
+  /* 1.3 × crow-flies for real streets, at 5 km/h. Past 40 minutes nobody walks it. */
+  const walk = km !== undefined ? Math.max(1, Math.round(km * 1.3 / 5 * 60)) : undefined;
+  const walkable = walk !== undefined && walk <= 40;
+  if (walkable) parts.push(walk + ' min walk');
+  if (v.minutesToClose !== undefined) {
+    const left = v.minutesToClose - (walkable ? walk! : 0);
+    parts.push(left <= 0 ? 'closes before you would arrive'
+      : walkable ? 'open ' + hm(left) + ' after you arrive' : 'open another ' + hm(left));
+  }
+  let sky = '';
+  if (typeof v.latitude === 'number' && typeof v.longitude === 'number') {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + v.latitude + '&longitude=' + v.longitude
+        + '&hourly=precipitation_probability,temperature_2m&forecast_hours=6&timezone=auto');
+      if (r.ok) {
+        const d = await r.json() as { hourly?: { time: string[]; precipitation_probability: number[]; temperature_2m: number[] } };
+        const h = d.hourly;
+        if (h?.time?.length) {
+          const wet = h.precipitation_probability.findIndex((p) => p >= 50);
+          const t = Math.round(h.temperature_2m[0]) + '°';
+          sky = wet === -1 ? t + ', dry for the next few hours'
+            : wet === 0 ? t + ', rain likely now: sit inside'
+            : t + ', rain likely from ' + h.time[wet].slice(11, 16);
+        }
+      }
+    } catch { /* no forecast: the line simply goes without it */ }
+  }
+  if (!parts.length && !sky) return;
+  const host = document.getElementById('detail');
+  if (!host || document.body.dataset.view !== 'detail') return;
+  const el = document.createElement('div');
+  el.className = 'moment';
+  el.innerHTML = (parts.length ? '<b>' + esc(parts.join(' · ')) + '</b>' : '')
+    + (sky ? '<span>' + esc(sky) + '</span>' : '')
+    + '<p class="src">' + [v.minutesToClose !== undefined ? 'Hours: Google' : '', walkable ? 'walk from your location' : '', sky ? 'forecast: Open-Meteo' : ''].filter(Boolean).join(' · ') + '</p>';
+  const col = host.querySelector('.dgrid > div');
+  if (col) col.prepend(el);
 }
 
 /** The story, when there is one. Silent when there is not. */

@@ -189,6 +189,21 @@ function isClosingSoon(
   });
 }
 
+/** Minutes until today's same-day close, or undefined — same trust rules as isClosingSoon. */
+function minutesToClose(hours: PlaceOpeningHours | undefined, utcOffsetMinutes: number | undefined): number | undefined {
+  if (hours?.openNow !== true || !hours.periods?.length) return undefined;
+  const now = new Date();
+  const vn = typeof utcOffsetMinutes === 'number'
+    ? new Date(now.getTime() + (utcOffsetMinutes + now.getTimezoneOffset()) * 60_000) : now;
+  const today = vn.getDay(), nowMin = vn.getHours() * 60 + vn.getMinutes();
+  for (const p of hours.periods) {
+    if (!p.close || p.open?.day !== p.close.day || p.close.day !== today) continue;
+    const diff = (p.close.hour ?? 0) * 60 + (p.close.minute ?? 0) - nowMin;
+    if (diff > 0) return diff;
+  }
+  return undefined;
+}
+
 /** Returns a direct photo URL for a Google Places photo reference. */
 /**
  * NEVER put `referrerPolicy="no-referrer"` on an <img> that loads one of these URLs.
@@ -747,6 +762,7 @@ export async function fetchVenues(
         galleryUrls,
         openNow,
         closingSoon,
+        minutesToClose: minutesToClose(place.regularOpeningHours, place.utcOffsetMinutes),
         hoursToday,
         // Undefined when Google published no rating; the star render is guarded on it.
         userRatingCount: place.userRatingCount,
