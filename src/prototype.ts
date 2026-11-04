@@ -413,7 +413,16 @@ function startingCity(): string {
   return curated || guess;
 }
 
-let city = startingCity(), tab = 'eat', period = 'pm', picked: string | null = null, manual = false;
+/* A city the reader chose themselves outranks every guess. Without this, someone in
+   Cape Town who typed their city was re-guessed on every visit. */
+const CHOSEN_KEY = 'wg_chosen_city';
+function chosenCity(): string {
+  try { return (localStorage.getItem(CHOSEN_KEY) || '').trim(); } catch { return ''; }
+}
+let city = chosenCity() || startingCity(), tab = 'eat', period = 'pm', picked: string | null = null,
+  manual = !!chosenCity();
+/* First paint waits (briefly) for the IP city — see the boot sequence at the foot. */
+let booted = false;
 
 /* The timezone is a good guess and a bad answer: it names the nearest big city, so a
    whole province collapses onto one name. If the reader will tell us where they are, ask
@@ -463,7 +472,9 @@ async function locateFromIp() {
       ($('city') as HTMLInputElement).value = city;
       rememberCity(city);
     }
-    build();
+    /* Before boot, the boot sequence does the one build. After it (the IP answered later
+       than the cap), rebuild so the late answer still lands. */
+    if (booted) build();
   } catch {
     /* No edge location — the timezone guess stands. */
   }
@@ -1706,7 +1717,10 @@ const commitCity = () => {
   const next = el.value.trim();
   if (!next) { el.value = city; return; }
   if (next === city) return;
-  city = next; rememberCity(city); build();
+  city = next; rememberCity(city);
+  manual = true;
+  try { localStorage.setItem(CHOSEN_KEY, city); } catch { /* private mode: this visit only */ }
+  build();
 };
 /* The wordmark looked like a home link and was inert. It is a button now: back to the
    start of whatever tab you are on, and out of a venue page if you are in one. */
@@ -1719,7 +1733,12 @@ if (homeBtn) homeBtn.onclick = () => {
   build();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
-void locateFromIp();
+/* Boot: the first build used to run immediately on the TIMEZONE guess, and the IP city
+   arrived a moment later and rebuilt. In South Africa the timezone is Africa/Johannesburg
+   for the whole country, so every Cape Town visitor saw Johannesburg venues flash, and
+   paid a venue search for a city they were not in. Now the first build waits for the IP
+   answer, capped so a slow network still opens on the guess. */
+const ipCity = chosenCity() ? Promise.resolve() : locateFromIp();
 void locateMe();
 
 ($('city') as HTMLInputElement).onchange = commitCity;
@@ -1771,7 +1790,11 @@ document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme:dark)
 period = auto(hour);
 ti();
 syncThemeColor();
-build();
+void Promise.race([ipCity, new Promise((r) => setTimeout(r, 1200))]).then(() => {
+  ($('city') as HTMLInputElement).value = city;
+  booted = true;
+  build();
+});
 
 /* Sign-in resolves AFTER first paint, deliberately: the app is fully usable while it is
    happening, and nothing on screen waits for a network round trip. When a session turns
