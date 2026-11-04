@@ -1,0 +1,6 @@
+{
+  "branch": "main",
+  "github": "wtsz8ybfz8-sketch/whats-good",
+  "production_url": "https://whats-good-nu.vercel.app",
+  "deploy_environment": "Production"
+}

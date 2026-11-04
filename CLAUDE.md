@@ -348,6 +348,7 @@ regression. Name the stage you moved.
 | 2 | `npm run lint` (`tsc --noEmit`) | Types. **The named gate — but see below.** |
 | 3 | `npm run build` (`vite build`) | Bundling. **Runs NO typecheck.** |
 | 4 | 390×844 browser measurement | Layout, contrast, real rendered geometry |
+| 5 | `~/.claude/bin/delivery-check --repo . --expect "<text>"` | Not committed / not pushed / deploy failed / production serving another build — the only rung that permits "live" |
 
 **`npm run lint` and `tsc --noEmit` are pathologically slow on this machine** — many
 minutes at ~0% CPU, and they frequently exceed a 7-minute timeout. That is local I/O, not

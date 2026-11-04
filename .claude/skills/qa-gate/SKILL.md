@@ -19,7 +19,7 @@ would have been red.
 ```bash
 npm install                                                   # once
 cd verify && npm install                                      # once — playwright-core lives HERE, never in root package.json
-cd /home/user/whats-good && cd /home/user/whats-good && node verify/serve.mjs up          # idempotent; bakes in the key
+cd "$(git rev-parse --show-toplevel)" && node verify/serve.mjs up          # idempotent; bakes in the key
 sleep 5
 cd verify && NO_PROXY='*' node checks.mjs                     # exit 0 = pass; quote the total IT prints, never a number from a doc
 NO_PROXY='*' node driver.mjs                                  # 6 views, screenshots -> verify/out/
@@ -53,6 +53,22 @@ measurement and obvious in the screenshot. Measure geometry AND look at the pict
 - [ ] Screenshots actually opened and read, not just written
 - [ ] For anything iOS-specific: stated plainly as unverifiable here, because Chromium
       reports `env(safe-area-inset-*)` as 0 regardless of the meta tag
+
+## Rung 5 — delivered, not just green (mandatory when the user will look at the live site)
+
+Local green is "Checked locally", nothing more. The user looks at `whats-good-nu.vercel.app`.
+After the gate passes: commit on `main`, `git push origin main` (authorised, CLAUDE.md §4), then
+
+```bash
+~/.claude/bin/delivery-check --repo "$(git rev-parse --show-toplevel)" --expect "<a string your change added>"
+```
+
+It proves commit → `origin/main` → the GitHub/Vercel Production deployment for that SHA →
+production serving that build (bundle fingerprints compared) → your string in what is served.
+Only `DELIVERY STATE: VERIFIED` permits "live / deployed / shipped" — the `delivery-gate`
+Stop hook blocks the word otherwise. Any other state is the report: `DEPLOY_FAILED` means open
+the logs URL it prints and fix it; `NOT_SERVED` means production is aliased to another build;
+`BLOCKED` names the one input needed — raise it now, not at handover.
 
 ## Report honestly
 
