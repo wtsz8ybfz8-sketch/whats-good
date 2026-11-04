@@ -27,3 +27,6 @@ since that date.
 | 2026-08-29 | Hero photo served as 592 KB PNG at fixed 800px width | fetch(heroPhotoUrl) -> content-type image/png, content-length 606317 | FAIL |
 | 2026-08-29 | Photo proxy edge-caches correctly (s-maxage=86400, 302 to Google CDN); vercel.json does NOT override /api/* | read api/places.ts:91 + vercel.json | PASS |
 | 2026-08-29 | 10 /api/places invocations on first paint, avg 487ms, slowest 898ms | performance.getEntriesByType('resource') | PASS (measured) |
+| 2026-11-04 | f574dd9 deployed to Production and served at whats-good-nu.vercel.app | ~/.claude/bin/delivery-check --repo . | PASS |
+| 2026-11-04 | be9e1ef (delivery rung) committed, pushed, deployed, served — bundle unchanged (docs-only), so served match cannot distinguish it from f574dd9 | ~/.claude/bin/delivery-check --repo . --wait 240 | PASS |
+| 2026-11-04 | delivery-check + delivery-gate behave correctly on 7 failure scenarios (git real, GitHub/site simulated) | python3 ~/.claude/hooks/tests/test_delivery_gate.py -> 25/25, sabotage -> 21/25 | PASS |
