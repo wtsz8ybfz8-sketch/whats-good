@@ -401,7 +401,11 @@ async function main() {
     if (box) {
       await page.mouse.click(box.x + box.width / 2, box.y + Math.min(box.height / 2, 60));
       await page.waitForTimeout(900);
-      const opened = await page.evaluate(() => !!document.querySelector('.dhero h2'));
+      /* "The detail opened" means the view switched AND the venue name rendered — not that
+         one particular hero markup exists. A venue with no photo now gets a type header
+         (.dhead) instead of an empty .dhero frame, which this check read as "never opened". */
+      const opened = await page.evaluate(() => document.body.dataset.view === 'detail'
+        && !!document.querySelector('#detail .dhero h2, #detail .dhead h2'));
       if (!opened) {
         console.error(
           '\nThe venue card click did not open a detail view, so back-restores-scroll\n' +

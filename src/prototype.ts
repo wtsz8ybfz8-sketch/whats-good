@@ -1253,20 +1253,35 @@ function venue(idx: number) {
     ['Search', TA, 'https://www.google.com/search?q=' + encodeURIComponent(v.name + ' ' + v.address)],
   ];
   const gal = (v.galleryUrls || []).slice(0, 4);
+  /* The useful part, in the order a person on a street decides: can I go now, what will
+     it cost, how far, is it any good. The kind of place already sits under the name, so it
+     no longer takes a cell here. A row with no real field is absent, never an empty cell:
+     the old fixed grid left "Kind: Cafe" beside a blank grey box. */
+  const kmHere = venueKm(v);
   const facts = [
-    v.openNow === undefined ? null : ['Today', v.openNow ? 'Open' : 'Closed', v.hoursToday || ''],
+    v.openNow === undefined ? null : ['Today', v.openNow ? (v.closingSoon ? 'Closing soon' : 'Open') : 'Closed', v.hoursToday || ''],
     typeof v.priceTier === 'number' ? ['Spend', PR[v.priceTier - 1], 'per head'] : null,
+    kmHere !== undefined ? ['Distance', formatDistance(kmHere, distanceLocale()), ''] : null,
     typeof v.rating === 'number'
       ? ['Rating', formatQuantity(v.rating, 1),
         v.userRatingCount ? formatQuantity(v.userRatingCount, 0) + ' ratings' : '']
       : null,
-    v.cuisine ? ['Kind', v.cuisine, ''] : null,
   ].filter(Boolean) as [string, string, string][];
+  const unpublished = v.openNow === undefined && typeof v.priceTier !== 'number';
 
   $('detail').innerHTML =
     '<button class="back" id="bk">← Back to ' + esc(label(picked || 'local')) + '</button>'
-    + '<div ' + phAttrs(v.photoUrl, v.name, 'dhero') + '><div class="in"><h2>' + esc(v.name) + '</h2>'
-      + '<p class="sub">' + esc([v.cuisine, v.address].filter(Boolean).join(' · ')) + '</p></div></div>'
+    /* No photograph, no picture frame. The empty hero was the largest surface on the page
+       and said nothing but an initial, pushing every useful fact below the fold. Without a
+       real photo the name itself is the header. */
+    + (v.photoUrl
+      ? '<div ' + phAttrs(v.photoUrl, v.name, 'dhero') + '><div class="in"><h2>' + esc(v.name) + '</h2>'
+        + '<p class="sub">' + esc([v.cuisine, v.address].filter(Boolean).join(' · ')) + '</p></div></div>'
+      /* A div, not a <header>: the app's own header rule is a space-between flex row and
+         flung the address off to the right of the name. */
+      : '<div class="dhead"><h2>' + esc(v.name) + '</h2>'
+        + (v.cuisine ? '<p class="kind">' + esc(v.cuisine) + '</p>' : '')
+        + (v.address ? '<p class="addr">' + esc(v.address) + '</p>' : '') + '</div>')
     /* The gallery was six dead squares. A photograph the reader can see but not open is a
        control that looks interactive and is not, so each one is now a real link to the
        full-size image. */
@@ -1275,16 +1290,22 @@ function venue(idx: number) {
     + (gal.length ? '<div class="gal">' + gal.map((u, gi) =>
         '<button type="button" class="galb" data-gi="' + gi + '" aria-label="View photo ' + (gi + 1)
         + ' of ' + esc(v.name) + '" ' + phAttrs(u, v.name) + '></button>').join('') + '</div>' : '')
+    + '<dl class="util">' + facts.map((f) =>
+        '<div><dt>' + esc(f[0]) + '</dt><dd><b>' + esc(f[1]) + '</b>'
+        + (f[2] ? '<span>' + esc(f[2]) + '</span>' : '') + '</dd></div>').join('')
+      + (unpublished
+        ? '<p class="unpub">Hours and prices aren’t published for this place yet. Call or check their site before you go.</p>'
+        : '')
+    + '</dl>'
     + '<div class="dgrid"><div>'
-      + (facts.length ? '<div class="facts">' + facts.map((f) =>
-          '<div class="fact"><u>' + esc(f[0]) + '</u><b>' + esc(f[1]) + '</b>'
-          + (f[2] ? '<span>' + esc(f[2]) + '</span>' : '') + '</div>').join('') + '</div>' : '')
       /* "Known for" renders ONLY from a confirmed signature dish. The prototype shipped
          four hardcoded dishes WITH PRICES; a fake price sends someone across town for
          something that does not exist, so when there is nothing confirmed this module is
          absent and the venue's own link is the answer instead (§8.4). */
 
-      + '<h4>Find them</h4><div class="socials">' + soc.map(([n, path, href]) => (href
+      /* Directions is the page's one primary action and already owns the button in the
+         side panel; repeating it here split the decision in two. */
+      + '<h4>Find them</h4><div class="socials">' + soc.filter(([n]) => n !== 'Directions').map(([n, path, href]) => (href
           ? '<a class="soc" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" aria-label="' + n + '">'
             + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg><span>' + esc(n) + '</span></a>'
           : '')).join('') + '</div>'
@@ -1570,6 +1591,8 @@ async function venueMoment(v: Venue) {
   el.innerHTML = (parts.length ? '<b>' + esc(parts.join(' · ')) + '</b>' : '')
     + (sky ? '<span>' + esc(sky) + '</span>' : '')
     + '<p class="src">' + [v.minutesToClose !== undefined ? 'Hours: Google' : '', walkable ? 'walk from your location' : '', sky ? 'forecast: Open-Meteo' : ''].filter(Boolean).join(' · ') + '</p>';
+  /* The venue's own facts now sit above the grid, so the sky lands after them: it is
+     context for the decision, the hours and spend are the decision. */
   const col = host.querySelector('.dgrid > div');
   if (col) col.prepend(el);
 }
