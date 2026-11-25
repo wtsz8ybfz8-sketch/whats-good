@@ -988,20 +988,12 @@ function pickLabel(): string {
   const h = hour;
   return h < 11 ? 'This morning’s pick' : h < 16 ? 'This afternoon’s pick' : 'Tonight’s pick';
 }
-/** One sentence of why, built only from fields the venue actually has. */
-function pickReason(v: Venue, km?: number): string {
-  const bits: string[] = [];
-  if (v.openNow && v.closesAt) bits.push('open until ' + v.closesAt);
-  else if (v.openNow) bits.push('open now');
-  /* A distance only reasons for a place you could reasonably get to. */
-  if (km !== undefined && km < 30) bits.push(formatDistance(km, distanceLocale()) + ' away');
-  let line = bits.length ? bits.join(', ') : '';
-  line = line ? line[0].toUpperCase() + line.slice(1) + '.' : '';
-  if (v.about) {
-    const first = v.about.split(/(?<=[.!?])\s/)[0].slice(0, 120);
-    line += (line ? ' ' : '') + 'In their words: “' + first.replace(/[.!?]?$/, '') + '.”';
-  }
-  return line;
+/** One sentence of why, in the venue's own words. Hours and distance already sit on the
+ *  status line under it, so repeating them here would be filler. */
+function pickReason(v: Venue): string {
+  if (!v.about) return '';
+  const first = v.about.split(/(?<=[.!?])\s/)[0].slice(0, 140).replace(/[.!?]?$/, '');
+  return 'In their words: “' + first + '.”';
 }
 
 async function render() {
@@ -1142,6 +1134,14 @@ async function render() {
      borrows the top result's own Places photo: real, already fetched for the card below
      it, costs no extra request, and it is a picture OF the thing being recommended
      rather than stock. It changes as the occasion changes, which is the point. */
+  /* The pick is the best-evidenced of the nearest few, not simply row one: a place that is
+     open now, says what it is in its own words and shows a photograph beats one we know
+     nothing about. Distance order is kept everywhere else. */
+  const evidence = (v: Venue) => (v.openNow === true ? 3 : v.openNow === false ? -2 : 0)
+    + (v.about ? 1 : 0) + (v.photoUrl ? 1 : 0);
+  const top = venues.slice(0, 10);
+  const best = top.reduce((b, v, i) => (evidence(v) > evidence(top[b]) ? i : b), 0);
+  if (best) venues = [venues[best], ...venues.slice(0, best), ...venues.slice(best + 1)];
   heroPhoto(venues.find((v) => v.photoUrl)?.photoUrl);
   $('list').innerHTML = '';
   venues.forEach((v, i) => {
@@ -1188,8 +1188,7 @@ async function render() {
        own words). The rest follow as comparable rows. */
     const lead = i === 0;
     if (lead) c.classList.add('pick');
-    /* Distance alone is already on the meta line; a reason needs something more to say. */
-    const reason = lead && (v.about || v.openNow !== undefined) ? pickReason(v, km) : '';
+    const reason = lead ? pickReason(v) : '';
     c.innerHTML = (lead ? '<p class="pk">' + esc(pickLabel()) + '</p>' : '')
       + '<div ' + phAttrs(v.photoUrl, v.name, 'th') + '></div><div style="min-width:0;flex:1">'
       + '<h3>' + esc(v.name) + '</h3><p>' + esc(sub) + '</p>'
@@ -1658,7 +1657,7 @@ async function venueMoment(v: Venue) {
   el.className = 'moment';
   el.innerHTML = (parts.length ? '<b>' + esc(parts.join(' · ')) + '</b>' : '')
     + (sky ? '<span>' + esc(sky) + '</span>' : '')
-    + '<p class="src">' + [v.minutesToClose !== undefined ? 'Hours: Google' : '', walkable ? 'walk from your location' : '', sky ? 'forecast: Open-Meteo' : ''].filter(Boolean).join(' · ') + '</p>';
+    + '<p class="src">' + [v.minutesToClose !== undefined ? 'Hours: ' + (v.hoursSource || 'Google') : '', walkable ? 'walk from your location' : '', sky ? 'forecast: Open-Meteo' : ''].filter(Boolean).join(' · ') + '</p>';
   /* The venue's own facts now sit above the grid, so the sky lands after them: it is
      context for the decision, the hours and spend are the decision. */
   const col = host.querySelector('.dgrid > div');

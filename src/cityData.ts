@@ -179,6 +179,16 @@ function hoursFields(spec: string | undefined): Partial<Venue> {
    the list is already ranked — or the screen reads like a mall directory. Social hosts are
    not brands. */
 const SOCIAL = /facebook|instagram|twitter|x\.com|tiktok|linktr|wa\.me|google\./;
+/* A listing's website is often the landlord's: a café inside a hotel links to the hotel,
+   whose description is about the hotel's OTHER restaurant. Quote a description only when it
+   names this venue, or it puts someone else's words in this venue's mouth. */
+function ownWords(v: CityVenue): string | undefined {
+  if (!v.about) return undefined;
+  const text = v.about.toLowerCase();
+  const words = v.name.toLowerCase().split(/[^a-z0-9à-ÿ']+/)
+    .filter((w) => w.length >= 4 && !/^(cafe|café|restaurant|coffee|kitchen|grill|bar|the|and|bistro|eatery)$/.test(w));
+  return words.some((w) => text.includes(w)) ? v.about : undefined;
+}
 function hostOf(u: string): string | undefined {
   try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return undefined; }
 }
@@ -269,8 +279,8 @@ export async function fetchCityVenues(
     phone: v.phone || '',
     photoUrl: v.photo ? sized(v.photo, 720) : undefined,
     priceTier: /^[R$€£]{1,4}$/.test(v.price || '') ? (v.price!.length as 1 | 2 | 3 | 4) : undefined,
-    about: v.about,
-    aboutSource: v.about && v.website ? hostOf(v.website) : undefined,
+    about: ownWords(v),
+    aboutSource: ownWords(v) && v.website ? hostOf(v.website) : undefined,
     menuUrl: v.menu,
     bookable: v.bookings || v.osm?.reservation === 'yes' || v.osm?.reservation === 'recommended'
       || v.osm?.reservation === 'required' || undefined,
