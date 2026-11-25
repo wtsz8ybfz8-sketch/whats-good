@@ -1069,6 +1069,13 @@ async function render() {
   $('rc').textContent = venues.length + (kind === 'bar' ? ' bars' : ' places')
     + (fromOsm ? ' · from OpenStreetMap' : '');
   const note = $('srcnote');
+  /* The footer used to say "powered by Google" on every list, including the ones Google
+     never touched. Name the source this list actually came from — and the attribution
+     Overture (CDLA) and OpenStreetMap (ODbL) require. */
+  const attrib = document.getElementById('attrib');
+  if (attrib) attrib.textContent = out.source === 'places' ? 'Place data powered by Google'
+    : fromOsm ? 'Place data © OpenStreetMap contributors'
+      : 'Place data: Overture Maps Foundation · © OpenStreetMap contributors';
   if (fromOsm) {
     /* Each sentence is the truth about a DIFFERENT thing, and the user acts on each
        differently: the first two are the owner's console, the third is a wait, the

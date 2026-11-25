@@ -575,7 +575,7 @@ export async function fetchVenues(
 
   /* Our own city files first (public/data, built from Overture Maps + venues' own share
      images): instant, keyless, free. No file for this city → Google Places → OpenStreetMap. */
-  const own = await fetchCityVenues(query, city, kind, filters.coords);
+  const own = await fetchCityVenues(query, city, kind, filters.coords, filters.includedType);
   if (abortSignal.aborted) return { status: 'aborted' };
   if (own.length) return { status: 'ok', venues: own, source: 'city' };
 

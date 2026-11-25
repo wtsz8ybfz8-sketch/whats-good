@@ -18,6 +18,9 @@ FOOD = ["restaurant", "cafe", "coffee", "bar", "pub", "bakery", "bistro", "brewe
         "winery", "pizza", "sushi", "steakhouse", "diner", "gastropub", "tapas", "deli",
         "brasserie", "food_truck", "dessert", "ice_cream", "tea_room", "lounge", "night_club"]
 NOT_FOOD = ["barber", "bar_and_grill_supply", "embassy", "bank", "barrister"]
+# Mirrors FOODISH / NOT_FOODISH in src/cityData.ts — keep the two in step.
+FOODISH = re.compile(r"restaurant|cafe|coffee|(^|_)bar(_|$)|pub|bakery|bistro|brewery|winery|diner|deli|gastropub|brasserie|food_truck|dessert|ice_cream|tea_room|lounge|night_club|juice|steakhouse|pizza|sushi|tavern|pancake|bagel|creperie|food_court|beer_garden|taproom")
+NOT_FOODISH = re.compile(r"garbage|post_office|courier|shipping|delivery|catering|supply|utility|plaza|transit|barber")
 
 
 def latest_release() -> str:
@@ -53,13 +56,15 @@ def build(release: str, slug: str, box) -> None:
     src = f"read_parquet('s3://overturemaps-us-west-2/release/{release}/theme=places/type=place/*', hive_partitioning=1)"
     cols = {r[0]: r[1] for r in con.execute(f"DESCRIBE SELECT * FROM {src}").fetchall()}
     print("columns:", {k: v[:60] for k, v in cols.items()})
-    # Overture renamed its category field across releases; use whichever this one carries.
-    if "basic_category" in cols:
-        cat = "basic_category"
-    elif "taxonomy" in cols:
+    # Overture renamed its category field across releases; use the FINEST one this release
+    # carries. `basic_category` is a coarse bucket ("restaurant") and preferring it collapsed
+    # every pizza, sushi and steak house into one word, so no occasion tile could match them.
+    if "taxonomy" in cols:
         cat = "taxonomy.primary"
-    else:
+    elif "categories" in cols:
         cat = "categories.primary"
+    else:
+        cat = "basic_category"
     pick = lambda name, expr: expr if name in cols else "NULL"
     like = " OR ".join(f"lower({cat}) LIKE '%{w}%'" for w in FOOD)
     notlike = " AND ".join(f"lower({cat}) NOT LIKE '%{w}%'" for w in NOT_FOOD)
@@ -74,8 +79,11 @@ def build(release: str, slug: str, box) -> None:
       WHERE bbox.xmin > {xmin} AND bbox.xmax < {xmax} AND bbox.ymin > {ymin} AND bbox.ymax < {ymax}
         AND names.primary IS NOT NULL AND {cat} IS NOT NULL
         AND ({like}) AND ({notlike}) AND coalesce({pick('confidence', 'confidence')}, 1) >= 0.7
-      ORDER BY coalesce({pick('confidence', 'confidence')}, 1) DESC LIMIT 1500
+        AND coalesce({pick('operating_status', 'operating_status')}, 'open') = 'open'
+      ORDER BY coalesce({pick('confidence', 'confidence')}, 1) DESC LIMIT 2500
     """).fetchall()
+    # LIKE '%bar%' also matches "garbage_collection_service"; the regex is the real gate.
+    rows = [r for r in rows if FOODISH.search(r[2]) and not NOT_FOODISH.search(r[2])][:1500]
     venues = [dict(id=r[0], name=r[1], category=r[2], confidence=round(r[3], 2) if r[3] is not None else None, website=r[4], phone=r[5],
                    address=", ".join(x for x in (r[6], r[7]) if x), lon=round(r[8], 6), lat=round(r[9], 6),
                    social=r[10]) for r in rows]
