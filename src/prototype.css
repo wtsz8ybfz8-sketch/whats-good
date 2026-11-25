@@ -575,3 +575,89 @@ button.logo { background: none; border: 0; padding: 0; font: inherit; color: inh
 .moment b{font-size:15px;font-weight:640;letter-spacing:-.02em;color:var(--ink)}
 .moment span{font-size:13px;color:var(--ink2)}
 .moment .src{margin:4px 0 0}
+
+/* ── THE NEW LOOK (2026-11-25) ───────────────────────────────────────────────
+ * §7 evolved on purpose, under the amended §14.3: true-neutral ground, photography for
+ * colour, and ONE accent — a deep bottle green in place of terracotta, which on a warm
+ * ground read as every other food app. The quiet ink is darker than before so small
+ * labels clear AA (≈4.9:1 light, ≈5.7:1 dark). Declared in the same four places as the
+ * originals, in the same order, so the manual toggle wins both ways (§7).
+ */
+:root{--bg:#F4F4F2;--surf:#FFFFFF;--surf2:#EAEAE7;--ink:#121212;--ink2:#55554F;--ink3:#6B6B65;
+  --line:#E2E2DE;--line2:#C9C9C4;--accent:#1F4D3A;--on-accent:#FFFFFF;--tint:#E3ECE7}
+@media(prefers-color-scheme:dark){:root{--bg:#0D0E0D;--surf:#171817;--surf2:#212220;--ink:#F2F2EF;
+  --ink2:#A9AAA4;--ink3:#8C8D87;--line:#272826;--line2:#3A3B38;--accent:#7FC4A0;--on-accent:#0B1F16;--tint:#16261E}}
+:root[data-theme="dark"]{--bg:#0D0E0D;--surf:#171817;--surf2:#212220;--ink:#F2F2EF;--ink2:#A9AAA4;
+  --ink3:#8C8D87;--line:#272826;--line2:#3A3B38;--accent:#7FC4A0;--on-accent:#0B1F16;--tint:#16261E}
+:root[data-theme="light"]{--bg:#F4F4F2;--surf:#FFFFFF;--surf2:#EAEAE7;--ink:#121212;--ink2:#55554F;
+  --ink3:#6B6B65;--line:#E2E2DE;--line2:#C9C9C4;--accent:#1F4D3A;--on-accent:#FFFFFF;--tint:#E3ECE7}
+
+/* Type: bold names, and italic only for the one emotional word. */
+h1{font-weight:700;letter-spacing:-.045em}
+h1 em{font-style:italic;font-weight:600;color:var(--accent)}
+.logo{font-weight:700}
+
+/* Results read as a list you can compare, not a stack of boxes: hairline rows. */
+#list .card{background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;
+  padding:14px 0;gap:14px}
+#list .card:hover{border-color:var(--line)}
+#list .card:hover h3{color:var(--accent)}
+#list .card .th{width:72px;height:72px;border-radius:12px}
+#list .card h3{font-size:15px;font-weight:650;letter-spacing:-.02em}
+.st{font-size:11px}
+/* Tabular figures give this face a full-width comma ("1 , 4 km"); proportional reads right. */
+.mt{font-size:11px;font-variant-numeric:normal}
+
+/* The pick: the answer, set apart. Photograph full width, one sentence of reasons. */
+#list .card.pick{flex-direction:column;gap:0;padding:0 0 18px;margin-bottom:6px;border-bottom:1px solid var(--line2)}
+#list .card.pick .pk{margin:0 0 10px;font:700 10.5px/1 var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+#list .card.pick .th{width:100%;height:auto;aspect-ratio:16/10;border-radius:var(--r2);margin-bottom:12px}
+#list .card.pick h3{font-size:22px;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+#list .card.pick p{font-size:12.5px}
+#list .card.pick .why{margin-top:8px;font-size:13.5px;line-height:1.45;color:var(--ink)}
+#list .card.pick .st{font-size:12px}
+
+/* Numbers you act on — closing time, distance, spend — large and even-width. */
+.util dd b{font-size:22px;font-weight:650;letter-spacing:-.025em}
+
+/* "In their words": the venue's own description, quoted, with its source. */
+.words{margin:0 0 22px}
+.words blockquote{margin:6px 0 0;font-size:16px;line-height:1.5;font-style:italic;color:var(--ink);max-width:60ch}
+.hours .src{margin:8px 0 0}
+
+/* The selected occasion and the main action carry the accent; nothing else does. */
+.tab[aria-selected="true"]{color:var(--ink)}
+.srcnote{background:var(--tint);color:var(--ink)}
+
+/* Over a photograph the accent green sinks into the scrim; the italic carries the emphasis. */
+.hero.has-photo h1 em,.dhero h2 em{color:inherit}
+/* No photograph, no picture frame: a pick without one leads on its words instead. */
+#list .card.pick .th:not(.has-photo){display:none}
+
+/* Phone: the occasions become one swipeable rail of chips, so the pick arrives on the first
+   screen instead of after two screens of tiles. One rail only (§11.4). */
+@media(max-width:600px){
+  .grid{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 0 6px;
+    scrollbar-width:none;max-width:100%}
+  /* A grid track is min-content by default, so a scrolling rail would widen the whole page. */
+  .stage > *,.stage > div:first-child > *{min-width:0}
+  /* Pick an occasion, see the answer, THEN refine — distance and spend sat between the two. */
+  .stage{gap:0}
+  .stage > div:first-child{display:contents}
+  .stage .res{order:1;margin-top:22px}
+  .stage .refine{order:2;margin-top:28px;padding-top:22px;border-top:1px solid var(--line)}
+  .grid::-webkit-scrollbar{display:none}
+  .grid > .tile,.grid > .tile.lead{flex:0 0 auto;aspect-ratio:auto;min-height:0;border-radius:var(--r3);
+    background:var(--surf);border:1px solid var(--line);scroll-snap-align:start;opacity:1;transform:none}
+  .grid > .tile > .ph,.grid > .tile .ring,.grid > .tile .ds{display:none}
+  .grid > .tile .bd,.grid > .tile:has(> .ph:not(.has-photo)) .bd{position:static;flex-direction:row;align-items:center;
+    gap:7px;padding:11px 15px;background:transparent;height:auto}
+  .grid > .tile .nm,.grid > .tile.lead .nm{font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+  .grid > .tile svg.ic{width:16px;height:16px}
+  .grid > .tile[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .grid > .tile[aria-pressed="true"] svg.ic{transform:none}
+  .grid[hidden]{display:none}
+  #gridmore{margin-top:8px}
+}
+/* An empty parse line held 44px of nothing between the search and the time of day. */
+.parsed:empty{min-height:0;margin-bottom:12px}

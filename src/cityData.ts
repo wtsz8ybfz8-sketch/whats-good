@@ -11,6 +11,11 @@ interface CityVenue {
   id: string; name: string; category: string; confidence?: number;
   website?: string; phone?: string; address?: string; lat: number; lon: number;
   photo?: string; social?: string;
+  /* From the venue's own site (weekly build): its description, schema.org hours in OSM
+     grammar, price range, menu and booking links. */
+  about?: string; hours?: string; price?: string; menu?: string; bookings?: boolean;
+  /* From the matching OpenStreetMap node (same name within 150 m). */
+  osm?: Record<string, string>;
 }
 
 const FILES: Record<string, string> = {
@@ -94,6 +99,97 @@ const STOP = new Set(['restaurant', 'restaurants', 'best', 'places', 'place', 'f
 const sized = (u: string, w: number) =>
   `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=${w}&h=${Math.round(w * 0.75)}&fit=cover&a=attention&output=webp&q=72`;
 
+/* All three city files are South African, and SA keeps one clock all year (UTC+2, no DST).
+   "Open now" is the venue's now, never the phone's: a visitor still on London time at 23:00
+   would otherwise be told a Cape Town café is open at 01:00 (CLAUDE.md §6). */
+const SA_OFFSET = 120;
+function venueNow(): Date {
+  return new Date(Date.now() + (SA_OFFSET + new Date().getTimezoneOffset()) * 60_000);
+}
+const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+/** Simple OSM opening_hours ("Mo-Fr 08:00-17:00; Sa 09:00-13:00") → minutes per weekday.
+ *  Returns undefined for anything richer (PH, months, sunset…) rather than guess at it. */
+function spans(spec: string): [number, number][][] | undefined {
+  if (/^24\/7$/.test(spec.trim())) return DAYS.map(() => [[0, 24 * 60]]);
+  if (/PH|SH|sunset|sunrise|week|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(spec)) return undefined;
+  const out: [number, number][][] = DAYS.map(() => []);
+  let understood = false;
+  for (const rule of spec.split(';')) {
+    const m = rule.trim().match(/^([A-Za-z,\-]+)\s+((?:\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\s*,?\s*)+)$/);
+    if (!m) { if (rule.trim()) return undefined; continue; }
+    const days = new Set<number>();
+    for (const part of m[1].split(',')) {
+      const [a, b] = part.split('-').map((d) => DAYS.indexOf(d));
+      if (a < 0 || (b !== undefined && b < 0)) return undefined;
+      if (b === undefined) days.add(a);
+      else for (let d = a; ; d = (d + 1) % 7) { days.add(d); if (d === b) break; }
+    }
+    for (const t of m[2].matchAll(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g)) {
+      const o = +t[1] * 60 + +t[2];
+      let c = +t[3] * 60 + +t[4];
+      if (c <= o) c += 24 * 60;
+      days.forEach((d) => out[d].push([o, c]));
+    }
+    understood = true;
+  }
+  return understood ? out : undefined;
+}
+const hhmm = (min: number) => {
+  const m = ((min % 1440) + 1440) % 1440;
+  const d = new Date(2000, 0, 1, Math.floor(m / 60), m % 60);
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(d);
+};
+const dayName = (i: number) => new Intl.DateTimeFormat(undefined, { weekday: 'long' })
+  .format(new Date(2024, 0, 7 + i)); // 2024-01-07 was a Sunday
+/** The hours fields of a Venue, worked out from a published spec. Absent when unparseable. */
+function hoursFields(spec: string | undefined): Partial<Venue> {
+  const week = spec ? spans(spec) : undefined;
+  if (!week) return {};
+  const now = venueNow();
+  const today = now.getDay();
+  const min = now.getHours() * 60 + now.getMinutes();
+  const yesterday = week[(today + 6) % 7].map(([o, c]) => [o - 1440, c - 1440] as [number, number]);
+  const live = [...yesterday, ...week[today]].find(([o, c]) => min >= o && min < c);
+  const minutesToClose = live ? live[1] - min : undefined;
+  const line = (d: number) => (week[d].length
+    ? week[d].map(([o, c]) => hhmm(o) + '–' + hhmm(c)).join(', ') : 'Closed');
+  return {
+    openNow: Boolean(live),
+    closingSoon: minutesToClose !== undefined && minutesToClose <= 45,
+    minutesToClose,
+    closesAt: live ? hhmm(live[1]) : undefined,
+    opensNext: live ? undefined : (() => {
+      const later = week[today].find(([o]) => o > min);
+      if (later) return hhmm(later[0]);
+      for (let k = 1; k < 7; k++) {
+        const s = week[(today + k) % 7][0];
+        if (s) return dayName((today + k) % 7) + ' ' + hhmm(s[0]);
+      }
+      return undefined;
+    })(),
+    hoursToday: line(today),
+    hoursWeekly: Array.from({ length: 7 }, (_, k) => {
+      const d = (today + k) % 7;
+      return dayName(d) + ': ' + line(d);
+    }),
+  };
+}
+
+/* A chain's branches share one website domain. One branch per brand — the nearest, since
+   the list is already ranked — or the screen reads like a mall directory. Social hosts are
+   not brands. */
+const SOCIAL = /facebook|instagram|twitter|x\.com|tiktok|linktr|wa\.me|google\./;
+function hostOf(u: string): string | undefined {
+  try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return undefined; }
+}
+function brandKey(v: CityVenue): string {
+  try {
+    const h = new URL(v.website || '').hostname.replace(/^www\./, '');
+    if (h && !SOCIAL.test(h)) return h;
+  } catch { /* no site */ }
+  return v.name.toLowerCase().replace(/[^a-z]/g, '');
+}
+
 const label = (c: string) => c.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
 
 function km(a: [number, number], lat: number, lon: number): number {
@@ -117,6 +213,13 @@ export async function fetchCityVenues(
      never opens on six identical Ocean Basket cards. Delivery depots are not places to eat. */
   const uses = new Map<string, number>();
   for (const v of all) if (v.photo) uses.set(v.photo, (uses.get(v.photo) || 0) + 1);
+  /* The same rule for hours: a chain site's one schema.org block is the brand's hours, not
+     this branch's. A site-published spec shared by several venues is not trusted; the
+     branch's own OpenStreetMap hours always are. */
+  const hourUses = new Map<string, number>();
+  for (const v of all) if (v.hours) hourUses.set(v.hours, (hourUses.get(v.hours) || 0) + 1);
+  const specFor = (v: CityVenue) => v.osm?.opening_hours
+    || (v.hours && (hourUses.get(v.hours) || 0) === 1 ? v.hours : undefined);
   const pool = all
     .filter((v) => FOODISH.test(v.category) && !NOT_FOODISH.test(v.category))
     .filter((v) => (kind === 'bar') === isBar(v.category))
@@ -133,11 +236,13 @@ export async function fetchCityVenues(
     if (words.some((w) => hay.includes(stem(w)))) n += 1;
     return n;
   };
+  /* With no position to sort by, the place that tells you more about itself leads. */
+  const rich = (v: CityVenue) => Number(!!specFor(v)) + Number(!!v.about) + Number(!!v.menu);
   const rank = (list: CityVenue[]) => list
     .map((v) => ({ v, d: coords ? km(coords, v.lat, v.lon) : 0 }))
     /* Photographed venues lead: a decision is easier over a picture. Then nearest, then confidence. */
     .sort((a, b) => Number(!!b.v.photo) - Number(!!a.v.photo) || a.d - b.d
-      || (b.v.confidence ?? 0) - (a.v.confidence ?? 0))
+      || rich(b.v) - rich(a.v) || (b.v.confidence ?? 0) - (a.v.confidence ?? 0))
     .map((x) => x.v);
   const scored = pool.map((v) => ({ v, s: score(v) }));
   const matched = scored.filter((x) => x.s > 0).length;
@@ -145,7 +250,14 @@ export async function fetchCityVenues(
   const bands = [3, 2, 1].map((n) => rank(scored.filter((x) => x.s === n).map((x) => x.v)));
   const lead = bands.flat();
   const rest = matched >= FULL ? [] : rank(scored.filter((x) => x.s === 0).map((x) => x.v));
-  return [...lead, ...rest].slice(0, 40).map((v) => ({
+  const seen = new Set<string>();
+  const one = [...lead, ...rest].filter((v) => {
+    const k = brandKey(v);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return one.slice(0, 40).map((v): Venue => ({
     id: `eat-ov-${v.id}`,
     name: v.name,
     address: v.address || '',
@@ -156,5 +268,13 @@ export async function fetchCityVenues(
     longitude: v.lon,
     phone: v.phone || '',
     photoUrl: v.photo ? sized(v.photo, 720) : undefined,
+    priceTier: /^[R$€£]{1,4}$/.test(v.price || '') ? (v.price!.length as 1 | 2 | 3 | 4) : undefined,
+    about: v.about,
+    aboutSource: v.about && v.website ? hostOf(v.website) : undefined,
+    menuUrl: v.menu,
+    bookable: v.bookings || v.osm?.reservation === 'yes' || v.osm?.reservation === 'recommended'
+      || v.osm?.reservation === 'required' || undefined,
+    hoursSource: specFor(v) ? (v.osm?.opening_hours ? 'OpenStreetMap' : hostOf(v.website || '')) : undefined,
+    ...hoursFields(specFor(v)),
   }));
 }

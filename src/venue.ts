@@ -75,6 +75,20 @@ export interface Venue {
   /** Minutes until today's same-day close, from Places periods. Undefined when unknown or overnight. */
   minutesToClose?: number;
   hoursToday?: string; // e.g. "9:00 AM – 10:00 PM"; from Google Places
+  /** Today's closing time, formatted, while open. From published hours only. */
+  closesAt?: string;
+  /** When it next opens, formatted ("08:00" or "Saturday 09:00"), while closed. */
+  opensNext?: string;
+  /** Who published the hours: "OpenStreetMap" or the venue's own domain. */
+  hoursSource?: string;
+  /** The venue's own description of itself, from its website's meta description. */
+  about?: string;
+  /** The domain `about` was read from, shown beside it as provenance. */
+  aboutSource?: string;
+  /** A menu link the venue published in its schema.org markup. */
+  menuUrl?: string;
+  /** True when the venue says it takes bookings (its own markup or OpenStreetMap). */
+  bookable?: boolean;
   /**
    * "Quiet" / "Lively" / "Packed" — not currently populated. Google Places (New) does
    * not publish a live-popularity field, so nothing sets this today; the type exists so

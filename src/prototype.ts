@@ -982,6 +982,28 @@ const sliderState = () => ({
   tier: +($('price') as HTMLInputElement).value + 1,
 });
 
+/* "Tonight's pick" at 20:00, "Your pick for lunch" at 13:00: the label follows the clock
+   the header already shows, so it never says tonight at breakfast. */
+function pickLabel(): string {
+  const h = hour;
+  return h < 11 ? 'This morning’s pick' : h < 16 ? 'This afternoon’s pick' : 'Tonight’s pick';
+}
+/** One sentence of why, built only from fields the venue actually has. */
+function pickReason(v: Venue, km?: number): string {
+  const bits: string[] = [];
+  if (v.openNow && v.closesAt) bits.push('open until ' + v.closesAt);
+  else if (v.openNow) bits.push('open now');
+  /* A distance only reasons for a place you could reasonably get to. */
+  if (km !== undefined && km < 30) bits.push(formatDistance(km, distanceLocale()) + ' away');
+  let line = bits.length ? bits.join(', ') : '';
+  line = line ? line[0].toUpperCase() + line.slice(1) + '.' : '';
+  if (v.about) {
+    const first = v.about.split(/(?<=[.!?])\s/)[0].slice(0, 120);
+    line += (line ? ' ' : '') + 'In their words: “' + first.replace(/[.!?]?$/, '') + '.”';
+  }
+  return line;
+}
+
 async function render() {
   if (!picked) return;
   const areas = [...document.querySelectorAll('.chip[aria-pressed="true"]')].map((c) => c.textContent!);
@@ -1100,9 +1122,17 @@ async function render() {
     /* Our own city file carries real names, phones, websites and the venue's own photo, but
        no published prices or hours — so the price and open-now controls cannot narrow it,
        and the reader is told so rather than shown a filter that silently did nothing (§2B). */
-    note.textContent = 'Prices and opening hours aren’t published for these places yet — '
-      + 'tap through to the venue’s site or call before you go.';
-    note.style.display = '';
+    /* Hours now come from the venue's own site or OpenStreetMap where either publishes
+       them. Only when most of the list still has none is the reader warned. */
+    const withHours = venues.filter((v) => v.openNow !== undefined).length;
+    if (withHours * 2 < venues.length) {
+      note.textContent = 'Most of these places don’t publish opening hours online, '
+        + 'so tap through to their site or call before you go.';
+      note.style.display = '';
+    } else {
+      note.textContent = '';
+      note.style.display = 'none';
+    }
   } else {
     note.textContent = '';
     note.style.display = 'none';
@@ -1133,9 +1163,9 @@ async function render() {
       ? ''
       : v.openNow
         ? (v.closingSoon
-            ? '<span class="st w"><i></i>Closing soon</span>'
-            : '<span class="st"><i></i>Open now</span>')
-        : '<span class="st w"><i></i>Closed</span>';
+            ? '<span class="st w"><i></i>Closing soon' + (v.closesAt ? ' · ' + esc(v.closesAt) : '') + '</span>'
+            : '<span class="st"><i></i>' + (v.closesAt ? 'Open till ' + esc(v.closesAt) : 'Open now') + '</span>')
+        : '<span class="st w"><i></i>Closed' + (v.opensNext ? ' · opens ' + esc(v.opensNext) : '') + '</span>';
     /* The rating leads the meta line. It is the one signal people actually choose on, it
        is already in the field mask (same Enterprise SKU as the search itself, so it costs
        nothing extra), and it was being fetched and thrown away. Count rides with it
@@ -1153,8 +1183,18 @@ async function render() {
        whether it is worth the trip; "Italian · Sea Point" does, and both were already
        loaded. Falls back cleanly when Google gives us only one of them. */
     const sub = [v.cuisine, v.address].filter(Boolean).join(' · ');
-    c.innerHTML = '<div ' + phAttrs(v.photoUrl, v.name, 'th') + '></div><div style="min-width:0;flex:1">'
-      + '<h3>' + esc(v.name) + '</h3><p>' + esc(sub) + '</p><div class="exit">'
+    /* The first place is the answer, not row one of a directory: a large photograph and
+       one sentence of reasons, each clause a real field (kind, area, hours, distance, its
+       own words). The rest follow as comparable rows. */
+    const lead = i === 0;
+    if (lead) c.classList.add('pick');
+    /* Distance alone is already on the meta line; a reason needs something more to say. */
+    const reason = lead && (v.about || v.openNow !== undefined) ? pickReason(v, km) : '';
+    c.innerHTML = (lead ? '<p class="pk">' + esc(pickLabel()) + '</p>' : '')
+      + '<div ' + phAttrs(v.photoUrl, v.name, 'th') + '></div><div style="min-width:0;flex:1">'
+      + '<h3>' + esc(v.name) + '</h3><p>' + esc(sub) + '</p>'
+      + (reason ? '<p class="why">' + esc(reason) + '</p>' : '')
+      + '<div class="exit">'
       + status
       + (meta ? '<span class="mt">' + esc(meta) + '</span>' : '')
       + '<button class="savebtn" aria-pressed="' + isSaved('places', v.name) + '">Save</button></div>'
@@ -1277,7 +1317,10 @@ function venue(idx: number) {
      the old fixed grid left "Kind: Cafe" beside a blank grey box. */
   const kmHere = venueKm(v);
   const facts = [
-    v.openNow === undefined ? null : ['Today', v.openNow ? (v.closingSoon ? 'Closing soon' : 'Open') : 'Closed', v.hoursToday || ''],
+    v.openNow === undefined ? null
+      : v.closesAt ? [v.closingSoon ? 'Closing soon' : 'Closes', v.closesAt, 'open now']
+        : !v.openNow && v.opensNext ? ['Opens', v.opensNext, 'closed now']
+          : ['Today', v.openNow ? (v.closingSoon ? 'Closing soon' : 'Open') : 'Closed', v.hoursToday || ''],
     typeof v.priceTier === 'number' ? ['Spend', PR[v.priceTier - 1], 'per head'] : null,
     kmHere !== undefined ? ['Distance', formatDistance(kmHere, distanceLocale()), ''] : null,
     typeof v.rating === 'number'
@@ -1323,6 +1366,10 @@ function venue(idx: number) {
 
       /* Directions is the page's one primary action and already owns the button in the
          side panel; repeating it here split the decision in two. */
+      /* Their own description, from their own site, and labelled as such: it is the
+         venue speaking, not us vouching. */
+      + (v.about ? '<div class="words"><h4>In their words</h4><blockquote>' + esc(v.about) + '</blockquote>'
+        + (v.aboutSource ? '<p class="src">From ' + esc(v.aboutSource) + '</p>' : '') + '</div>' : '')
       + '<h4>Find them</h4><div class="socials">' + soc.filter(([n]) => n !== 'Directions').map(([n, path, href]) => (href
           ? '<a class="soc" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" aria-label="' + n + '">'
             + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg><span>' + esc(n) + '</span></a>'
@@ -1330,7 +1377,9 @@ function venue(idx: number) {
     + '</div><div><div class="side">'
       + '<a class="cta" style="text-align:center;text-decoration:none" href="' + esc(soc[2][2]!) + '" target="_blank" rel="noopener noreferrer">Directions</a>'
       + (v.phone ? '<a class="cta2" style="text-align:center;text-decoration:none" href="tel:' + esc(v.phone) + '">Call</a>' : '')
-      + (v.externalLink ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(v.externalLink) + '" target="_blank" rel="noopener noreferrer">Menu &amp; details</a>' : '')
+      + (v.menuUrl ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(v.menuUrl) + '" target="_blank" rel="noopener noreferrer">Menu</a>' : '')
+      + (v.bookable && v.hasOwnWebsite ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(v.externalLink) + '" target="_blank" rel="noopener noreferrer">Book</a>' : '')
+      + (v.externalLink && !v.menuUrl ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(v.externalLink) + '" target="_blank" rel="noopener noreferrer">' + (v.hasOwnWebsite ? 'Their site' : 'Find online') + '</a>' : '')
       + '<button class="cta2" id="sv" aria-pressed="' + isSaved('places', v.name) + '">Save</button>'
       /* Sharing a place is the single most common thing anyone does with a restaurant,
          and there was no way to do it. navigator.share is the 2024+ answer: it opens the
@@ -1341,7 +1390,8 @@ function venue(idx: number) {
       + '<button class="cta2" id="cp">Copy address</button>'
       + ((v.hoursWeekly && v.hoursWeekly.length)
           ? '<div class="hours">' + v.hoursWeekly.map((h, i) =>
-              '<div' + (i === 0 ? ' class="now"' : '') + '><span>' + esc(h) + '</span></div>').join('') + '</div>'
+              '<div' + (i === 0 ? ' class="now"' : '') + '><span>' + esc(h) + '</span></div>').join('')
+            + (v.hoursSource ? '<p class="src">Hours from ' + esc(v.hoursSource) + '</p>' : '') + '</div>'
           : '')
     + '</div></div></div>';
   /* A history entry, so the phone's BACK GESTURE closes the venue instead of leaving the
@@ -1779,7 +1829,9 @@ function syncThemeColor() {
     el.id = 'tc-live';
     el.name = 'theme-color';
   }
-  el.content = document.documentElement.dataset.theme === 'dark' ? '#0E0E0D' : '#F5F4F2';
+  /* Read the canvas token, never restate it: a hardcoded pair outlived the palette once
+     and would tint the browser chrome the old colour (§13.3 item 4). */
+  el.content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || el.content;
   if (document.head.firstChild !== el) document.head.prepend(el);
 }
 
