@@ -100,7 +100,10 @@ def page_facts(url: str) -> dict:
     img = meta("og:image:secure_url", "og:image", "twitter:image")
     if img:
         img = urllib.parse.urljoin(final, img)
-        if img.startswith("http") and not re.search(r"logo|favicon|icon|placeholder|default", img, re.I):
+        # Site-wide share cards and banners are usually text on a background, not a photograph
+        # of the place; on a food app they read as a screenshot of a website.
+        if img.startswith("http") and not re.search(
+                r"logo|favicon|icon|placeholder|default|banner|header|slider|slide[-_]|screenshot|og[-_]?image|social|share|fb[-_]|twitter|seo|thumbnail[-_]default", img, re.I):
             facts["photo"] = img.replace("http://", "https://", 1)
     desc = meta("og:description", "description", "twitter:description")
     # Boilerplate ("Just another WordPress site", cookie notices) is not a description.
