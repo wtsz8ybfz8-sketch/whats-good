@@ -6,7 +6,7 @@ Runs in GitHub Actions (open internet). No key, no account, no bill:
   twitter:image) — the picture it chose to represent itself in link previews. Logos and
   favicons are refused. Hotlinked, never re-hosted; a venue that asks is removed.
 """
-import concurrent.futures as cf, html, json, os, re, subprocess, sys, urllib.parse, urllib.request
+import concurrent.futures as cf, html, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 import duckdb
 
 CITIES = {  # name: (xmin, ymin, xmax, ymax)
@@ -139,21 +139,29 @@ def page_facts(url: str) -> dict:
 
 OSM_KEEP = ("opening_hours", "cuisine", "outdoor_seating", "diet:vegan", "diet:vegetarian", "diet:halal",
             "wheelchair", "reservation", "takeaway", "delivery", "internet_access", "smoking")
-OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
+# Public Overpass servers are often busy (502s, timeouts). Try each, twice, with a pause:
+# a city without OSM tags still builds, it just has fewer hours and details.
+OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter",
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
 
 
 def osm_tags(box) -> list[dict]:
     """Every named food or drink place in the box from OpenStreetMap, with the tags locals
     maintain — hours, cuisine, outdoor seating, vegan options. One request per city."""
     xmin, ymin, xmax, ymax = box
-    q = f"""[out:json][timeout:120];
+    q = f"""[out:json][timeout:90];
       nwr["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream|biergarten)$"]["name"]({ymin},{xmin},{ymax},{xmax});
-      out center tags;"""
-    for url in OVERPASS:
+      out center tags qt;"""
+    deadline = time.time() + 360  # at most ~6 minutes per city, so the weekly job stays inside its limit
+    for attempt, url in enumerate(OVERPASS * 2):
+        if time.time() > deadline:
+            break
+        if attempt:
+            time.sleep(15)
         try:
             data = urllib.parse.urlencode({"data": q}).encode()
             req = urllib.request.Request(url, data=data, headers={"User-Agent": "whats-good/1.0"})
-            with urllib.request.urlopen(req, timeout=150) as r:
+            with urllib.request.urlopen(req, timeout=100) as r:
                 els = json.load(r).get("elements", [])
             out = []
             for e in els:
