@@ -1159,12 +1159,12 @@ async function render() {
      open now, says what it is in its own words and shows a photograph beats one we know
      nothing about. Distance order is kept everywhere else. */
   const evidence = (v: Venue) => (v.openNow === true ? 3 : v.openNow === false ? -2 : 0)
-    + (v.about ? 1 : 0) + (v.photoUrl ? 1 : 0);
+    + (v.about ? 1 : 0) + (v.photoUrl ? 3 : 0);
   const verdicts = readVerdicts();
   /* "Not for me" sinks to the end, and can never be the pick. */
   venues = [...venues.filter((v) => verdicts[v.name] !== 'no'), ...venues.filter((v) => verdicts[v.name] === 'no')];
   const score = (v: Venue) => evidence(v) + (verdicts[v.name] === 'yes' ? 2 : verdicts[v.name] === 'no' ? -99 : 0);
-  const top = venues.slice(0, 10);
+  const top = venues.slice(0, 20);
   const best = top.reduce((b, v, i) => (score(v) > score(top[b]) ? i : b), 0);
   if (best) venues = [venues[best], ...venues.slice(0, best), ...venues.slice(best + 1)];
   heroPhoto(venues.find((v) => v.photoUrl)?.photoUrl);
