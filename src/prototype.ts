@@ -984,6 +984,27 @@ const sliderState = () => ({
 
 /* "Tonight's pick" at 20:00, "Your pick for lunch" at 13:00: the label follows the clock
    the header already shows, so it never says tonight at breakfast. */
+/* "Worth it?" — the reader's own verdict on a place they have been. Kept on this device
+   (no shared table exists yet), and it changes the result: a "not for me" place is never
+   the pick and sinks to the end of the list; a "worth it" place says so on its row. */
+type Verdict = 'yes' | 'no';
+const VERDICT_KEY = 'wg_verdict';
+function readVerdicts(): Record<string, Verdict> {
+  try { return JSON.parse(localStorage.getItem(VERDICT_KEY) || '{}') || {}; } catch { return {}; }
+}
+function setVerdict(name: string, v: Verdict | null): void {
+  const all = readVerdicts();
+  if (v) all[name] = v; else delete all[name];
+  try { localStorage.setItem(VERDICT_KEY, JSON.stringify(all)); } catch { /* private mode */ }
+}
+/** DuckDuckGo's backslash operator jumps to the first result, so this lands on the venue's own
+ *  page on that site when one exists, and on a plain results page when it does not. A link,
+ *  never a crawl: both sites forbid bulk reuse (Dineplan user terms; Eat Out robots.txt). */
+function lookUpOn(site: string, v: Venue): string {
+  const area = (v.address || '').split(',').slice(-1)[0]?.trim() || '';
+  return 'https://duckduckgo.com/?q=' + encodeURIComponent('\\ site:' + site + ' "' + v.name + '" ' + area);
+}
+
 function pickLabel(): string {
   const h = hour;
   return h < 11 ? 'This morning’s pick' : h < 16 ? 'This afternoon’s pick' : 'Tonight’s pick';
@@ -1139,8 +1160,12 @@ async function render() {
      nothing about. Distance order is kept everywhere else. */
   const evidence = (v: Venue) => (v.openNow === true ? 3 : v.openNow === false ? -2 : 0)
     + (v.about ? 1 : 0) + (v.photoUrl ? 1 : 0);
+  const verdicts = readVerdicts();
+  /* "Not for me" sinks to the end, and can never be the pick. */
+  venues = [...venues.filter((v) => verdicts[v.name] !== 'no'), ...venues.filter((v) => verdicts[v.name] === 'no')];
+  const score = (v: Venue) => evidence(v) + (verdicts[v.name] === 'yes' ? 2 : verdicts[v.name] === 'no' ? -99 : 0);
   const top = venues.slice(0, 10);
-  const best = top.reduce((b, v, i) => (evidence(v) > evidence(top[b]) ? i : b), 0);
+  const best = top.reduce((b, v, i) => (score(v) > score(top[b]) ? i : b), 0);
   if (best) venues = [venues[best], ...venues.slice(0, best), ...venues.slice(best + 1)];
   heroPhoto(venues.find((v) => v.photoUrl)?.photoUrl);
   $('list').innerHTML = '';
@@ -1189,9 +1214,13 @@ async function render() {
     const lead = i === 0;
     if (lead) c.classList.add('pick');
     const reason = lead ? pickReason(v) : '';
+    const said = verdicts[v.name];
     c.innerHTML = (lead ? '<p class="pk">' + esc(pickLabel()) + '</p>' : '')
-      + '<div ' + phAttrs(v.photoUrl, v.name, 'th') + '></div><div style="min-width:0;flex:1">'
-      + '<h3>' + esc(v.name) + '</h3><p>' + esc(sub) + '</p>'
+      + '<div ' + phAttrs(v.photoUrl, v.name, 'th') + '>'
+      + (lead && v.photoUrl ? '<span class="ov"><h3>' + esc(v.name) + '</h3></span>' : '') + '</div>'
+      + '<div style="min-width:0;flex:1">'
+      + (lead && v.photoUrl ? '' : '<h3>' + esc(v.name) + '</h3>') + '<p>' + esc(sub) + '</p>'
+      + (said ? '<p class="said">' + (said === 'yes' ? 'You said: worth it' : 'You said: not for me') + '</p>' : '')
       + (reason ? '<p class="why">' + esc(reason) + '</p>' : '')
       + '<div class="exit">'
       + status
@@ -1380,6 +1409,12 @@ function venue(idx: number) {
       + (v.bookable && v.hasOwnWebsite ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(v.externalLink) + '" target="_blank" rel="noopener noreferrer">Book</a>' : '')
       + (v.externalLink && !v.menuUrl ? '<a class="cta2" style="text-align:center;text-decoration:none" href="' + esc(v.externalLink) + '" target="_blank" rel="noopener noreferrer">' + (v.hasOwnWebsite ? 'Their site' : 'Find online') + '</a>' : '')
       + '<button class="cta2" id="sv" aria-pressed="' + isSaved('places', v.name) + '">Save</button>'
+      + '<div class="verdict" role="group" aria-label="Been here? Worth it?"><p>Been here?</p>'
+        + '<button type="button" class="vb" data-v="yes" aria-pressed="' + (readVerdicts()[v.name] === 'yes') + '">Worth it</button>'
+        + '<button type="button" class="vb" data-v="no" aria-pressed="' + (readVerdicts()[v.name] === 'no') + '">Not for me</button></div>'
+      + '<div class="elsewhere"><p>Reviews and booking elsewhere</p>'
+        + '<a class="cta2" href="' + esc(lookUpOn('dineplan.com/restaurant', v)) + '" target="_blank" rel="noopener noreferrer">Find on Dineplan</a>'
+        + '<a class="cta2" href="' + esc(lookUpOn('eatout.co.za', v)) + '" target="_blank" rel="noopener noreferrer">Find on Eat Out</a></div>'
       /* Sharing a place is the single most common thing anyone does with a restaurant,
          and there was no way to do it. navigator.share is the 2024+ answer: it opens the
          real OS sheet, so the venue goes to WhatsApp or Messages in one tap on a phone.
@@ -1404,6 +1439,26 @@ function venue(idx: number) {
   const sv = document.getElementById('sv');
   if (sv) sv.onclick = () => toggleSave('places', v.name, sv,
     { subtitle: v.cuisine || v.address, image: v.photoUrl });
+  document.querySelectorAll<HTMLButtonElement>('.verdict .vb').forEach((b) => {
+    b.onclick = () => {
+      const on = b.getAttribute('aria-pressed') !== 'true';
+      setVerdict(v.name, on ? b.dataset.v as Verdict : null);
+      document.querySelectorAll('.verdict .vb').forEach((o) =>
+        o.setAttribute('aria-pressed', String(on && o === b)));
+      /* The row in the list says it too, without waiting for the next search. */
+      const row = [...document.querySelectorAll<HTMLElement>('#list .card')]
+        .find((c) => c.getAttribute('aria-label') === 'View ' + v.name);
+      if (row) {
+        row.querySelector('.said')?.remove();
+        if (on) {
+          const p = document.createElement('p');
+          p.className = 'said';
+          p.textContent = b.dataset.v === 'yes' ? 'You said: worth it' : 'You said: not for me';
+          row.querySelector('.exit')?.before(p);
+        }
+      }
+    };
+  });
   void venueFacts(v);
   void venueMoment(v);
   void venueStory(v);

@@ -670,3 +670,21 @@ h1 em{font-style:italic;font-weight:400;color:var(--accent)}
 /* An empty parse line held 44px of nothing between the search and the time of day. */
 .parsed:empty{min-height:0;margin-bottom:12px}
 .util dd b{font-variant-numeric:normal}
+
+/* ── Pass 2 (2026-11-28, Lunika's design-inspo board: Ma Joie, Zanzibar, Leemo) ──────
+   The signature: the pick's photograph carries its name, set large in the serif over a
+   legibility scrim, the way the boards' restaurant sites lead with the room and the name. */
+:root{--on-photo:#FFFFFF}
+#list .card.pick .th{position:relative;overflow:hidden}
+#list .card.pick .ov{position:absolute;left:0;right:0;bottom:0;padding:56px 16px 14px;
+  background:linear-gradient(to top,rgb(0 0 0 / .62),rgb(0 0 0 / 0))}
+#list .card.pick .ov h3{color:var(--on-photo);font-size:clamp(34px,9vw,52px);line-height:.95;
+  letter-spacing:-.02em;text-wrap:balance}
+#list .card .said{margin-top:6px;font:600 12.5px/1.3 var(--sans);color:var(--accent)}
+.side .verdict,.side .elsewhere{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;
+  padding-top:14px;border-top:1px solid var(--line)}
+.side .verdict p,.side .elsewhere p{flex-basis:100%;margin:0;font:600 13px/1.2 var(--sans);color:var(--ink2)}
+.side .verdict .vb{flex:1;min-height:44px;border-radius:999px;border:1px solid var(--line2);
+  background:var(--surf);color:var(--ink);font:600 14px/1 var(--sans);cursor:pointer}
+.side .verdict .vb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.side .elsewhere .cta2{flex:1;text-align:center;text-decoration:none}
